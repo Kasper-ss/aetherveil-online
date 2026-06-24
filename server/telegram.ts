@@ -57,10 +57,25 @@ async function callTelegramApi<T>(method: string, body: Record<string, unknown>)
     body: JSON.stringify(body),
   })
   const data = await res.json() as { ok: boolean; result?: T; description?: string }
-  if (!data.ok || data.result === undefined) {
+  if (!data.ok) {
     throw new Error(data.description ?? `Telegram API error: ${method}`)
   }
-  return data.result
+  return data.result as T
+}
+
+export function getMiniAppUrl(): string {
+  if (process.env.MINI_APP_URL) return process.env.MINI_APP_URL.replace(/\/$/, '')
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, '')}`
+  return ''
+}
+
+export async function sendMessage(params: {
+  chat_id: number
+  text: string
+  reply_markup?: Record<string, unknown>
+}) {
+  await callTelegramApi<unknown>('sendMessage', params)
 }
 
 export async function createStarsInvoiceLink(params: {
@@ -87,9 +102,11 @@ export async function answerPreCheckoutQuery(queryId: string, ok: boolean, error
   })
 }
 
-export async function setWebhook(url: string) {
+export async function setWebhook(url: string, secretToken?: string) {
   await callTelegramApi<boolean>('setWebhook', {
     url,
+    secret_token: secretToken,
     allowed_updates: ['pre_checkout_query', 'message'],
+    drop_pending_updates: true,
   })
 }

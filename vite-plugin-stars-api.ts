@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import { loadEnv } from 'vite'
-import { createStarInvoice, fulfillStarPurchase, handleTelegramPaymentWebhook } from './server/starsPayment.js'
+import { createStarInvoice, fulfillStarPurchase, handleTelegramWebhook } from './server/starsPayment.js'
+import { setWebhook, getMiniAppUrl } from './server/telegram.js'
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -63,8 +64,21 @@ export function starsApiPlugin(): Plugin {
 
           if (req.method === 'POST' && req.url === '/api/telegram/webhook') {
             const update = await readJsonBody(req)
-            const result = await handleTelegramPaymentWebhook(update as Parameters<typeof handleTelegramPaymentWebhook>[0])
+            const result = await handleTelegramWebhook(update as Parameters<typeof handleTelegramWebhook>[0])
             sendJson(res, 200, { ok: true, ...result })
+            return
+          }
+
+          if (req.method === 'GET' && req.url?.startsWith('/api/telegram/setup-webhook')) {
+            const setupKey = process.env.TELEGRAM_WEBHOOK_SETUP_KEY
+            const q = new URL(req.url, 'http://localhost').searchParams.get('key')
+            if (!setupKey || q !== setupKey) {
+              sendJson(res, 401, { error: 'Неверный ключ setup' })
+              return
+            }
+            const appUrl = getMiniAppUrl() || 'http://localhost:5173'
+            await setWebhook(`${appUrl}/api/telegram/webhook`, process.env.TELEGRAM_WEBHOOK_SECRET)
+            sendJson(res, 200, { ok: true, webhookUrl: `${appUrl}/api/telegram/webhook` })
             return
           }
 

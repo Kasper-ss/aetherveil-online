@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { handleStartCommand, parseStartCommand, type TelegramUpdate } from './botUpdates.js'
 import { getStarProduct, isStarProductId } from './starProducts.js'
 import { createStarsInvoiceLink, getBotToken, validateInitData } from './telegram.js'
 import {
@@ -79,17 +80,7 @@ export async function fulfillStarPurchase(input: {
   return { success: true, productId: payment.product_id }
 }
 
-export async function handleTelegramPaymentWebhook(update: {
-  pre_checkout_query?: { id: string; invoice_payload: string; from: { id: number } }
-  message?: {
-    successful_payment?: {
-      invoice_payload: string
-      telegram_payment_charge_id?: string
-      total_amount: number
-      currency: string
-    }
-  }
-}) {
+export async function handleTelegramWebhook(update: TelegramUpdate) {
   if (update.pre_checkout_query) {
     const { id, invoice_payload, from } = update.pre_checkout_query
     const owner = parsePayloadOwner(invoice_payload)
@@ -114,5 +105,18 @@ export async function handleTelegramPaymentWebhook(update: {
     return { handled: 'successful_payment' }
   }
 
+  const text = update.message?.text
+  const chatId = update.message?.chat?.id
+  if (text && chatId) {
+    const parsed = parseStartCommand(text)
+    if (parsed?.command === '/start') {
+      await handleStartCommand(chatId, update.message?.from?.first_name, parsed.arg)
+      return { handled: 'start' }
+    }
+  }
+
   return { handled: 'ignored' }
 }
+
+/** @deprecated use handleTelegramWebhook */
+export const handleTelegramPaymentWebhook = handleTelegramWebhook

@@ -1,4 +1,4 @@
-import { handleTelegramPaymentWebhook } from '../../server/starsPayment.js'
+import { handleTelegramWebhook } from '../../server/starsPayment.js'
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
@@ -14,8 +14,8 @@ export default async function handler(request: Request): Promise<Response> {
       }
     }
 
-    const update = await request.json() as Parameters<typeof handleTelegramPaymentWebhook>[0]
-    const result = await handleTelegramPaymentWebhook(update)
+    const update = await request.json() as Parameters<typeof handleTelegramWebhook>[0]
+    const result = await handleTelegramWebhook(update)
     return Response.json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Webhook error'
