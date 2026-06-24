@@ -39,14 +39,14 @@ function zoneForFloor(floor: number) {
 
 /** Difficulty multiplier — grows faster on higher floors */
 export function getFloorDifficultyMult(floor: number): number {
-  return 1 + (floor - 1) * 0.1 + Math.pow(floor, 1.3) * 0.06
+  return 1 + (floor - 1) * 0.12 + Math.pow(floor, 1.35) * 0.075
 }
 
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)
   const mult = isBoss ? 5 : 1
-  const baseHp = Math.floor((180 + floor * 90) * diff * mult)
-  const baseAtk = Math.floor((6 + floor * 3) * diff * (isBoss ? 1.4 : 1))
+  const baseHp = Math.floor((200 + floor * 105) * diff * mult)
+  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.45 : 1))
   const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2 : 1))
   const crit = isBoss ? Math.min(25, 8 + Math.floor(floor / 4)) : Math.min(15, 3 + Math.floor(floor / 6))
   const speed = isBoss ? Math.min(20, 6 + Math.floor(floor / 5)) : Math.min(18, 4 + Math.floor(floor / 4))
