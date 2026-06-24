@@ -30,34 +30,34 @@ type SetPieceCraft = {
   requiredProfessionLevel: number
 }
 
-const EPIC_SHADOW: SetPieceCraft[] = [
-  { id: 'shadow_helmet', resultItemId: 'shadow_ascension_epic_helmet', name: 'Шлем Восхождения в Тени', description: 'ЗАЩ +16, КРИТ +7, HP +44', resources: { aether_dust: 5, star_shard: 2, gem_shard: 4, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'shadow_chest', resultItemId: 'shadow_ascension_epic_chestplate', name: 'Нагрудник Восхождения в Тени', description: 'ЗАЩ +25, HP +82, АТК +4', resources: { aether_dust: 7, star_shard: 3, gem_shard: 5, upgrade_core: 3 }, goldCost: 3200, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
-  { id: 'shadow_weapon', resultItemId: 'shadow_ascension_epic_weapon', name: 'Клинок Восхождения в Тени', description: 'АТК +30, КРИТ +14, СКР +4', resources: { aether_dust: 8, star_shard: 4, gem_shard: 6, upgrade_core: 4 }, goldCost: 4000, requiredProfession: 'blacksmith', requiredProfessionLevel: 16 },
-  { id: 'shadow_leggings', resultItemId: 'shadow_ascension_epic_leggings', name: 'Поножи Восхождения в Тени', description: 'ЗАЩ +14, СКР +8, КРИТ +3', resources: { aether_dust: 6, star_shard: 3, gem_shard: 4, upgrade_core: 2 }, goldCost: 2600, requiredProfession: 'blacksmith', requiredProfessionLevel: 13 },
-  { id: 'shadow_boots', resultItemId: 'shadow_ascension_epic_boots', name: 'Ботинки Восхождения в Тени', description: 'СКР +10, ЗАЩ +7, КРИТ +4', resources: { aether_dust: 5, star_shard: 2, gem_shard: 3, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'shadow_necklace', resultItemId: 'shadow_ascension_epic_necklace', name: 'Ожерелье Восхождения в Тени', description: 'АТК +8, КРИТ +10, СКР +3', resources: { aether_dust: 5, star_shard: 2, gem_shard: 5, upgrade_core: 2 }, goldCost: 2400, requiredProfession: 'jeweler', requiredProfessionLevel: 13 },
-  { id: 'shadow_ring', resultItemId: 'shadow_ascension_epic_ring', name: 'Кольцо Восхождения в Тени', description: 'КРИТ +11, АТК +7', resources: { aether_dust: 4, star_shard: 2, gem_shard: 4, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'jeweler', requiredProfessionLevel: 12 },
+const EPIC_STORM: SetPieceCraft[] = [
+  { id: 'storm_helmet', resultItemId: 'storm_breaker_helmet', name: 'Шлем Громобоя', description: 'ЗАЩ +18, АТК +6, КРИТ +8', resources: { iron_ore: 12, gem_shard: 4, upgrade_core: 3 }, goldCost: 1800, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'storm_chest', resultItemId: 'storm_breaker_chestplate', name: 'Кираса Громобоя', description: 'ЗАЩ +30, HP +90, АТК +5', resources: { iron_ore: 16, gem_shard: 5, upgrade_core: 4 }, goldCost: 2800, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
+  { id: 'storm_weapon', resultItemId: 'storm_breaker_weapon', name: 'Молот грома', description: 'АТК +38, КРИТ +14, СКР +6', resources: { iron_ore: 18, gem_shard: 6, upgrade_core: 5 }, goldCost: 3500, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
+  { id: 'storm_leggings', resultItemId: 'storm_breaker_leggings', name: 'Поножи Громобоя', description: 'ЗАЩ +16, СКР +10, АТК +4', resources: { iron_ore: 14, gem_shard: 4, upgrade_core: 3 }, goldCost: 2400, requiredProfession: 'blacksmith', requiredProfessionLevel: 11 },
+  { id: 'storm_boots', resultItemId: 'storm_breaker_boots', name: 'Сапоги Громобоя', description: 'СКР +14, ЗАЩ +10, КРИТ +5', resources: { iron_ore: 12, gem_shard: 3, upgrade_core: 3 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'storm_necklace', resultItemId: 'storm_breaker_necklace', name: 'Амулет бури', description: 'АТК +12, КРИТ +10', resources: { gem_shard: 6, mana_crystal: 3, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'jeweler', requiredProfessionLevel: 11 },
+  { id: 'storm_ring', resultItemId: 'storm_breaker_ring', name: 'Кольцо молнии', description: 'АТК +10, КРИТ +12', resources: { gem_shard: 5, mana_crystal: 2, upgrade_core: 2 }, goldCost: 1800, requiredProfession: 'jeweler', requiredProfessionLevel: 10 },
 ]
 
-const EPIC_SOLO: SetPieceCraft[] = [
-  { id: 'solo_helmet', resultItemId: 'solo_leveling_epic_helmet', name: 'Шлем Одиночки', description: 'ЗАЩ +17, HP +55, АТК +3', resources: { aether_dust: 5, star_shard: 2, mana_crystal: 4, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'solo_chest', resultItemId: 'solo_leveling_epic_chestplate', name: 'Нагрудник Одиночки', description: 'ЗАЩ +28, HP +99, АТК +4', resources: { aether_dust: 7, star_shard: 3, mana_crystal: 5, upgrade_core: 3 }, goldCost: 3200, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
-  { id: 'solo_weapon', resultItemId: 'solo_leveling_epic_weapon', name: 'Клинок Одиночки', description: 'АТК +33, КРИТ +8, СКР +6', resources: { aether_dust: 8, star_shard: 4, mana_crystal: 6, upgrade_core: 4 }, goldCost: 4000, requiredProfession: 'blacksmith', requiredProfessionLevel: 16 },
-  { id: 'solo_leggings', resultItemId: 'solo_leveling_epic_leggings', name: 'Поножи Одиночки', description: 'ЗАЩ +15, СКР +7, HP +33', resources: { aether_dust: 6, star_shard: 3, mana_crystal: 4, upgrade_core: 2 }, goldCost: 2600, requiredProfession: 'blacksmith', requiredProfessionLevel: 13 },
-  { id: 'solo_boots', resultItemId: 'solo_leveling_epic_boots', name: 'Ботинки Одиночки', description: 'СКР +9, ЗАЩ +8, АТК +3', resources: { aether_dust: 5, star_shard: 2, mana_crystal: 3, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'solo_necklace', resultItemId: 'solo_leveling_epic_necklace', name: 'Ожерелье Одиночки', description: 'АТК +10, КРИТ +6, HP +28', resources: { aether_dust: 5, star_shard: 2, mana_crystal: 5, upgrade_core: 2 }, goldCost: 2400, requiredProfession: 'jeweler', requiredProfessionLevel: 13 },
-  { id: 'solo_ring', resultItemId: 'solo_leveling_epic_ring', name: 'Кольцо Одиночки', description: 'АТК +8, КРИТ +7, СКР +3', resources: { aether_dust: 4, star_shard: 2, mana_crystal: 4, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'jeweler', requiredProfessionLevel: 12 },
+const EPIC_CRYSTAL: SetPieceCraft[] = [
+  { id: 'crystal_helmet', resultItemId: 'crystal_guard_helmet', name: 'Корона кристалла', description: 'ЗАЩ +22, HP +50, КРИТ +4', resources: { gem_shard: 6, mana_crystal: 4, upgrade_core: 3 }, goldCost: 1800, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'crystal_chest', resultItemId: 'crystal_guard_chestplate', name: 'Кираса кристалла', description: 'ЗАЩ +36, HP +110', resources: { gem_shard: 8, mana_crystal: 5, upgrade_core: 4 }, goldCost: 2800, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
+  { id: 'crystal_weapon', resultItemId: 'crystal_guard_weapon', name: 'Клинок кристалла', description: 'АТК +28, ЗАЩ +8, HP +40', resources: { gem_shard: 8, mana_crystal: 6, upgrade_core: 5 }, goldCost: 3500, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
+  { id: 'crystal_leggings', resultItemId: 'crystal_guard_leggings', name: 'Поножи кристалла', description: 'ЗАЩ +20, HP +40, СКР +6', resources: { gem_shard: 6, mana_crystal: 4, upgrade_core: 3 }, goldCost: 2400, requiredProfession: 'blacksmith', requiredProfessionLevel: 11 },
+  { id: 'crystal_boots', resultItemId: 'crystal_guard_boots', name: 'Сапоги кристалла', description: 'ЗАЩ +14, СКР +8, HP +30', resources: { gem_shard: 5, mana_crystal: 3, upgrade_core: 3 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'crystal_necklace', resultItemId: 'crystal_guard_necklace', name: 'Ожерелье стража', description: 'ЗАЩ +8, HP +45, АТК +6', resources: { gem_shard: 7, mana_crystal: 4, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'jeweler', requiredProfessionLevel: 11 },
+  { id: 'crystal_ring', resultItemId: 'crystal_guard_ring', name: 'Кольцо стража', description: 'ЗАЩ +10, HP +35, КРИТ +6', resources: { gem_shard: 6, mana_crystal: 3, upgrade_core: 2 }, goldCost: 1800, requiredProfession: 'jeweler', requiredProfessionLevel: 10 },
 ]
 
-const EPIC_PUNCH: SetPieceCraft[] = [
-  { id: 'punch_helmet', resultItemId: 'one_punch_epic_helmet', name: 'Плащ Ванпанчмена', description: 'ЗАЩ +8, АТК +11, КРИТ +6', resources: { aether_dust: 5, star_shard: 2, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'punch_chest', resultItemId: 'one_punch_epic_chestplate', name: 'Костюм Ванпанчмена', description: 'ЗАЩ +19, АТК +14, HP +66', resources: { aether_dust: 7, star_shard: 3, upgrade_core: 3 }, goldCost: 3200, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
-  { id: 'punch_weapon', resultItemId: 'one_punch_epic_weapon', name: 'Кулак справедливости', description: 'АТК +44, КРИТ +17, СКР +8', resources: { aether_dust: 10, star_shard: 4, upgrade_core: 4 }, goldCost: 4800, requiredProfession: 'blacksmith', requiredProfessionLevel: 16 },
-  { id: 'punch_leggings', resultItemId: 'one_punch_epic_leggings', name: 'Штаны Ванпанчмена', description: 'ЗАЩ +11, СКР +11, АТК +6', resources: { aether_dust: 6, star_shard: 3, upgrade_core: 2 }, goldCost: 2600, requiredProfession: 'blacksmith', requiredProfessionLevel: 13 },
-  { id: 'punch_boots', resultItemId: 'one_punch_epic_boots', name: 'Ботинки Ванпанчмена', description: 'СКР +14, АТК +8, КРИТ +4', resources: { aether_dust: 5, star_shard: 2, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
-  { id: 'punch_necklace', resultItemId: 'one_punch_epic_necklace', name: 'Значок героя', description: 'АТК +17, КРИТ +8', resources: { aether_dust: 5, star_shard: 2, gem_shard: 3, upgrade_core: 2 }, goldCost: 2400, requiredProfession: 'jeweler', requiredProfessionLevel: 13 },
-  { id: 'punch_ring', resultItemId: 'one_punch_epic_ring', name: 'Перчатка Ванпанчмена', description: 'АТК +19, КРИТ +11', resources: { aether_dust: 4, star_shard: 2, gem_shard: 3, upgrade_core: 2 }, goldCost: 2000, requiredProfession: 'jeweler', requiredProfessionLevel: 12 },
+const EPIC_BEAST: SetPieceCraft[] = [
+  { id: 'beast_helmet', resultItemId: 'beast_master_helmet', name: 'Маска охотника', description: 'ЗАЩ +16, СКР +10, КРИТ +6', resources: { hide: 12, herb: 6, upgrade_core: 3 }, goldCost: 1800, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'beast_chest', resultItemId: 'beast_master_chestplate', name: 'Шкура альфы', description: 'ЗАЩ +28, HP +85, АТК +6', resources: { hide: 16, herb: 8, upgrade_core: 4 }, goldCost: 2800, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
+  { id: 'beast_weapon', resultItemId: 'beast_master_weapon', name: 'Копьё повелителя', description: 'АТК +34, КРИТ +12, СКР +8', resources: { hide: 14, gem_shard: 4, upgrade_core: 5 }, goldCost: 3500, requiredProfession: 'blacksmith', requiredProfessionLevel: 14 },
+  { id: 'beast_leggings', resultItemId: 'beast_master_leggings', name: 'Поножи следопыта', description: 'ЗАЩ +18, СКР +12, АТК +4', resources: { hide: 12, herb: 6, upgrade_core: 3 }, goldCost: 2400, requiredProfession: 'blacksmith', requiredProfessionLevel: 11 },
+  { id: 'beast_boots', resultItemId: 'beast_master_boots', name: 'Сапоги следопыта', description: 'СКР +16, ЗАЩ +8, КРИТ +5', resources: { hide: 10, herb: 5, upgrade_core: 3 }, goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 10 },
+  { id: 'beast_necklace', resultItemId: 'beast_master_necklace', name: 'Клык зверя', description: 'АТК +14, КРИТ +8, СКР +4', resources: { hide: 8, gem_shard: 4, upgrade_core: 2 }, goldCost: 2200, requiredProfession: 'jeweler', requiredProfessionLevel: 11 },
+  { id: 'beast_ring', resultItemId: 'beast_master_ring', name: 'Коготь зверя', description: 'АТК +12, КРИТ +10', resources: { hide: 8, gem_shard: 3, upgrade_core: 2 }, goldCost: 1800, requiredProfession: 'jeweler', requiredProfessionLevel: 10 },
 ]
 
 function toEpicRecipes(setName: string, pieces: SetPieceCraft[]): CraftRecipe[] {
@@ -121,9 +121,9 @@ const LEGENDARY_PUNCH: SetPieceCraft[] = [
 ]
 
 export const EPIC_SET_CRAFT_RECIPES: CraftRecipe[] = [
-  ...toEpicRecipes('Восхождение в Тени', EPIC_SHADOW),
-  ...toEpicRecipes('Поднятие уровня в одиночку', EPIC_SOLO),
-  ...toEpicRecipes('Ванпанчмен', EPIC_PUNCH),
+  ...toEpicRecipes('Громобой', EPIC_STORM),
+  ...toEpicRecipes('Кристальный Страж', EPIC_CRYSTAL),
+  ...toEpicRecipes('Повелитель Зверей', EPIC_BEAST),
 ]
 
 export const LEGENDARY_SET_CRAFT_RECIPES: CraftRecipe[] = [

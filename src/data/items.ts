@@ -158,6 +158,52 @@ const SETS = [
   },
 ]
 
+// Эпические сеты — отдельные от легендарных (Тени, Одиночка, Ванпанчмен)
+const EPIC_SETS = [
+  {
+    id: 'storm_breaker',
+    name: 'Громобой',
+    bonus: 'Полный сет: +12% ATK, +8% крит, +5% скорость',
+    pieces: [
+      { slot: 'helmet' as EquipSlot, name: 'Шлем Громобоя', icon: '⚡', stats: { def: 18, atk: 6, crit: 8 } },
+      { slot: 'chestplate' as EquipSlot, name: 'Кираса Громобоя', icon: '⚡', stats: { def: 30, hp: 90, atk: 5 } },
+      { slot: 'leggings' as EquipSlot, name: 'Поножи Громобоя', icon: '⚡', stats: { def: 16, speed: 10, atk: 4 } },
+      { slot: 'boots' as EquipSlot, name: 'Сапоги Громобоя', icon: '⚡', stats: { speed: 14, def: 10, crit: 5 } },
+      { slot: 'necklace' as EquipSlot, name: 'Амулет бури', icon: '⚡', stats: { atk: 12, crit: 10 } },
+      { slot: 'ring' as EquipSlot, name: 'Кольцо молнии', icon: '⚡', stats: { atk: 10, crit: 12 } },
+      { slot: 'weapon' as EquipSlot, name: 'Молот грома', icon: '⚡', stats: { atk: 38, crit: 14, speed: 6 } },
+    ],
+  },
+  {
+    id: 'crystal_guard',
+    name: 'Кристальный Страж',
+    bonus: 'Полный сет: +15% DEF, +80 HP, +6% сопротивление',
+    pieces: [
+      { slot: 'helmet' as EquipSlot, name: 'Корона кристалла', icon: '💠', stats: { def: 22, hp: 50, crit: 4 } },
+      { slot: 'chestplate' as EquipSlot, name: 'Кираса кристалла', icon: '💠', stats: { def: 36, hp: 110 } },
+      { slot: 'leggings' as EquipSlot, name: 'Поножи кристалла', icon: '💠', stats: { def: 20, hp: 40, speed: 6 } },
+      { slot: 'boots' as EquipSlot, name: 'Сапоги кристалла', icon: '💠', stats: { def: 14, speed: 8, hp: 30 } },
+      { slot: 'necklace' as EquipSlot, name: 'Ожерелье стража', icon: '💠', stats: { def: 8, hp: 45, atk: 6 } },
+      { slot: 'ring' as EquipSlot, name: 'Кольцо стража', icon: '💠', stats: { def: 10, hp: 35, crit: 6 } },
+      { slot: 'weapon' as EquipSlot, name: 'Клинок кристалла', icon: '💠', stats: { atk: 28, def: 8, hp: 40 } },
+    ],
+  },
+  {
+    id: 'beast_master',
+    name: 'Повелитель Зверей',
+    bonus: 'Полный сет: +10% урон питомцу, +12% дроп, +8% скорость',
+    pieces: [
+      { slot: 'helmet' as EquipSlot, name: 'Маска охотника', icon: '🐺', stats: { def: 16, speed: 10, crit: 6 } },
+      { slot: 'chestplate' as EquipSlot, name: 'Шкура альфы', icon: '🐺', stats: { def: 28, hp: 85, atk: 6 } },
+      { slot: 'leggings' as EquipSlot, name: 'Поножи следопыта', icon: '🐺', stats: { def: 18, speed: 12, atk: 4 } },
+      { slot: 'boots' as EquipSlot, name: 'Сапоги следопыта', icon: '🐺', stats: { speed: 16, def: 8, crit: 5 } },
+      { slot: 'necklace' as EquipSlot, name: 'Клык зверя', icon: '🐺', stats: { atk: 14, crit: 8, speed: 4 } },
+      { slot: 'ring' as EquipSlot, name: 'Коготь зверя', icon: '🐺', stats: { atk: 12, crit: 10 } },
+      { slot: 'weapon' as EquipSlot, name: 'Копьё повелителя', icon: '🐺', stats: { atk: 34, crit: 12, speed: 8 } },
+    ],
+  },
+]
+
 for (const set of SETS) {
   for (const piece of set.pieces) {
     const id = `${set.id}_${piece.slot}`
@@ -182,16 +228,10 @@ for (const set of SETS) {
   }
 }
 
-const CRAFTABLE_SET_IDS = ['shadow_ascension', 'solo_leveling', 'one_punch'] as const
-for (const set of SETS) {
-  if (!CRAFTABLE_SET_IDS.includes(set.id as typeof CRAFTABLE_SET_IDS[number])) continue
+for (const set of EPIC_SETS) {
   for (const piece of set.pieces) {
-    const id = `${set.id}_epic_${piece.slot}`
-    const epicStats: Partial<Stats> = {}
-    for (const [k, v] of Object.entries(piece.stats)) {
-      epicStats[k as keyof Stats] = Math.max(1, Math.floor((v as number) * 0.55))
-    }
-    const statDesc = Object.entries(epicStats).map(([k, v]) => {
+    const id = `${set.id}_${piece.slot}`
+    const statDesc = Object.entries(piece.stats).map(([k, v]) => {
       const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
       return `${labels[k] ?? k} +${v}`
     }).join(', ')
@@ -201,18 +241,18 @@ for (const set of SETS) {
       description: `Эпический сет «${set.name}». ${statDesc}. ${set.bonus}`,
       slot: piece.slot,
       rarity: 'epic',
-      stats: epicStats,
+      stats: piece.stats,
       icon: piece.icon,
-      sellPrice: 800,
-      setId: `${set.id}_epic`,
-      setName: `${set.name} · Эпический`,
+      sellPrice: 900,
+      setId: set.id,
+      setName: set.name,
       upgradeLevel: 1,
       starLevel: 0,
     }
   }
 }
 
-export const SET_DATA = SETS
+export const SET_DATA = [...SETS, ...EPIC_SETS]
 
 export const CONSUMABLES: Record<string, Item> = {
   hp_potion: {

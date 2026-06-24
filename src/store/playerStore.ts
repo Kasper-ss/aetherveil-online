@@ -17,6 +17,7 @@ import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
 import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
+import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
 
 interface PlayerState {
@@ -66,6 +67,9 @@ interface PlayerState {
   claimExpEasterEgg: () => boolean
   claimUnderwearEasterEgg: () => boolean
   dismantleAllCommonItems: () => number
+  accrueBankInterest: () => void
+  depositToBank: (amount: number) => boolean
+  withdrawFromBank: (amount: number) => boolean
   allocateStat: (key: AllocStatKey, points?: number) => boolean
   grantBonusStats: (points: number, gold: number, gems: number) => void
   getCraftMissing: (recipeId: string) => MissingCost[]
@@ -354,6 +358,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   tryRegenVitals: () => {
     get().tryRegenEnergy()
     get().tryRegenHp()
+    get().accrueBankInterest()
   },
 
   allocateStat: (key, points = 1) => {
@@ -402,6 +407,44 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!item) return false
     get().updatePlayer({ underwearEasterEggClaimed: true })
     get().addItem(item)
+    return true
+  },
+
+  accrueBankInterest: () => {
+    const { player } = get()
+    if (!player) return
+    const balance = player.bankBalance ?? 0
+    if (balance <= 0) return
+    const interest = calcBankInterest(balance, player.bankLastInterestAt)
+    if (interest <= 0) return
+    get().updatePlayer({
+      bankBalance: balance + interest,
+      bankLastInterestAt: new Date().toISOString(),
+    })
+  },
+
+  depositToBank: (amount) => {
+    const { player } = get()
+    if (!player || amount < 1 || !Number.isFinite(amount)) return false
+    if (!get().spendGold(amount)) return false
+    get().accrueBankInterest()
+    const p = get().player!
+    get().updatePlayer({
+      bankBalance: (p.bankBalance ?? 0) + amount,
+      bankLastInterestAt: p.bankLastInterestAt ?? new Date().toISOString(),
+    })
+    return true
+  },
+
+  withdrawFromBank: (amount) => {
+    const { player } = get()
+    if (!player || amount < 1 || !Number.isFinite(amount)) return false
+    get().accrueBankInterest()
+    const p = get().player!
+    const balance = p.bankBalance ?? 0
+    if (balance < amount) return false
+    get().updatePlayer({ bankBalance: balance - amount })
+    get().addGold(amount)
     return true
   },
 

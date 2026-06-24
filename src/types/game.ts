@@ -204,6 +204,8 @@ export interface Player {
   hpLastRegenAt?: string
   expEasterEggClaimed?: boolean
   underwearEasterEggClaimed?: boolean
+  bankBalance?: number
+  bankLastInterestAt?: string
   buffInfiniteEnergyUntil?: string
   buffDoubleExpUntil?: string
   buffTripleGoldUntil?: string

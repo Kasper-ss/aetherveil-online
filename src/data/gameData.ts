@@ -205,6 +205,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     marketListings: player.marketListings ?? [],
     expEasterEggClaimed: player.expEasterEggClaimed ?? false,
     underwearEasterEggClaimed: player.underwearEasterEggClaimed ?? false,
+    bankBalance: player.bankBalance ?? 0,
+    bankLastInterestAt: player.bankLastInterestAt ?? new Date().toISOString(),
     guildId: player.guildId ?? GUILD_ID,
     buffInfiniteEnergyUntil: player.buffInfiniteEnergyUntil,
     buffDoubleExpUntil: player.buffDoubleExpUntil,
@@ -239,6 +241,8 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     marketListings: [],
     expEasterEggClaimed: false,
     underwearEasterEggClaimed: false,
+    bankBalance: 0,
+    bankLastInterestAt: new Date().toISOString(),
     guildId: GUILD_ID,
   }
 }
