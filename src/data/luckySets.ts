@@ -1,8 +1,8 @@
 import type { CraftRecipe, PlayerClass, ResourceId } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 
-export const LUCKY_GOLD_COST = 77_777
-export const LUCKY_RESOURCE_COST = 7
+export const LUCKY_GOLD_COST = 777_777
+export const LUCKY_RESOURCE_COST = 777
 
 export const LUCKY_RESOURCE_PACK: Partial<Record<ResourceId, number>> = {
   iron_ore: LUCKY_RESOURCE_COST,
