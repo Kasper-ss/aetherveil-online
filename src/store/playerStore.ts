@@ -5,7 +5,11 @@ import { getTelegramUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
-import { getClassData, CRAFT_RECIPES, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed } from '@/data/classes'
+import {
+  getClassData, CRAFT_RECIPES, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost,
+  MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
+  getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
+} from '@/data/classes'
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS } from '@/data/items'
 import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
@@ -61,6 +65,8 @@ interface PlayerState {
   getUpgradeLevelMissing: (item: Item) => MissingCost[]
   getStarUpgradeMissing: (item: Item) => MissingCost[]
   getMythicUpgradeMissing: (item: Item) => MissingCost[]
+  getProfessionSkillMissing: (professionId: ProfessionId, skillIndex: number) => MissingCost[]
+  getProfessionMythicSkillMissing: (professionId: ProfessionId, skillIndex: number) => MissingCost[]
   craftMythicItem: (item: Item) => Item | null
   upgradeProfessionMythicSkill: (professionId: ProfessionId, skillIndex: number) => boolean
   tryRegenEnergy: () => void
@@ -413,6 +419,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().updatePlayer({ profession: professionId, professionLevels: { ...player.professionLevels, [professionId]: levels } })
   },
 
+  getProfessionSkillMissing: (professionId, skillIndex) => {
+    const { player } = get()
+    if (!player) return []
+    const levels = player.professionLevels[professionId] ?? []
+    const cost = getProfessionSkillUpgradeCost(professionId, skillIndex, levels[skillIndex] ?? 0)
+    if (!cost) return []
+    return getMissingCosts(player, cost.gold, cost.resources)
+  },
+
+  getProfessionMythicSkillMissing: (professionId, skillIndex) => {
+    const { player } = get()
+    if (!player) return []
+    const levels = player.professionMythicLevels[professionId] ?? []
+    const cost = getProfessionMythicSkillUpgradeCost(professionId, skillIndex, levels[skillIndex] ?? 0)
+    if (!cost) return []
+    return getMissingCosts(player, cost.gold, cost.resources)
+  },
+
   upgradeProfessionSkill: (professionId, skillIndex) => {
     const { player } = get()
     if (!player) return false
@@ -421,18 +445,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const skill = prof.skills[skillIndex]
     if (!skill) return false
     const levels = [...(player.professionLevels[professionId] ?? new Array(10).fill(0))]
-    if (levels[skillIndex] >= skill.maxLevel) return false
-    const nextLvl = levels[skillIndex] + 1
-    const goldCost = skill.goldCostPerLevel * nextLvl * 6
-    const resCost: Partial<Record<ResourceId, number>> = {}
-    if (skill.resourceCostPerLevel) {
-      for (const [k, v] of Object.entries(skill.resourceCostPerLevel)) {
-        resCost[k as ResourceId] = (v ?? 0) * nextLvl * 4
-      }
+    const cost = getProfessionSkillUpgradeCost(professionId, skillIndex, levels[skillIndex] ?? 0)
+    if (!cost) return false
+    if (getMissingCosts(player, cost.gold, cost.resources).length > 0) return false
+    if (!get().spendGold(cost.gold)) return false
+    if (Object.keys(cost.resources).length && !get().spendResources(cost.resources)) {
+      get().addGold(cost.gold)
+      return false
     }
-    if (!get().spendGold(goldCost)) return false
-    if (Object.keys(resCost).length && !get().spendResources(resCost)) return false
-    levels[skillIndex] = nextLvl
+    levels[skillIndex] = (levels[skillIndex] ?? 0) + 1
     get().updatePlayer({ professionLevels: { ...player.professionLevels, [professionId]: levels } })
     return true
   },
@@ -570,18 +591,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const skill = MYTHIC_SKILLS[professionId]?.[skillIndex]
     if (!skill) return false
     const mythicLevels = [...(player.professionMythicLevels[professionId] ?? new Array(5).fill(0))]
-    if (mythicLevels[skillIndex] >= skill.maxLevel) return false
-    const nextLvl = mythicLevels[skillIndex] + 1
-    const goldCost = skill.goldCostPerLevel * nextLvl * 8
-    const resCost: Partial<Record<ResourceId, number>> = {}
-    if (skill.resourceCostPerLevel) {
-      for (const [k, v] of Object.entries(skill.resourceCostPerLevel)) {
-        resCost[k as ResourceId] = (v ?? 0) * nextLvl * 5
-      }
+    const cost = getProfessionMythicSkillUpgradeCost(professionId, skillIndex, mythicLevels[skillIndex] ?? 0)
+    if (!cost) return false
+    if (getMissingCosts(player, cost.gold, cost.resources).length > 0) return false
+    if (!get().spendGold(cost.gold)) return false
+    if (Object.keys(cost.resources).length && !get().spendResources(cost.resources)) {
+      get().addGold(cost.gold)
+      return false
     }
-    if (!get().spendGold(goldCost)) return false
-    if (Object.keys(resCost).length && !get().spendResources(resCost)) return false
-    mythicLevels[skillIndex] = nextLvl
+    mythicLevels[skillIndex] = (mythicLevels[skillIndex] ?? 0) + 1
     get().updatePlayer({ professionMythicLevels: { ...player.professionMythicLevels, [professionId]: mythicLevels } })
     return true
   },

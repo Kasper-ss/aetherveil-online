@@ -291,6 +291,52 @@ export function isProfessionMaxed(professionId: import('@/types/game').Professio
   return prof.skills.every((s, i) => (levels[i] ?? 0) >= s.maxLevel)
 }
 
+export interface ProfessionUpgradeCost {
+  gold: number
+  resources: Partial<Record<ResourceId, number>>
+}
+
+function buildSkillUpgradeCost(
+  skill: import('@/types/game').ProfessionSkill,
+  currentLevel: number,
+  goldMult: number,
+  resMult: number,
+): ProfessionUpgradeCost | null {
+  if (currentLevel >= skill.maxLevel) return null
+  const nextLvl = currentLevel + 1
+  const resources: Partial<Record<ResourceId, number>> = {}
+  if (skill.resourceCostPerLevel) {
+    for (const [k, v] of Object.entries(skill.resourceCostPerLevel)) {
+      resources[k as ResourceId] = (v ?? 0) * nextLvl * resMult
+    }
+  }
+  return {
+    gold: skill.goldCostPerLevel * nextLvl * goldMult,
+    resources,
+  }
+}
+
+export function getProfessionSkillUpgradeCost(
+  professionId: import('@/types/game').ProfessionId,
+  skillIndex: number,
+  currentLevel: number,
+): ProfessionUpgradeCost | null {
+  const prof = PROFESSIONS.find((p) => p.id === professionId)
+  const skill = prof?.skills[skillIndex]
+  if (!skill) return null
+  return buildSkillUpgradeCost(skill, currentLevel, 6, 4)
+}
+
+export function getProfessionMythicSkillUpgradeCost(
+  professionId: import('@/types/game').ProfessionId,
+  skillIndex: number,
+  currentLevel: number,
+): ProfessionUpgradeCost | null {
+  const skill = MYTHIC_SKILLS[professionId]?.[skillIndex]
+  if (!skill) return null
+  return buildSkillUpgradeCost(skill, currentLevel, 8, 5)
+}
+
 export function getClassData(classId: import('@/types/game').PlayerClass) {
   return CLASSES.find((c) => c.id === classId)!
 }

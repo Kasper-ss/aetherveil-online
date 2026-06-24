@@ -5,13 +5,32 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
-import { PROFESSIONS, MYTHIC_SKILLS, isProfessionMaxed } from '@/data/classes'
+import {
+  PROFESSIONS,
+  MYTHIC_SKILLS,
+  RESOURCES,
+  isProfessionMaxed,
+  getProfessionSkillUpgradeCost,
+  getProfessionMythicSkillUpgradeCost,
+  type ProfessionUpgradeCost,
+} from '@/data/classes'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/localeStore'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { ProfessionId } from '@/types/game'
+import type { MissingCost } from '@/lib/craftCosts'
+
+function formatUpgradeCost(cost: ProfessionUpgradeCost): string {
+  const parts = [`🪙${cost.gold}`]
+  for (const [rid, amount] of Object.entries(cost.resources)) {
+    if (!amount || amount <= 0) continue
+    parts.push(`${RESOURCES[rid as keyof typeof RESOURCES].icon}${amount}`)
+  }
+  return parts.join(' · ')
+}
 
 export function ProfessionsPage() {
   const navigate = useNavigate()
@@ -21,7 +40,10 @@ export function ProfessionsPage() {
   const setProfession = usePlayerStore((s) => s.setProfession)
   const upgradeProfessionSkill = usePlayerStore((s) => s.upgradeProfessionSkill)
   const upgradeProfessionMythicSkill = usePlayerStore((s) => s.upgradeProfessionMythicSkill)
+  const getProfessionSkillMissing = usePlayerStore((s) => s.getProfessionSkillMissing)
+  const getProfessionMythicSkillMissing = usePlayerStore((s) => s.getProfessionMythicSkillMissing)
   const [activeProf, setActiveProf] = useState<ProfessionId | null>(player?.profession ?? null)
+  const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -37,8 +59,40 @@ export function ProfessionsPage() {
     return t(`professions.${id}` as import('@/lib/i18n').TranslationKey)
   }
 
+  function showMissing(title: string, missing: MissingCost[]) {
+    setMissingModal({ title, missing })
+    hapticError()
+  }
+
+  function handleSkillUpgrade(professionId: ProfessionId, skillIndex: number) {
+    const missing = getProfessionSkillMissing(professionId, skillIndex)
+    if (missing.length > 0) {
+      showMissing('Недостаточно для улучшения навыка', missing)
+      return
+    }
+    if (upgradeProfessionSkill(professionId, skillIndex)) hapticSuccess()
+    else hapticError()
+  }
+
+  function handleMythicUpgrade(professionId: ProfessionId, skillIndex: number) {
+    const missing = getProfessionMythicSkillMissing(professionId, skillIndex)
+    if (missing.length > 0) {
+      showMissing('Недостаточно для мифического навыка', missing)
+      return
+    }
+    if (upgradeProfessionMythicSkill(professionId, skillIndex)) hapticSuccess()
+    else hapticError()
+  }
+
   return (
     <div className="h-full overflow-y-auto page-enter">
+      <MissingResourcesModal
+        open={!!missingModal}
+        title={missingModal?.title ?? ''}
+        missing={missingModal?.missing ?? []}
+        onClose={() => setMissingModal(null)}
+      />
+
       <div className="flex items-center gap-3 p-4 border-b border-aether-border">
         <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
           <ArrowLeft className="h-5 w-5" />
@@ -74,6 +128,7 @@ export function ProfessionsPage() {
             {prof.skills.map((skill, idx) => {
               const lvl = levels[idx] ?? 0
               const maxed = lvl >= skill.maxLevel
+              const cost = getProfessionSkillUpgradeCost(prof.id, idx, lvl)
               return (
                 <Card key={skill.id}>
                   <CardContent className="p-3">
@@ -86,16 +141,16 @@ export function ProfessionsPage() {
                     </div>
                     <Progress value={(lvl / skill.maxLevel) * 100} className="mb-2" />
                     <Button
+                      type="button"
                       size="sm"
                       variant={maxed ? 'secondary' : 'default'}
                       className="w-full"
                       disabled={maxed}
-                      onClick={() => {
-                        if (upgradeProfessionSkill(prof.id, idx)) hapticSuccess()
-                        else hapticError()
-                      }}
+                      onClick={() => handleSkillUpgrade(prof.id, idx)}
                     >
-                      {maxed ? t('professions.maxed') : `${t('professions.upgrade')} · 🪙${skill.goldCostPerLevel * (lvl + 1) * 6}`}
+                      {maxed
+                        ? t('professions.maxed')
+                        : `${t('professions.upgrade')} · ${cost ? formatUpgradeCost(cost) : ''}`}
                     </Button>
                   </CardContent>
                 </Card>
@@ -116,6 +171,7 @@ export function ProfessionsPage() {
                 {mythicSkills.map((skill, idx) => {
                   const lvl = mythicLevels[idx] ?? 0
                   const maxed = lvl >= skill.maxLevel
+                  const cost = getProfessionMythicSkillUpgradeCost(prof.id, idx, lvl)
                   return (
                     <Card key={skill.id} className="border-fuchsia-500/30">
                       <CardContent className="p-3">
@@ -128,16 +184,16 @@ export function ProfessionsPage() {
                         </div>
                         <Progress value={(lvl / skill.maxLevel) * 100} className="mb-2" />
                         <Button
+                          type="button"
                           size="sm"
                           variant={maxed ? 'secondary' : 'gold'}
                           className="w-full"
                           disabled={maxed}
-                          onClick={() => {
-                            if (upgradeProfessionMythicSkill(prof.id, idx)) hapticSuccess()
-                            else hapticError()
-                          }}
+                          onClick={() => handleMythicUpgrade(prof.id, idx)}
                         >
-                          {maxed ? t('professions.maxed') : `${t('professions.upgrade')} · 🪙${skill.goldCostPerLevel * (lvl + 1) * 8}`}
+                          {maxed
+                            ? t('professions.maxed')
+                            : `${t('professions.upgrade')} · ${cost ? formatUpgradeCost(cost) : ''}`}
                         </Button>
                       </CardContent>
                     </Card>
