@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  --color-aether-bg: #0a0a1a;
+  --color-aether-surface: #12122a;
+  --color-aether-card: #1a1a3e;
+  --color-aether-border: #2a2a5a;
+  --color-aether-cyan: #00d4ff;
+  --color-aether-purple: #a855f7;
+  --color-aether-pink: #ec4899;
+  --color-aether-gold: #fbbf24;
+  --color-aether-danger: #ef4444;
+  --color-aether-success: #22c55e;
+  --font-display: "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-display);
+  background: var(--color-aether-bg);
+  color: #e2e8f0;
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+/* Anime-style glow utilities */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3), inset 0 0 20px rgba(0, 212, 255, 0.05);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.6);
+}
+
+/* Scanline overlay for retro-anime feel */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: fadeSlideIn 0.3s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-aether-border);
+  border-radius: 2px;
+}

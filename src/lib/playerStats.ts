@@ -1,0 +1,82 @@
+import type { Player, AllocStatKey, AllocatedStats, Stats } from '@/types/game'
+import { getEffectiveItemStats } from '@/data/items'
+import { applySetBonuses } from '@/lib/setBonuses'
+
+export type EffectiveStats = Stats & { stealth: number; endurance: number }
+
+export const BASE_MAX_ENERGY = 100
+export const BASE_ENERGY_REGEN_MS = 30_000
+
+export const ALLOC_STAT_LABELS: Record<AllocStatKey, string> = {
+  atk: 'Атака',
+  hp: 'Здоровье',
+  def: 'Защита',
+  stealth: 'Скрытность',
+  endurance: 'Выносливость',
+}
+
+export const EMPTY_ALLOCATED: AllocatedStats = {
+  atk: 0, hp: 0, def: 0, stealth: 0, endurance: 0,
+}
+
+const EQUIP_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet'] as const
+
+export function getAllocatedStats(player: Player): AllocatedStats {
+  return { ...EMPTY_ALLOCATED, ...player.allocatedStats }
+}
+
+export function getMaxEnergy(player: Player): number {
+  const end = getAllocatedStats(player).endurance
+  return BASE_MAX_ENERGY + end * 3
+}
+
+export function getEnergyRegenIntervalMs(player: Player): number {
+  const end = getAllocatedStats(player).endurance
+  return Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
+}
+
+export function getEnergyFullInMs(player: Player): number {
+  if (player.energy >= getMaxEnergy(player)) return 0
+  const missing = getMaxEnergy(player) - player.energy
+  return missing * getEnergyRegenIntervalMs(player)
+}
+
+export function formatDuration(ms: number): string {
+  if (ms <= 0) return 'полная'
+  const totalSec = Math.ceil(ms / 1000)
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return m > 0 ? `${m}м ${s}с` : `${s}с`
+}
+
+export function getEffectiveStats(player: Player): EffectiveStats {
+  const alloc = getAllocatedStats(player)
+  const base = { ...player.stats }
+  const totals = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0 }
+
+  for (const slot of EQUIP_SLOTS) {
+    const item = player.equipped[slot]
+    if (!item) continue
+    const s = getEffectiveItemStats(item)
+    totals.atk += s.atk ?? 0
+    totals.def += s.def ?? 0
+    totals.hp += s.hp ?? 0
+    totals.crit += s.crit ?? 0
+    totals.speed += s.speed ?? 0
+  }
+
+  return applySetBonuses(player, {
+    atk: base.atk + totals.atk + alloc.atk * 2,
+    def: base.def + totals.def + alloc.def * 2,
+    hp: base.hp + totals.hp + alloc.hp * 15,
+    crit: base.crit + totals.crit + Math.floor(alloc.stealth * 0.5),
+    speed: base.speed + totals.speed + alloc.stealth,
+    stealth: alloc.stealth,
+    endurance: alloc.endurance,
+  })
+}
+
+export function getCombatMaxHp(player: Player): number {
+  const stats = getEffectiveStats(player)
+  return stats.hp + player.level * 20
+}
