@@ -1,31 +1,32 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createStarInvoice } from '../../server/starsPayment.js'
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method === 'GET') {
-    return Response.json({
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'GET') {
+    return res.status(200).json({
       ok: true,
       hasBotToken: !!process.env.TELEGRAM_BOT_TOKEN,
       miniAppUrl: process.env.MINI_APP_URL ?? null,
     })
   }
 
-  if (request.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 })
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const body = await request.json() as { initData?: string; productId?: string }
-    if (!body.initData || !body.productId) {
-      return Response.json({ error: 'initData и productId обязательны' }, { status: 400 })
+    const body = req.body as { initData?: string; productId?: string } | undefined
+    if (!body?.initData || !body?.productId) {
+      return res.status(400).json({ error: 'initData и productId обязательны' })
     }
     const result = await createStarInvoice({
       initData: body.initData,
       productId: body.productId,
     })
-    return Response.json(result)
+    return res.status(200).json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Ошибка создания счёта'
     const status = message.includes('TELEGRAM_BOT_TOKEN') ? 503 : 400
-    return Response.json({ error: message }, { status })
+    return res.status(status).json({ error: message })
   }
 }
