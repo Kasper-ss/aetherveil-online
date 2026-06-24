@@ -7,8 +7,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
-import { CRAFT_RECIPES, RESOURCES, getUpgradeLevelCost, getStarUpgradeCost } from '@/data/classes'
+import { CRAFT_RECIPES, RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield } from '@/data/classes'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
+import { ItemSummary } from '@/components/ui/ItemSummary'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
@@ -27,6 +28,7 @@ export function ForgePage() {
   const getUpgradeLevelMissing = usePlayerStore((s) => s.getUpgradeLevelMissing)
   const getStarUpgradeMissing = usePlayerStore((s) => s.getStarUpgradeMissing)
   const getMythicUpgradeMissing = usePlayerStore((s) => s.getMythicUpgradeMissing)
+  const dismantleItem = usePlayerStore((s) => s.dismantleItem)
   const removeItemByInstance = usePlayerStore((s) => s.removeItemByInstance)
   const addItem = usePlayerStore((s) => s.addItem)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -85,8 +87,27 @@ export function ForgePage() {
     else hapticError()
   }
 
+  function handleDismantle() {
+    if (!selectedItem) return
+    const ok = dismantleItem(selectedItem)
+    if (ok) {
+      setSelectedItem(null)
+      hapticSuccess()
+    } else {
+      hapticError()
+    }
+  }
+
+  function formatYield(resources: Partial<Record<import('@/types/game').ResourceId, number>>, gold: number) {
+    const parts = gold > 0 ? [`🪙${gold}`] : []
+    for (const [k, v] of Object.entries(resources)) {
+      if (v) parts.push(`${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}`)
+    }
+    return parts.join(' ')
+  }
+
   return (
-    <div className="h-full overflow-y-auto page-enter">
+    <div className="h-full flex flex-col overflow-hidden page-enter">
       <MissingResourcesModal
         open={!!missingModal}
         onClose={() => setMissingModal(null)}
@@ -94,14 +115,14 @@ export function ForgePage() {
         missing={missingModal?.missing ?? []}
       />
 
-      <div className="flex items-center gap-3 p-4 border-b border-aether-border">
+      <div className="flex items-center gap-3 p-4 border-b border-aether-border shrink-0">
         <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">🔨 {t('forge.title')}</h1>
       </div>
 
-      <div className="flex gap-2 px-4 py-2 overflow-x-auto">
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0">
         {(Object.entries(player.resources) as [import('@/types/game').ResourceId, number][]).map(([id, amt]) => {
           if (!amt) return null
           const res = RESOURCES[id]
@@ -114,13 +135,13 @@ export function ForgePage() {
         })}
       </div>
 
-      <Tabs defaultValue="craft" className="p-4">
-        <TabsList>
+      <Tabs defaultValue="craft" className="flex flex-col flex-1 min-h-0 p-4">
+        <TabsList className="w-full shrink-0">
           <TabsTrigger value="craft">{t('forge.recipes')}</TabsTrigger>
           <TabsTrigger value="upgrade">{t('forge.upgrades')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="craft">
+        <TabsContent value="craft" className="flex-1 min-h-0 overflow-y-auto mt-2">
           <div className="space-y-2">
             {CRAFT_RECIPES.map((recipe) => {
               const result = ALL_ITEMS[recipe.resultItemId]
@@ -157,26 +178,30 @@ export function ForgePage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="upgrade">
-          <p className="text-xs text-slate-400 mb-2">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик)</p>
-          <div className="grid grid-cols-2 gap-2 mb-4 max-h-48 overflow-y-auto">
+        <TabsContent value="upgrade" className="flex flex-col flex-1 min-h-0 mt-2">
+          <p className="text-xs text-slate-400 mb-2 shrink-0">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
+          <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
             {equippable.map((item) => (
               <Card
                 key={item.instanceId}
                 className={`cursor-pointer ${selectedItem?.instanceId === item.instanceId ? 'border-aether-cyan glow-cyan' : ''}`}
                 onClick={() => setSelectedItem(item)}
               >
-                <CardContent className="p-2 text-center">
-                  <div className="text-2xl">{item.icon}</div>
-                  <div className="text-xs text-white truncate">{item.name}</div>
-                  <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
-                  <div className="text-[9px] text-aether-cyan">Ур.{item.upgradeLevel ?? 1} · ★{item.starLevel ?? 0}</div>
+                <CardContent className="p-2">
+                  <div className="flex items-start gap-2">
+                    <div className="text-2xl shrink-0">{item.icon}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-white truncate">{item.name}</div>
+                      <ItemSummary item={item} />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
           {selectedItem && (
+            <div className="flex-1 min-h-0 overflow-y-auto pb-4">
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="text-center">
@@ -234,8 +259,27 @@ export function ForgePage() {
                     </Button>
                   </div>
                 )}
+
+                <div className="bg-red-900/20 rounded-lg p-3 border border-red-500/30">
+                  <p className="text-xs font-medium text-white mb-1">Разобрать предмет</p>
+                  <p className="text-[10px] text-slate-400 mb-2">
+                    Уничтожить снаряжение и получить ресурсы. Нельзя разобрать надетый предмет.
+                  </p>
+                  {(() => {
+                    const y = getDismantleYield(selectedItem)
+                    return (
+                      <p className="text-[10px] text-slate-500 mb-2">
+                        Получите: {formatYield(y.resources, y.gold)}
+                      </p>
+                    )
+                  })()}
+                  <Button className="w-full" size="sm" variant="destructive" onClick={handleDismantle}>
+                    Разобрать
+                  </Button>
+                </div>
               </CardContent>
             </Card>
+            </div>
           )}
         </TabsContent>
       </Tabs>

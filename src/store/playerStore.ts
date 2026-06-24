@@ -6,7 +6,7 @@ import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
 import {
-  getClassData, CRAFT_RECIPES, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost,
+  getClassData, CRAFT_RECIPES, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
@@ -59,6 +59,7 @@ interface PlayerState {
   listResourceOnMarket: (resourceId: ResourceId, amount: number, price: number) => boolean
   removeMarketListing: (listingId: string) => void
   buyMarketListing: (listing: MarketListing) => Promise<boolean>
+  dismantleItem: (item: Item) => boolean
   syncPlayerState: () => Promise<void>
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
@@ -679,6 +680,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     storageSet(SAVE_KEY, updated)
     await savePlayerToSupabase(updated)
     registerOnlinePlayer(updated)
+  },
+
+  dismantleItem: (item) => {
+    const { player } = get()
+    if (!player || !item.instanceId || item.slot === 'consumable') return false
+    if (!player.inventory.some((i) => i.instanceId === item.instanceId)) return false
+    const equipped = Object.values(player.equipped).some((i) => i?.instanceId === item.instanceId)
+    if (equipped) return false
+    if (player.marketListings.some((l) => l.item?.instanceId === item.instanceId)) return false
+
+    const yield_ = getDismantleYield(item)
+    get().removeItemByInstance(item.instanceId)
+    if (yield_.gold > 0) get().addGold(yield_.gold)
+    if (Object.keys(yield_.resources).length > 0) get().addResources(yield_.resources)
+    return true
   },
 
   buyMarketListing: async (listing) => {

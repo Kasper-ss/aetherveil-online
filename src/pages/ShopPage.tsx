@@ -15,6 +15,7 @@ import { playSfx } from '@/lib/audio'
 import { formatNumber } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
 import { createItemInstance } from '@/data/items'
+import { ItemSummary } from '@/components/ui/ItemSummary'
 import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { getActiveBuffs, formatBuffRemaining } from '@/lib/playerBuffs'
@@ -407,16 +408,17 @@ export function ShopPage() {
                 const res = listing.resourceId ? RESOURCES[listing.resourceId] : null
                 return (
                   <Card key={listing.id} className="mb-2">
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <span className="text-2xl">{listing.item?.icon ?? res?.icon}</span>
-                      <div className="flex-1">
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <span className="text-2xl shrink-0">{listing.item?.icon ?? res?.icon}</span>
+                      <div className="flex-1 min-w-0">
                         <div className="text-sm text-white">
                           {listing.item?.name ?? res?.nameRu}
                           {listing.resourceAmount ? ` ×${listing.resourceAmount}` : ''}
                         </div>
-                        <div className="text-xs text-aether-gold">🪙 {listing.goldPrice}</div>
+                        {listing.item && <ItemSummary item={listing.item} />}
+                        <div className="text-xs text-aether-gold mt-1">🪙 {listing.goldPrice}</div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => removeMarketListing(listing.id)}>
+                      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => removeMarketListing(listing.id)}>
                         ✕
                       </Button>
                     </CardContent>
@@ -440,24 +442,35 @@ export function ShopPage() {
                     <p className="text-xs text-slate-500 text-center py-4">Нет предметов для продажи</p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-3 gap-1 mb-3">
+                      <div className="grid grid-cols-2 gap-2 mb-3">
                         {sellableItems.map((item) => (
                           <button
                             key={item.instanceId}
                             type="button"
                             onClick={() => { setSelectedItem(item); setSelectedResource(null) }}
-                            className={`p-2 rounded-lg text-center text-lg border transition-colors ${
+                            className={`p-2 rounded-lg text-left border transition-colors ${
                               selectedItem?.instanceId === item.instanceId
                                 ? 'border-aether-cyan bg-aether-cyan/10'
                                 : 'border-aether-border hover:border-aether-cyan/50'
                             }`}
                           >
-                            {item.icon}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl shrink-0">{item.icon}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] text-white truncate">{item.name}</div>
+                                <ItemSummary item={item} />
+                              </div>
+                            </div>
                           </button>
                         ))}
                       </div>
                       {selectedItem && (
-                        <p className="text-xs text-slate-400 mb-2 text-center truncate">{selectedItem.name}</p>
+                        <div className="mb-2 p-2 rounded-lg bg-aether-bg border border-aether-border">
+                          <p className="text-xs text-white text-center mb-1">{selectedItem.name}</p>
+                          <div className="flex justify-center">
+                            <ItemSummary item={selectedItem} />
+                          </div>
+                        </div>
                       )}
                       <input
                         type="number"
@@ -547,20 +560,22 @@ export function ShopPage() {
                 const res = listing.resourceId ? RESOURCES[listing.resourceId] : null
                 return (
                   <Card key={listing.id}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <span className="text-2xl">{listing.item?.icon ?? res?.icon}</span>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <span className="text-2xl shrink-0">{listing.item?.icon ?? res?.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white truncate">
+                        <div className="text-sm text-white">
                           {listing.item?.name ?? res?.nameRu}
                           {listing.resourceAmount ? ` ×${listing.resourceAmount}` : ''}
                         </div>
-                        <div className="text-[10px] text-slate-500">{listing.sellerName}</div>
-                        <div className="text-xs text-aether-gold">🪙 {formatNumber(listing.goldPrice)}</div>
+                        {listing.item && <ItemSummary item={listing.item} />}
+                        <div className="text-[10px] text-slate-500 mt-0.5">{listing.sellerName}</div>
+                        <div className="text-xs text-aether-gold mt-0.5">🪙 {formatNumber(listing.goldPrice)}</div>
                       </div>
                       <Button
                         type="button"
                         size="sm"
                         variant="gold"
+                        className="shrink-0"
                         disabled={buyingListingId === listing.id || player.gold < listing.goldPrice}
                         onClick={() => handleBuyListing(listing)}
                       >

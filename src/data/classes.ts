@@ -227,6 +227,42 @@ export function getStarUpgradeCost(item: import('@/types/game').Item): { gold: n
   }
 }
 
+export function getDismantleYield(item: import('@/types/game').Item): { gold: number; resources: Partial<Record<ResourceId, number>> } {
+  const rarityMult: Record<string, number> = { common: 1, rare: 2, epic: 4, legendary: 6, mythic: 10 }
+  const rm = rarityMult[item.rarity] ?? 1
+  const lvl = item.upgradeLevel ?? 1
+  const stars = item.starLevel ?? 0
+  const tier = item.tier ?? 1
+  const resources: Partial<Record<ResourceId, number>> = {}
+
+  const armorSlots = ['helmet', 'chestplate', 'leggings', 'boots', 'weapon']
+  if (armorSlots.includes(item.slot)) {
+    resources.iron_ore = Math.max(1, Math.floor(rm * 2 + lvl * 0.6))
+    resources.upgrade_core = Math.max(1, Math.floor(rm * 0.5 + lvl / 3))
+    if (rm >= 3) resources.gem_shard = Math.floor(rm / 2)
+  } else if (item.slot === 'necklace' || item.slot === 'ring') {
+    resources.gem_shard = Math.max(1, Math.floor(rm + stars * 0.4))
+    resources.mana_crystal = Math.max(1, Math.floor(rm * 0.6))
+  } else if (item.slot === 'pet') {
+    resources.hide = Math.max(1, Math.floor(rm * 2))
+    resources.herb = Math.max(1, rm)
+  }
+
+  if (stars > 0) resources.star_shard = Math.max(1, Math.floor(stars * rm * 0.3))
+  if (rm >= 4) resources.aether_dust = Math.max(1, Math.floor(rm / 2) + Math.floor(stars / 4))
+  if (item.rarity === 'mythic') resources.star_shard = (resources.star_shard ?? 0) + 3
+
+  const filtered: Partial<Record<ResourceId, number>> = {}
+  for (const [k, v] of Object.entries(resources)) {
+    if (v && v > 0) filtered[k as ResourceId] = v
+  }
+
+  return {
+    gold: Math.floor(12 * rm * tier + lvl * 8 + stars * 10),
+    resources: filtered,
+  }
+}
+
 export const UPGRADE_COSTS = {
   common: { gold: 50, resources: { iron_ore: 2 } as Partial<Record<ResourceId, number>> },
   rare: { gold: 300, resources: { gem_shard: 3, aether_dust: 1 } },

@@ -1,0 +1,28 @@
+import { Badge } from '@/components/ui/badge'
+import { formatItemStats, RARITY_LABELS_RU } from '@/data/items'
+import type { Item } from '@/types/game'
+
+interface ItemSummaryProps {
+  item: Item
+  showUpgrade?: boolean
+}
+
+export function ItemSummary({ item, showUpgrade = true }: ItemSummaryProps) {
+  const lvl = item.upgradeLevel ?? 1
+  const stars = item.starLevel ?? 0
+  const hasUpgrade = showUpgrade && (lvl > 1 || stars > 0)
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-1">
+        <Badge variant={item.rarity} className="text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+        {hasUpgrade && (
+          <span className="text-[9px] text-aether-cyan">Ур.{lvl} · ★{stars}</span>
+        )}
+      </div>
+      {Object.keys(item.stats ?? {}).length > 0 && (
+        <p className="text-[9px] text-aether-cyan mt-0.5 leading-tight">{formatItemStats(item)}</p>
+      )}
+    </div>
+  )
+}
