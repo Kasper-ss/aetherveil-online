@@ -44,10 +44,11 @@ export function getFloorDifficultyMult(floor: number): number {
 
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)
+  const floorPower = floor >= 2 ? 1.5 : 1
   const mult = isBoss ? 5 : 1
-  const baseHp = Math.floor((200 + floor * 105) * diff * mult)
-  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.45 : 1))
-  const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2 : 1))
+  const baseHp = Math.floor((200 + floor * 105) * diff * mult * floorPower)
+  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.45 : 1) * floorPower)
+  const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2 : 1) * floorPower)
   const crit = isBoss ? Math.min(25, 8 + Math.floor(floor / 4)) : Math.min(15, 3 + Math.floor(floor / 6))
   const speed = isBoss ? Math.min(20, 6 + Math.floor(floor / 5)) : Math.min(18, 4 + Math.floor(floor / 4))
   const expBase = Math.floor((25 + floor * 20) * diff)
