@@ -8,7 +8,8 @@ import { usePlayerStore, getMobsRequiredForFloor } from '@/store/playerStore'
 import { useCombatStore } from '@/store/combatStore'
 import { getFloorData } from '@/data/gameData'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
-import { hapticImpact } from '@/lib/telegram'
+import { getPlayerCurrentHp } from '@/lib/playerStats'
+import { hapticImpact, hapticError } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import { randomInt } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
@@ -34,6 +35,7 @@ export function TowerPage() {
   const canBoss = mobsKilled >= mobsRequired
 
   function startExplore() {
+    if (getPlayerCurrentHp(player!) < 1) { hapticError(); return }
     if (!spendEnergy(5)) return
     hapticImpact('medium')
     playSfx('click')
@@ -44,6 +46,7 @@ export function TowerPage() {
 
   function startBoss() {
     if (!canBoss) return
+    if (getPlayerCurrentHp(player!) < 1) { hapticError(); return }
     if (!spendEnergy(25)) return
     hapticImpact('heavy')
     playSfx('skill')
@@ -137,7 +140,7 @@ export function TowerPage() {
         </Button>
 
         <p className="text-[10px] text-slate-600 text-center">
-          Этаж {farmFloor}: нужно {mobsRequired} убийств. Можно переигрывать для прокачки.
+          Этаж {farmFloor}: нужно {mobsRequired} убийств. HP сохраняется между боями и восстанавливается со временем.
         </p>
       </div>
     </div>

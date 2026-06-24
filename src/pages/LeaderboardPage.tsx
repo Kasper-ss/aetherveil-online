@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,69 +7,72 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
+import { getLeaderboardEntries } from '@/lib/leaderboard'
+import type { LeaderboardEntry } from '@/types/game'
 
-const EMPTY_SLOTS = 9
+function rankStyle(rank: number): string {
+  if (rank === 1) return 'bg-aether-gold text-aether-bg'
+  if (rank === 2) return 'bg-slate-300 text-aether-bg'
+  if (rank === 3) return 'bg-amber-700 text-white'
+  return 'bg-aether-card text-slate-400'
+}
+
+function LeaderboardRow({ entry, selfId }: { entry: LeaderboardEntry; selfId: number }) {
+  const isMe = entry.telegramId === selfId
+
+  return (
+    <Card className={isMe ? 'border-aether-cyan glow-cyan' : ''}>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${rankStyle(entry.rank)}`}>
+          {entry.rank}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white truncate">
+            {entry.displayName}
+            {isMe && <span className="text-aether-cyan ml-1">(Вы)</span>}
+            {entry.isFriend && !isMe && <span className="text-aether-purple ml-1">★</span>}
+          </div>
+          <div className="text-[10px] text-slate-500 truncate">@{entry.username}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-sm font-bold text-aether-cyan">Э{entry.floor}</div>
+          <div className="text-[10px] text-slate-500">Ур.{entry.level}</div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export function LeaderboardPage() {
   const navigate = useNavigate()
   const t = useT()
   const player = usePlayerStore((s) => s.player)
+  const [, setTick] = useState(0)
 
   useTelegramBackButton(() => navigate('/'), true)
 
+  useEffect(() => {
+    const interval = setInterval(() => setTick((n) => n + 1), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
   if (!player) return null
 
-  const myEntry = {
-    rank: 1,
-    telegramId: player.telegramId,
-    username: player.username,
-    displayName: player.displayName,
-    floor: player.highestFloor,
-    level: player.level,
-  }
+  const selfId = player.telegramId
+  const globalBoard = getLeaderboardEntries(player, false)
+  const friendsBoard = getLeaderboardEntries(player, true)
 
-  function renderBoard(showPlayer: boolean) {
-    const slots = []
-    if (showPlayer) {
-      slots.push(
-        <Card key="me" className="border-aether-cyan glow-cyan">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-aether-gold text-aether-bg">
-              1
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-white">
-                {myEntry.displayName}
-                <span className="text-aether-cyan ml-1">{t('leaderboard.you')}</span>
-              </div>
-              <div className="text-[10px] text-slate-500">@{myEntry.username}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-bold text-aether-cyan">Э{myEntry.floor}</div>
-              <div className="text-[10px] text-slate-500">{t('hub.level')}{myEntry.level}</div>
-            </div>
-          </CardContent>
-        </Card>
-      )
+  function renderBoard(entries: LeaderboardEntry[]) {
+    if (entries.length === 0) {
+      return <p className="text-sm text-slate-500 text-center py-8">{t('leaderboard.empty')}</p>
     }
-
-    for (let i = showPlayer ? 2 : 1; i <= EMPTY_SLOTS; i++) {
-      slots.push(
-        <Card key={`empty_${i}`} className="opacity-50">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-aether-card text-slate-600">
-              {i}
-            </div>
-            <div className="flex-1">
-              <div className="text-sm text-slate-500 italic">{t('leaderboard.waiting')}</div>
-            </div>
-            <div className="text-right text-[10px] text-slate-600">—</div>
-          </CardContent>
-        </Card>
-      )
-    }
-
-    return slots
+    return (
+      <div className="space-y-2">
+        {entries.map((entry) => (
+          <LeaderboardRow key={entry.telegramId} entry={entry} selfId={selfId} />
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -86,13 +90,8 @@ export function LeaderboardPage() {
           <TabsTrigger value="friends">{t('leaderboard.friends')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="global">
-          <div className="space-y-2">{renderBoard(true)}</div>
-        </TabsContent>
-
-        <TabsContent value="friends">
-          <div className="space-y-2">{renderBoard(true)}</div>
-        </TabsContent>
+        <TabsContent value="global">{renderBoard(globalBoard)}</TabsContent>
+        <TabsContent value="friends">{renderBoard(friendsBoard)}</TabsContent>
       </Tabs>
     </div>
   )

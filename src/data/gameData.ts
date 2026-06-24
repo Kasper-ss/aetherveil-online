@@ -195,6 +195,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     professionLevels: player.professionLevels ?? {},
     professionMythicLevels: player.professionMythicLevels ?? {},
     energyLastRegenAt: player.energyLastRegenAt ?? new Date().toISOString(),
+    hpLastRegenAt: player.hpLastRegenAt ?? new Date().toISOString(),
+    currentHp: player.currentHp,
     maxEnergy: getMaxEnergy({ ...player, allocatedStats: { ...EMPTY_ALLOCATED, ...player.allocatedStats } }),
     resources: {
       iron_ore: 5, herb: 3, hide: 2, upgrade_core: 1,
@@ -218,6 +220,7 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     level: 1, exp: 0, gold: 200, gems: 5,
     energy: 100, maxEnergy: 100,
     energyLastRegenAt: new Date().toISOString(),
+    hpLastRegenAt: new Date().toISOString(),
     currentFloor: 1, highestFloor: 1, farmFloor: 1,
     floorMobKills: {},
     stats: { atk: 10, def: 5, hp: 100, crit: 5, speed: 10 },

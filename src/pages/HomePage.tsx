@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { PlayerStatsPanel } from '@/components/ui/stat-bar'
 import { EnergyTimer } from '@/components/ui/EnergyTimer'
+import { HpTimer } from '@/components/ui/HpTimer'
 import { Sparkles } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { usePlayerStore, usePlayerStats } from '@/store/playerStore'
@@ -14,7 +15,7 @@ import { shareInviteLink, hapticImpact } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import { getFloorData } from '@/data/gameData'
 import { getMobsRequiredForFloor } from '@/data/items'
-import { getCombatMaxHp } from '@/lib/playerStats'
+import { getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
 
@@ -47,6 +48,7 @@ export function HomePage() {
   const xpNeeded = xpForLevel(player.level)
   const xpPct = (player.exp / xpNeeded) * 100
   const maxHp = getCombatMaxHp(player)
+  const currentHp = getPlayerCurrentHp(player)
   const classData = player.classId ? CLASSES.find((c) => c.id === player.classId) : null
   const mobsRequired = getMobsRequiredForFloor(player.farmFloor)
   const mobsKilled = player.floorMobKills[player.farmFloor] ?? 0
@@ -132,12 +134,13 @@ export function HomePage() {
       <Card className="mx-4 mt-3">
         <CardContent className="p-3 pt-3">
           <PlayerStatsPanel
-            hp={maxHp} maxHp={maxHp}
+            hp={currentHp} maxHp={maxHp}
             energy={player.energy} maxEnergy={player.maxEnergy}
             atk={stats.atk} def={stats.def}
             compact
           />
-          <div className="mt-1 flex justify-end">
+          <div className="mt-1 flex justify-between gap-2">
+            <HpTimer />
             <EnergyTimer />
           </div>
         </CardContent>

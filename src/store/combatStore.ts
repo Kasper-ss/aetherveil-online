@@ -3,7 +3,7 @@ import type { CombatState, CombatResult, FloorEnemy, SkillId, CombatLogEntry } f
 import type { OnlinePlayerSnapshot } from '@/lib/multiplayer'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
 import { usePlayerStore } from './playerStore'
-import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
+import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { randomInt } from '@/lib/utils'
 
 interface CombatStore {
@@ -39,10 +39,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (!player) return
 
     const maxHp = getCombatMaxHp(player)
+    const startHp = Math.max(1, getPlayerCurrentHp(player))
 
     const combat: CombatState = {
       enemy,
-      playerHp: maxHp,
+      playerHp: startHp,
       playerMaxHp: maxHp,
       enemyHp: enemy.stats.hp,
       enemyMaxHp: enemy.stats.hp,
@@ -63,6 +64,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (!player) return
 
     const maxHp = getCombatMaxHp(player)
+    const startHp = Math.max(1, getPlayerCurrentHp(player))
     const enemy: FloorEnemy = {
       id: `pvp_${opponent.telegramId}`,
       name: opponent.displayName,
@@ -81,7 +83,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const combat: CombatState = {
       enemy,
-      playerHp: maxHp,
+      playerHp: startHp,
       playerMaxHp: maxHp,
       enemyHp: opponent.maxHp,
       enemyMaxHp: opponent.maxHp,
@@ -277,6 +279,20 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (!victory && !combat.isPvp) {
       usePlayerStore.getState().applyDeathPenalty()
+    }
+
+    const playerStore = usePlayerStore.getState()
+    const maxHp = combat.playerMaxHp
+    if (victory) {
+      playerStore.updatePlayer({
+        currentHp: combat.playerHp,
+        hpLastRegenAt: new Date().toISOString(),
+      })
+    } else {
+      playerStore.updatePlayer({
+        currentHp: Math.max(1, Math.floor(maxHp * 0.05)),
+        hpLastRegenAt: new Date().toISOString(),
+      })
     }
 
     set({ isActive: false, result, showLootScreen: victory && !combat.isPvp, tickInterval: null })

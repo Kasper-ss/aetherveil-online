@@ -81,10 +81,10 @@ export function useOnlineHeartbeat() {
 }
 
 export function useEnergyRegen() {
-  const tryRegenEnergy = usePlayerStore((s) => s.tryRegenEnergy)
+  const tryRegenVitals = usePlayerStore((s) => s.tryRegenVitals)
 
   useEffect(() => {
-    const interval = setInterval(tryRegenEnergy, 1000)
+    const interval = setInterval(tryRegenVitals, 1000)
     return () => clearInterval(interval)
-  }, [tryRegenEnergy])
+  }, [tryRegenVitals])
 }

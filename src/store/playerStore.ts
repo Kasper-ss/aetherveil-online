@@ -11,7 +11,7 @@ import {
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS } from '@/data/items'
-import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
+import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMaxHp, getHpRegenIntervalMs, getPlayerCurrentHp, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
@@ -70,6 +70,8 @@ interface PlayerState {
   craftMythicItem: (item: Item) => Item | null
   upgradeProfessionMythicSkill: (professionId: ProfessionId, skillIndex: number) => boolean
   tryRegenEnergy: () => void
+  tryRegenHp: () => void
+  tryRegenVitals: () => void
   purchaseStarProduct: (productId: StarProductId) => Promise<boolean>
   applyStarProductReward: (productId: StarProductId) => boolean
   resetAllocatedStats: () => boolean
@@ -104,7 +106,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       player = migratePlayer(player)
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle })
-      registerOnlinePlayer(player)
+      get().tryRegenVitals()
+      registerOnlinePlayer(get().player ?? player)
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, resetting save', error)
       const player = migratePlayer(
@@ -128,6 +131,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const updated = { ...player, ...partial }
+    const maxHp = getCombatMaxHp(updated)
+    if (updated.currentHp != null) {
+      updated.currentHp = Math.min(maxHp, Math.max(0, updated.currentHp))
+    }
     set({ player: updated })
     registerOnlinePlayer(updated)
     get().savePlayer()
@@ -317,6 +324,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     })
   },
 
+  tryRegenHp: () => {
+    const { player } = get()
+    if (!player) return
+    const max = getCombatMaxHp(player)
+    const current = getPlayerCurrentHp(player)
+    if (current >= max) return
+    const interval = getHpRegenIntervalMs(player)
+    const last = new Date(player.hpLastRegenAt ?? Date.now()).getTime()
+    const elapsed = Date.now() - last
+    const ticks = Math.floor(elapsed / interval)
+    if (ticks <= 0) return
+    const newHp = Math.min(max, current + ticks)
+    const remainder = elapsed % interval
+    get().updatePlayer({
+      currentHp: newHp,
+      hpLastRegenAt: new Date(Date.now() - remainder).toISOString(),
+    })
+  },
+
+  tryRegenVitals: () => {
+    get().tryRegenEnergy()
+    get().tryRegenHp()
+  },
+
   allocateStat: (key, points = 1) => {
     const { player } = get()
     if (!player || player.statPoints < points || points < 1) return false
@@ -381,6 +412,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       equipped,
       inventory: [],
       maxEnergy: BASE_MAX_ENERGY,
+      currentHp: getCombatMaxHp({ ...get().player!, classId, stats: classData.stats, level: get().player!.level }),
+      hpLastRegenAt: new Date().toISOString(),
     })
   },
 

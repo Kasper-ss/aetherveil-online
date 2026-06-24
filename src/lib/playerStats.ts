@@ -6,6 +6,7 @@ export type EffectiveStats = Stats & { stealth: number; endurance: number }
 
 export const BASE_MAX_ENERGY = 100
 export const BASE_ENERGY_REGEN_MS = 30_000
+export const BASE_HP_REGEN_MS = 60_000
 
 export const ALLOC_STAT_LABELS: Record<AllocStatKey, string> = {
   atk: 'Атака',
@@ -33,6 +34,33 @@ export function getMaxEnergy(player: Player): number {
 export function getEnergyRegenIntervalMs(player: Player): number {
   const end = getAllocatedStats(player).endurance
   return Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
+}
+
+export function getHpRegenIntervalMs(player: Player): number {
+  const end = getAllocatedStats(player).endurance
+  return Math.max(30_000, BASE_HP_REGEN_MS - end * 3_000)
+}
+
+export function getCombatMaxHp(player: Player): number {
+  const stats = getEffectiveStats(player)
+  return stats.hp + player.level * 20
+}
+
+export function getPlayerCurrentHp(player: Player): number {
+  const max = getCombatMaxHp(player)
+  if (player.currentHp == null) return max
+  return Math.min(max, Math.max(0, player.currentHp))
+}
+
+export function getHpFullInMs(player: Player): number {
+  const max = getCombatMaxHp(player)
+  const current = getPlayerCurrentHp(player)
+  if (current >= max) return 0
+  const missing = max - current
+  const interval = getHpRegenIntervalMs(player)
+  const last = new Date(player.hpLastRegenAt ?? Date.now()).getTime()
+  const untilNext = Math.max(0, interval - ((Date.now() - last) % interval))
+  return untilNext + (missing - 1) * interval
 }
 
 export function getEnergyFullInMs(player: Player): number {
@@ -74,9 +102,4 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     stealth: alloc.stealth,
     endurance: alloc.endurance,
   })
-}
-
-export function getCombatMaxHp(player: Player): number {
-  const stats = getEffectiveStats(player)
-  return stats.hp + player.level * 20
 }

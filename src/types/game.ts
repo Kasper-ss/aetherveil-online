@@ -197,6 +197,8 @@ export interface Player {
   resources: Partial<Record<ResourceId, number>>
   marketListings: MarketListing[]
   energyLastRegenAt?: string
+  currentHp?: number
+  hpLastRegenAt?: string
   expEasterEggClaimed?: boolean
   buffInfiniteEnergyUntil?: string
   buffDoubleExpUntil?: string
