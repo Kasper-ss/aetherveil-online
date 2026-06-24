@@ -205,23 +205,60 @@ export function showTelegramAlert(message: string, onClose?: () => void): void {
 
 /**
  * Share invite link via Telegram.
- * Replace BOT_USERNAME with your actual bot username.
  */
-export function shareInviteLink(referralCode: string): void {
-  const botUsername = import.meta.env.VITE_BOT_USERNAME || 'AetherveilBot'
-  const url = `https://t.me/${botUsername}?start=ref_${referralCode}`
-  const text = `⚔️ Join me in Aetherveil Online! Climb the Tower together!\n${url}`
+let cachedBotUsername: string | null = null
 
+export async function resolveBotUsername(): Promise<string> {
+  if (cachedBotUsername) return cachedBotUsername
+  const fromEnv = import.meta.env.VITE_BOT_USERNAME as string | undefined
+  if (fromEnv) {
+    cachedBotUsername = fromEnv.replace(/^@/, '')
+    return cachedBotUsername
+  }
+  try {
+    const res = await fetch('/api/telegram/bot-info')
+    if (res.ok) {
+      const data = await res.json() as { username?: string }
+      if (data.username) {
+        cachedBotUsername = data.username.replace(/^@/, '')
+        return cachedBotUsername
+      }
+    }
+  } catch (error) {
+    console.warn('[telegram] bot-info failed', error)
+  }
+  return 'AetherveilBot'
+}
+
+export function preloadBotUsername(): void {
+  void resolveBotUsername()
+}
+
+async function openShareLink(url: string, text: string): Promise<void> {
   const webApp = getWebApp()
   if (webApp) {
     webApp.openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
     )
   } else if (navigator.share) {
-    navigator.share({ title: 'Aetherveil Online', text, url })
+    await navigator.share({ title: 'Aetherveil Online', text, url })
   } else {
-    navigator.clipboard?.writeText(url)
+    await navigator.clipboard?.writeText(url)
   }
+}
+
+export async function shareInviteLink(referralCode: string): Promise<void> {
+  const botUsername = await resolveBotUsername()
+  const url = `https://t.me/${botUsername}?start=ref_${referralCode}`
+  const text = `⚔️ Присоединяйся ко мне в Aetherveil Online! Покорим Башню вместе!\n${url}`
+  await openShareLink(url, text)
+}
+
+export async function shareGuildInviteLink(referralCode: string): Promise<void> {
+  const botUsername = await resolveBotUsername()
+  const url = `https://t.me/${botUsername}?start=guild_${referralCode}`
+  const text = `🏰 Вступай в нашу гильдию в Aetherveil Online!\n${url}`
+  await openShareLink(url, text)
 }
 
 /**

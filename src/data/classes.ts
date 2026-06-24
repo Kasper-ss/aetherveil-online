@@ -1,4 +1,5 @@
-import type { ClassData, Profession, Resource, CraftRecipe, ResourceId } from '@/types/game'
+import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item } from '@/types/game'
+import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
@@ -170,30 +171,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   { id: 'craft_helmet_t3', resultItemId: 'helmet_t3', name: 'Стальной шлем', description: 'ЗАЩ +8, HP +30', resources: { iron_ore: 12, upgrade_core: 2 }, goldCost: 250, requiredProfession: 'blacksmith', requiredProfessionLevel: 5 },
   { id: 'craft_weapon_t5', resultItemId: 'weapon_t5', name: 'Рунический клинок', description: 'АТК +25, КРИТ +11', resources: { iron_ore: 15, gem_shard: 5, upgrade_core: 3 }, goldCost: 400, requiredProfession: 'blacksmith', requiredProfessionLevel: 8 },
   { id: 'craft_chest_t4', resultItemId: 'chestplate_t4', name: 'Нагрудник охотника', description: 'ЗАЩ +14, HP +55', resources: { hide: 10, iron_ore: 8, upgrade_core: 2 }, goldCost: 350, requiredProfession: 'blacksmith', requiredProfessionLevel: 6 },
-  // Set: Восхождение в Тени
-  { id: 'craft_shadow_helmet', resultItemId: 'shadow_ascension_helmet', name: 'Шлем Восхождения в Тени', description: 'Сет «Восхождение в Тени». ЗАЩ +28, КРИТ +12, HP +80', resources: { aether_dust: 15, star_shard: 5, gem_shard: 10, upgrade_core: 5 }, goldCost: 5000, requiredProfession: 'blacksmith', requiredProfessionLevel: 20, isSetCraft: true },
-  { id: 'craft_shadow_chest', resultItemId: 'shadow_ascension_chestplate', name: 'Нагрудник Восхождения в Тени', description: 'Сет «Восхождение в Тени». ЗАЩ +45, HP +150, АТК +8', resources: { aether_dust: 20, star_shard: 8, gem_shard: 12, upgrade_core: 8 }, goldCost: 8000, requiredProfession: 'blacksmith', requiredProfessionLevel: 25, isSetCraft: true },
-  { id: 'craft_shadow_weapon', resultItemId: 'shadow_ascension_weapon', name: 'Клинок Восхождения в Тени', description: 'Сет «Восхождение в Тени». АТК +55, КРИТ +25, СКР +8', resources: { aether_dust: 25, star_shard: 10, gem_shard: 15, upgrade_core: 10 }, goldCost: 10000, requiredProfession: 'blacksmith', requiredProfessionLevel: 30, isSetCraft: true },
-  { id: 'craft_shadow_leggings', resultItemId: 'shadow_ascension_leggings', name: 'Поножи Восхождения в Тени', description: 'Сет «Восхождение в Тени». ЗАЩ +25, СКР +15, КРИТ +5', resources: { aether_dust: 18, star_shard: 7, gem_shard: 10, upgrade_core: 6 }, goldCost: 6500, requiredProfession: 'blacksmith', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_shadow_boots', resultItemId: 'shadow_ascension_boots', name: 'Ботинки Восхождения в Тени', description: 'Сет «Восхождение в Тени». СКР +18, ЗАЩ +12, КРИТ +8', resources: { aether_dust: 16, star_shard: 6, gem_shard: 8, upgrade_core: 5 }, goldCost: 5500, requiredProfession: 'blacksmith', requiredProfessionLevel: 21, isSetCraft: true },
-  { id: 'craft_shadow_necklace', resultItemId: 'shadow_ascension_necklace', name: 'Ожерелье Восхождения в Тени', description: 'Сет «Восхождение в Тени». АТК +15, КРИТ +18, СКР +5', resources: { aether_dust: 14, star_shard: 6, gem_shard: 12, upgrade_core: 4 }, goldCost: 6000, requiredProfession: 'jeweler', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_shadow_ring', resultItemId: 'shadow_ascension_ring', name: 'Кольцо Восхождения в Тени', description: 'Сет «Восхождение в Тени». КРИТ +20, АТК +12', resources: { aether_dust: 12, star_shard: 5, gem_shard: 10, upgrade_core: 4 }, goldCost: 5000, requiredProfession: 'jeweler', requiredProfessionLevel: 20, isSetCraft: true },
-  // Set: Поднятие уровня в одиночку
-  { id: 'craft_solo_helmet', resultItemId: 'solo_leveling_helmet', name: 'Шлем Одиночки', description: 'Сет «Поднятие уровня в одиночку». ЗАЩ +30, HP +100, АТК +5', resources: { aether_dust: 15, star_shard: 5, mana_crystal: 10, upgrade_core: 5 }, goldCost: 5000, requiredProfession: 'blacksmith', requiredProfessionLevel: 20, isSetCraft: true },
-  { id: 'craft_solo_chest', resultItemId: 'solo_leveling_chestplate', name: 'Нагрудник Одиночки', description: 'Сет «Поднятие уровня в одиночку». ЗАЩ +50, HP +180, АТК +8', resources: { aether_dust: 20, star_shard: 8, mana_crystal: 12, upgrade_core: 8 }, goldCost: 8000, requiredProfession: 'blacksmith', requiredProfessionLevel: 25, isSetCraft: true },
-  { id: 'craft_solo_weapon', resultItemId: 'solo_leveling_weapon', name: 'Клинок Одиночки', description: 'Сет «Поднятие уровня в одиночку». АТК +60, КРИТ +15, СКР +10', resources: { aether_dust: 25, star_shard: 10, mana_crystal: 15, upgrade_core: 10 }, goldCost: 10000, requiredProfession: 'blacksmith', requiredProfessionLevel: 30, isSetCraft: true },
-  { id: 'craft_solo_leggings', resultItemId: 'solo_leveling_leggings', name: 'Поножи Одиночки', description: 'Сет «Поднятие уровня в одиночку». ЗАЩ +28, СКР +12, HP +60', resources: { aether_dust: 18, star_shard: 7, mana_crystal: 10, upgrade_core: 6 }, goldCost: 6500, requiredProfession: 'blacksmith', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_solo_boots', resultItemId: 'solo_leveling_boots', name: 'Ботинки Одиночки', description: 'Сет «Поднятие уровня в одиночку». СКР +16, ЗАЩ +15, АТК +5', resources: { aether_dust: 16, star_shard: 6, mana_crystal: 8, upgrade_core: 5 }, goldCost: 5500, requiredProfession: 'blacksmith', requiredProfessionLevel: 21, isSetCraft: true },
-  { id: 'craft_solo_necklace', resultItemId: 'solo_leveling_necklace', name: 'Ожерелье Одиночки', description: 'Сет «Поднятие уровня в одиночку». АТК +18, КРИТ +10, HP +50', resources: { aether_dust: 14, star_shard: 6, mana_crystal: 12, upgrade_core: 4 }, goldCost: 6000, requiredProfession: 'jeweler', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_solo_ring', resultItemId: 'solo_leveling_ring', name: 'Кольцо Одиночки', description: 'Сет «Поднятие уровня в одиночку». АТК +15, КРИТ +12, СКР +5', resources: { aether_dust: 12, star_shard: 5, mana_crystal: 10, upgrade_core: 4 }, goldCost: 5000, requiredProfession: 'jeweler', requiredProfessionLevel: 20, isSetCraft: true },
-  // Set: Ванпанчмен
-  { id: 'craft_punch_helmet', resultItemId: 'one_punch_helmet', name: 'Плащ Ванпанчмена', description: 'Сет «Ванпанчмен». ЗАЩ +15, АТК +20, КРИТ +10', resources: { aether_dust: 15, star_shard: 5, upgrade_core: 5 }, goldCost: 5000, requiredProfession: 'blacksmith', requiredProfessionLevel: 20, isSetCraft: true },
-  { id: 'craft_punch_chest', resultItemId: 'one_punch_chestplate', name: 'Костюм Ванпанчмена', description: 'Сет «Ванпанчмен». ЗАЩ +35, АТК +25, HP +120', resources: { aether_dust: 20, star_shard: 8, upgrade_core: 8 }, goldCost: 8000, requiredProfession: 'blacksmith', requiredProfessionLevel: 25, isSetCraft: true },
-  { id: 'craft_punch_weapon', resultItemId: 'one_punch_weapon', name: 'Кулак справедливости', description: 'Сет «Ванпанчмен». АТК +80, КРИТ +30, СКР +15', resources: { aether_dust: 30, star_shard: 12, upgrade_core: 12 }, goldCost: 12000, requiredProfession: 'blacksmith', requiredProfessionLevel: 30, isSetCraft: true },
-  { id: 'craft_punch_leggings', resultItemId: 'one_punch_leggings', name: 'Штаны Ванпанчмена', description: 'Сет «Ванпанчмен». ЗАЩ +20, СКР +20, АТК +10', resources: { aether_dust: 18, star_shard: 7, upgrade_core: 6 }, goldCost: 6500, requiredProfession: 'blacksmith', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_punch_boots', resultItemId: 'one_punch_boots', name: 'Ботинки Ванпанчмена', description: 'Сет «Ванпанчмен». СКР +25, АТК +15, КРИТ +8', resources: { aether_dust: 16, star_shard: 6, upgrade_core: 5 }, goldCost: 5500, requiredProfession: 'blacksmith', requiredProfessionLevel: 21, isSetCraft: true },
-  { id: 'craft_punch_necklace', resultItemId: 'one_punch_necklace', name: 'Значок героя', description: 'Сет «Ванпанчмен». АТК +30, КРИТ +15', resources: { aether_dust: 14, star_shard: 6, gem_shard: 8, upgrade_core: 4 }, goldCost: 6000, requiredProfession: 'jeweler', requiredProfessionLevel: 22, isSetCraft: true },
-  { id: 'craft_punch_ring', resultItemId: 'one_punch_ring', name: 'Перчатка Ванпанчмена', description: 'Сет «Ванпанчмен». АТК +35, КРИТ +20', resources: { aether_dust: 12, star_shard: 5, gem_shard: 8, upgrade_core: 4 }, goldCost: 5000, requiredProfession: 'jeweler', requiredProfessionLevel: 20, isSetCraft: true },
+  ...EPIC_SET_CRAFT_RECIPES,
+  ...LEGENDARY_SET_CRAFT_RECIPES,
   { id: 'craft_hp_potion', resultItemId: 'hp_potion', name: 'Зелье HP', description: 'Восстанавливает 50% HP в бою.', resources: { herb: 8 }, goldCost: 50, requiredProfession: 'alchemist', requiredProfessionLevel: 1 },
 ]
 
@@ -274,6 +253,43 @@ export const UPGRADE_COSTS = {
 export const MYTHIC_UPGRADE_COST = {
   gold: 25000,
   resources: { star_shard: 20, aether_dust: 25, upgrade_core: 15, gem_shard: 15 } as Partial<Record<ResourceId, number>>,
+}
+
+export function getDynamicMythicCraftRecipes(player: Player): CraftRecipe[] {
+  const recipes: CraftRecipe[] = []
+  const seen = new Set<string>()
+  const items: Item[] = [
+    ...player.inventory,
+    ...Object.values(player.equipped).filter((i): i is Item => !!i),
+  ]
+  for (const item of items) {
+    if (!item.instanceId || seen.has(item.instanceId)) continue
+    if (item.rarity !== 'legendary' || !item.setId) continue
+    if ((item.upgradeLevel ?? 1) < 10 || (item.starLevel ?? 0) < 10) continue
+    seen.add(item.instanceId)
+    const baseName = item.name.replace(/^✦ /, '').replace(/ \+\d+$/, '').replace(/ ★+$/, '').trim()
+    recipes.push({
+      id: `craft_mythic_${item.instanceId}`,
+      resultItemId: item.id,
+      sourceInstanceId: item.instanceId,
+      name: `✦ Мифический: ${baseName}`,
+      description: 'Превратить полностью улучшенный легендарный предмет сета в мифический (+50% к статам).',
+      resources: { ...MYTHIC_UPGRADE_COST.resources },
+      goldCost: MYTHIC_UPGRADE_COST.gold,
+      isMythicCraft: true,
+      requiresMaxUpgrade: true,
+    })
+  }
+  return recipes
+}
+
+export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
+  if (!player) return CRAFT_RECIPES
+  return [...CRAFT_RECIPES, ...getDynamicMythicCraftRecipes(player)]
+}
+
+export function findCraftRecipe(recipeId: string, player: Player | null): CraftRecipe | undefined {
+  return getForgeCraftRecipes(player).find((r) => r.id === recipeId)
 }
 
 function mythicSkill(

@@ -41,6 +41,8 @@ export interface CraftRecipe {
   isSetCraft?: boolean
   isMythicCraft?: boolean
   requiresMaxUpgrade?: boolean
+  setCraftRarity?: 'epic' | 'legendary'
+  sourceInstanceId?: string
 }
 
 export interface ProfessionSkill {
@@ -201,6 +203,7 @@ export interface Player {
   currentHp?: number
   hpLastRegenAt?: string
   expEasterEggClaimed?: boolean
+  underwearEasterEggClaimed?: boolean
   buffInfiniteEnergyUntil?: string
   buffDoubleExpUntil?: string
   buffTripleGoldUntil?: string

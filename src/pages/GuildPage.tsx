@@ -16,7 +16,7 @@ import {
   renameGuild,
 } from '@/lib/multiplayer'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
-import { shareInviteLink, hapticImpact, hapticSuccess, hapticError } from '@/lib/telegram'
+import { shareGuildInviteLink, hapticImpact, hapticSuccess, hapticError } from '@/lib/telegram'
 
 const ROLE_LABELS: Record<string, string> = {
   leader: 'Лидер',
@@ -108,7 +108,7 @@ export function GuildPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <Button variant="secondary" size="sm" className="w-full"
-              onClick={() => shareInviteLink(player.referralCode)}
+              onClick={() => void shareGuildInviteLink(player.referralCode)}
             >
               Пригласить в гильдию
             </Button>

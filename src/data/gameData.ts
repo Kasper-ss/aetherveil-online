@@ -204,6 +204,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     },
     marketListings: player.marketListings ?? [],
     expEasterEggClaimed: player.expEasterEggClaimed ?? false,
+    underwearEasterEggClaimed: player.underwearEasterEggClaimed ?? false,
     guildId: player.guildId ?? GUILD_ID,
     buffInfiniteEnergyUntil: player.buffInfiniteEnergyUntil,
     buffDoubleExpUntil: player.buffDoubleExpUntil,
@@ -237,6 +238,7 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     resources: { iron_ore: 5, herb: 3, hide: 2, upgrade_core: 1 },
     marketListings: [],
     expEasterEggClaimed: false,
+    underwearEasterEggClaimed: false,
     guildId: GUILD_ID,
   }
 }

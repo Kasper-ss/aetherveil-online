@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { initTelegramWebApp, getWebApp } from '@/lib/telegram'
+import { initTelegramWebApp, getWebApp, preloadBotUsername } from '@/lib/telegram'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUIStore } from '@/store/uiStore'
 import { startBgm } from '@/lib/audio'
@@ -20,6 +20,7 @@ export function useTelegramInit() {
       try {
         setLoading(true, 'Подключение к Aetherveil...')
         initTelegramWebApp()
+        preloadBotUsername()
         await delay(800)
         setLoading(true, 'Синхронизация нейроинтерфейса...')
         await delay(600)

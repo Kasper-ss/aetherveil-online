@@ -66,7 +66,7 @@ export function HomePage() {
   }
 
   function handleShare() {
-    shareInviteLink(player!.referralCode)
+    void shareInviteLink(player!.referralCode)
     hapticImpact('medium')
   }
 

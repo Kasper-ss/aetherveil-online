@@ -64,6 +64,23 @@ export function starsApiPlugin(): Plugin {
             return
           }
 
+          if (req.method === 'GET' && req.url === '/api/telegram/bot-info') {
+            try {
+              const token = getBotToken()
+              const response = await fetch(`https://api.telegram.org/bot${token}/getMe`)
+              const data = await response.json() as { ok?: boolean; result?: { username?: string } }
+              if (data.ok && data.result?.username) {
+                sendJson(res, 200, { username: data.result.username })
+              } else {
+                sendJson(res, 500, { error: 'getMe failed' })
+              }
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Bot info error'
+              sendJson(res, 500, { error: message })
+            }
+            return
+          }
+
           if (req.method === 'POST' && req.url === '/api/telegram/webhook') {
             const update = await readJsonBody(req)
             const result = await handleTelegramWebhook(update as Parameters<typeof handleTelegramWebhook>[0])

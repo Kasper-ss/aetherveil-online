@@ -6,7 +6,8 @@ import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
 import {
-  getClassData, CRAFT_RECIPES, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
+  getClassData, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
+  findCraftRecipe,
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
@@ -63,6 +64,8 @@ interface PlayerState {
   syncPlayerState: () => Promise<void>
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
+  claimUnderwearEasterEgg: () => boolean
+  dismantleAllCommonItems: () => number
   allocateStat: (key: AllocStatKey, points?: number) => boolean
   grantBonusStats: (points: number, gold: number, gems: number) => void
   getCraftMissing: (recipeId: string) => MissingCost[]
@@ -392,6 +395,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true
   },
 
+  claimUnderwearEasterEgg: () => {
+    const { player } = get()
+    if (!player || player.underwearEasterEggClaimed) return false
+    const item = createItemInstance('legendary_underwear')
+    if (!item) return false
+    get().updatePlayer({ underwearEasterEggClaimed: true })
+    get().addItem(item)
+    return true
+  },
+
   changeDisplayName: (name) => {
     const trimmed = name.trim().slice(0, 20)
     if (trimmed.length < 2) return false
@@ -497,15 +510,35 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   craftItem: (recipeId) => {
-    const recipe = CRAFT_RECIPES.find((r) => r.id === recipeId)
-    if (!recipe) return false
     const { player } = get()
     if (!player) return false
+    const recipe = findCraftRecipe(recipeId, player)
+    if (!recipe) return false
     if (recipe.requiredProfession && player.profession !== recipe.requiredProfession) return false
     if (recipe.requiredProfessionLevel) {
       const levels = player.professionLevels[recipe.requiredProfession!] ?? []
       if (levels.reduce((s, l) => s + l, 0) < recipe.requiredProfessionLevel) return false
     }
+
+    if (recipe.isMythicCraft && recipe.sourceInstanceId) {
+      const source = player.inventory.find((i) => i.instanceId === recipe.sourceInstanceId)
+        ?? Object.values(player.equipped).find((i) => i?.instanceId === recipe.sourceInstanceId)
+      if (!source) return false
+      const upgraded = get().craftMythicItem(source)
+      if (!upgraded) return false
+      if (player.inventory.some((i) => i.instanceId === recipe.sourceInstanceId)) {
+        get().removeItemByInstance(recipe.sourceInstanceId)
+      } else {
+        const slot = (Object.keys(player.equipped) as (keyof Player['equipped'])[]).find(
+          (s) => player.equipped[s]?.instanceId === recipe.sourceInstanceId,
+        )
+        if (slot) get().updatePlayer({ equipped: { ...player.equipped, [slot]: upgraded } })
+        return true
+      }
+      get().addItem(upgraded)
+      return true
+    }
+
     if (!get().spendGold(recipe.goldCost)) return false
     if (!get().spendResources(recipe.resources)) return false
     const inst = createItemInstance(recipe.resultItemId)
@@ -572,9 +605,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   getCraftMissing: (recipeId) => {
-    const recipe = CRAFT_RECIPES.find((r) => r.id === recipeId)
     const { player } = get()
+    const recipe = findCraftRecipe(recipeId, player)
     if (!recipe || !player) return []
+    if (recipe.isMythicCraft && recipe.sourceInstanceId) {
+      const source = player.inventory.find((i) => i.instanceId === recipe.sourceInstanceId)
+        ?? Object.values(player.equipped).find((i) => i?.instanceId === recipe.sourceInstanceId)
+      if (!source) return [{ key: 'item', label: 'Предмет не найден', icon: '❌', have: 0, need: 1 }]
+      if ((source.upgradeLevel ?? 1) < 10 || (source.starLevel ?? 0) < 10) {
+        return [{ key: 'upgrade', label: 'Нужно 10 ур. и 10★', icon: '⭐', have: 0, need: 1 }]
+      }
+    }
     return getMissingCosts(player, recipe.goldCost, recipe.resources, recipe)
   },
 
@@ -695,6 +736,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (yield_.gold > 0) get().addGold(yield_.gold)
     if (Object.keys(yield_.resources).length > 0) get().addResources(yield_.resources)
     return true
+  },
+
+  dismantleAllCommonItems: () => {
+    const { player } = get()
+    if (!player) return 0
+    const equippedIds = new Set(
+      Object.values(player.equipped).map((i) => i?.instanceId).filter(Boolean) as string[],
+    )
+    const listedIds = new Set(
+      player.marketListings.map((l) => l.item?.instanceId).filter(Boolean) as string[],
+    )
+    const commons = player.inventory.filter(
+      (i) => i.rarity === 'common'
+        && i.slot !== 'consumable'
+        && i.instanceId
+        && !equippedIds.has(i.instanceId)
+        && !listedIds.has(i.instanceId),
+    )
+    let count = 0
+    for (const item of commons) {
+      if (get().dismantleItem(item)) count++
+    }
+    return count
   },
 
   buyMarketListing: async (listing) => {

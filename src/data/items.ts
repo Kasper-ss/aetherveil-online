@@ -182,6 +182,36 @@ for (const set of SETS) {
   }
 }
 
+const CRAFTABLE_SET_IDS = ['shadow_ascension', 'solo_leveling', 'one_punch'] as const
+for (const set of SETS) {
+  if (!CRAFTABLE_SET_IDS.includes(set.id as typeof CRAFTABLE_SET_IDS[number])) continue
+  for (const piece of set.pieces) {
+    const id = `${set.id}_epic_${piece.slot}`
+    const epicStats: Partial<Stats> = {}
+    for (const [k, v] of Object.entries(piece.stats)) {
+      epicStats[k as keyof Stats] = Math.max(1, Math.floor((v as number) * 0.55))
+    }
+    const statDesc = Object.entries(epicStats).map(([k, v]) => {
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+      return `${labels[k] ?? k} +${v}`
+    }).join(', ')
+    generated[id] = {
+      id,
+      name: piece.name,
+      description: `Эпический сет «${set.name}». ${statDesc}. ${set.bonus}`,
+      slot: piece.slot,
+      rarity: 'epic',
+      stats: epicStats,
+      icon: piece.icon,
+      sellPrice: 800,
+      setId: `${set.id}_epic`,
+      setName: `${set.name} · Эпический`,
+      upgradeLevel: 1,
+      starLevel: 0,
+    }
+  }
+}
+
 export const SET_DATA = SETS
 
 export const CONSUMABLES: Record<string, Item> = {
@@ -192,6 +222,18 @@ export const CONSUMABLES: Record<string, Item> = {
   energy_drink: {
     id: 'energy_drink', name: 'Энергетик', description: 'Восстанавливает 30 энергии.',
     slot: 'consumable', rarity: 'common', stats: {}, icon: '⚡', sellPrice: 30, upgradeLevel: 1, starLevel: 0,
+  },
+  legendary_underwear: {
+    id: 'legendary_underwear',
+    name: 'Легендарные Трусы Неуязвимости',
+    description: '«Эти священные трусы видели уже тысячи героев. Говорят, тот, кто их носит, получает иммунитет удара по самолюбию.»',
+    slot: 'leggings',
+    rarity: 'legendary',
+    stats: {},
+    icon: '🩲',
+    sellPrice: 0,
+    upgradeLevel: 1,
+    starLevel: 0,
   },
 }
 

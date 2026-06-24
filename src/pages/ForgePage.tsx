@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
-import { CRAFT_RECIPES, RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield } from '@/data/classes'
+import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -29,6 +29,7 @@ export function ForgePage() {
   const getStarUpgradeMissing = usePlayerStore((s) => s.getStarUpgradeMissing)
   const getMythicUpgradeMissing = usePlayerStore((s) => s.getMythicUpgradeMissing)
   const dismantleItem = usePlayerStore((s) => s.dismantleItem)
+  const dismantleAllCommonItems = usePlayerStore((s) => s.dismantleAllCommonItems)
   const removeItemByInstance = usePlayerStore((s) => s.removeItemByInstance)
   const addItem = usePlayerStore((s) => s.addItem)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -46,6 +47,8 @@ export function ForgePage() {
   if (!player) return null
 
   const equippable = player.inventory.filter((i) => i.slot !== 'consumable')
+  const craftRecipes = getForgeCraftRecipes(player)
+  const commonCount = equippable.filter((i) => i.rarity === 'common').length
 
   function showMissing(title: string, missing: MissingCost[]) {
     if (missing.length === 0) return false
@@ -105,6 +108,18 @@ export function ForgePage() {
     }
   }
 
+  function handleDismantleAllCommon() {
+    const count = dismantleAllCommonItems()
+    if (count > 0) {
+      if (selectedItem && !player!.inventory.some((i) => i.instanceId === selectedItem.instanceId)) {
+        setSelectedItem(null)
+      }
+      hapticSuccess()
+    } else {
+      hapticError()
+    }
+  }
+
   function formatYield(resources: Partial<Record<import('@/types/game').ResourceId, number>>, gold: number) {
     const parts = gold > 0 ? [`🪙${gold}`] : []
     for (const [k, v] of Object.entries(resources)) {
@@ -150,10 +165,21 @@ export function ForgePage() {
 
         <TabsContent value="craft" className="mt-2">
           <div className="space-y-2">
-            {CRAFT_RECIPES.map((recipe) => {
+            {craftRecipes.map((recipe) => {
               const result = ALL_ITEMS[recipe.resultItemId]
               return (
-                <Card key={recipe.id} className={recipe.isSetCraft ? 'border-aether-gold glow-purple' : ''}>
+                <Card
+                  key={recipe.id}
+                  className={
+                    recipe.isMythicCraft
+                      ? 'border-fuchsia-500/50 glow-purple'
+                      : recipe.isSetCraft
+                        ? recipe.setCraftRarity === 'epic'
+                          ? 'border-aether-purple/50'
+                          : 'border-aether-gold glow-purple'
+                        : ''
+                  }
+                >
                   <CardContent className="p-3">
                     <div className="flex items-start gap-3">
                       <span className="text-3xl">{result?.icon}</span>
@@ -163,7 +189,9 @@ export function ForgePage() {
                         {result && (
                           <>
                             <Badge variant={result.rarity} className="mt-1">{RARITY_LABELS_RU[result.rarity]}</Badge>
-                            <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(result)}</p>
+                            {Object.keys(result.stats ?? {}).length > 0 && (
+                              <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(result)}</p>
+                            )}
                           </>
                         )}
                         <div className="flex flex-wrap gap-1 mt-2 text-[10px]">
@@ -174,7 +202,12 @@ export function ForgePage() {
                           ))}
                           <span className="bg-aether-bg px-1.5 py-0.5 rounded">🪙{recipe.goldCost}</span>
                         </div>
-                        {recipe.isSetCraft && <Badge variant="legendary" className="mt-1">Сетовый крафт</Badge>}
+                        {recipe.isMythicCraft && <Badge variant="mythic" className="mt-1">Мифический крафт</Badge>}
+                        {recipe.isSetCraft && !recipe.isMythicCraft && (
+                          <Badge variant={recipe.setCraftRarity === 'epic' ? 'epic' : 'legendary'} className="mt-1">
+                            {recipe.setCraftRarity === 'epic' ? 'Эпический сет' : 'Легендарный сет'}
+                          </Badge>
+                        )}
                       </div>
                       <Button size="sm" onClick={() => handleCraft(recipe.id)}>{t('forge.craftBtn')}</Button>
                     </div>
@@ -187,6 +220,11 @@ export function ForgePage() {
 
         <TabsContent value="upgrade" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
+          {commonCount > 0 && (
+            <Button variant="secondary" size="sm" className="w-full mb-3" onClick={handleDismantleAllCommon}>
+              Разобрать все обычные ({commonCount})
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 mb-4">
             {equippable.map((item) => (
               <Card

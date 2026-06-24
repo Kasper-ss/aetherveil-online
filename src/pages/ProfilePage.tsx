@@ -17,12 +17,15 @@ export function ProfilePage() {
   const player = usePlayerStore((s) => s.player)
   const stats = usePlayerStats()
   const claimEasterEgg = usePlayerStore((s) => s.claimExpEasterEgg)
+  const claimUnderwearEasterEgg = usePlayerStore((s) => s.claimUnderwearEasterEgg)
   const changeDisplayName = usePlayerStore((s) => s.changeDisplayName)
   const [soundOn, setSoundOn] = useState(localStorage.getItem('aetherveil_sound') !== 'false')
   const [musicOn, setMusicOn] = useState(localStorage.getItem('aetherveil_music') !== 'false')
   const [showRename, setShowRename] = useState(false)
+  const [showUnderwearEgg, setShowUnderwearEgg] = useState(false)
   const [newName, setNewName] = useState('')
   const clickTimes = useRef<number[]>([])
+  const defClickTimes = useRef<number[]>([])
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -45,6 +48,20 @@ export function ProfilePage() {
       if (claimEasterEgg()) {
         hapticSuccess()
         clickTimes.current = []
+      }
+    }
+  }
+
+  function handleDefClick() {
+    if (player!.underwearEasterEggClaimed) return
+    const now = Date.now()
+    defClickTimes.current = defClickTimes.current.filter((t) => now - t < 2000)
+    defClickTimes.current.push(now)
+    if (defClickTimes.current.length >= 10) {
+      if (claimUnderwearEasterEgg()) {
+        hapticSuccess()
+        defClickTimes.current = []
+        setShowUnderwearEgg(true)
       }
     }
   }
@@ -101,7 +118,14 @@ export function ProfilePage() {
             </div>
             <div className="bg-aether-bg rounded-lg p-2">
               <div className="text-lg font-bold text-blue-400">{stats.def}</div>
-              <div className="text-[10px] text-slate-500">ЗАЩ</div>
+              <div
+                role="presentation"
+                onClick={handleDefClick}
+                className="text-[10px] text-slate-500 select-none cursor-default"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                ЗАЩ
+              </div>
             </div>
             <div className="bg-aether-bg rounded-lg p-2">
               <div className="text-lg font-bold text-red-400">{maxHp}</div>
@@ -137,7 +161,7 @@ export function ProfilePage() {
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Реферальный код</span>
-            <button className="text-aether-cyan" onClick={() => shareInviteLink(player.referralCode)}>
+            <button type="button" className="text-aether-cyan" onClick={() => void shareInviteLink(player.referralCode)}>
               {player.referralCode}
             </button>
           </div>
@@ -162,6 +186,28 @@ export function ProfilePage() {
           Музыка
         </Button>
       </div>
+
+      <Dialog open={showUnderwearEgg} onOpenChange={setShowUnderwearEgg}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>🎉 Поздравляем! Вы нашли легендарный предмет!</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-slate-300">
+            <p>Вы обыскивали старый Башни и среди пыльных артефактов внезапно обнаружили их...</p>
+            <p className="text-center text-4xl">🩲</p>
+            <p className="text-center font-bold text-white">Легендарные Трусы Неуязвимости</p>
+            <p className="text-xs text-slate-400 italic text-center">
+              «Эти священные трусы видели уже тысячи героев. Говорят, тот, кто их носит, получает иммунитет удара по самолюбию.»
+            </p>
+            <p className="text-center text-aether-gold font-medium">Эффекты: НИКАКИХ</p>
+            <p className="text-xs text-center text-aether-cyan">
+              Ты единственный игрок на сервере, кто нашёл этот ультра-редкий предмет!
+            </p>
+            <p className="text-center text-slate-400">Носи их с гордостью, легенда.</p>
+          </div>
+          <Button className="w-full mt-2" onClick={() => setShowUnderwearEgg(false)}>Понял</Button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showRename} onOpenChange={setShowRename}>
         <DialogContent>
