@@ -1,5 +1,6 @@
 import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item } from '@/types/game'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
+import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
@@ -173,6 +174,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   { id: 'craft_chest_t4', resultItemId: 'chestplate_t4', name: 'Нагрудник охотника', description: 'ЗАЩ +14, HP +55', resources: { hide: 10, iron_ore: 8, upgrade_core: 2 }, goldCost: 350, requiredProfession: 'blacksmith', requiredProfessionLevel: 6 },
   ...EPIC_SET_CRAFT_RECIPES,
   ...LEGENDARY_SET_CRAFT_RECIPES,
+  ...LUCKY_SET_CRAFT_RECIPES,
   { id: 'craft_hp_potion', resultItemId: 'hp_potion', name: 'Зелье HP', description: 'Восстанавливает 50% HP в бою.', resources: { herb: 8 }, goldCost: 50, requiredProfession: 'alchemist', requiredProfessionLevel: 1 },
 ]
 
@@ -284,8 +286,8 @@ export function getDynamicMythicCraftRecipes(player: Player): CraftRecipe[] {
 }
 
 export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
-  if (!player) return CRAFT_RECIPES
-  return [...CRAFT_RECIPES, ...getDynamicMythicCraftRecipes(player)]
+  const base = player ? [...CRAFT_RECIPES, ...getDynamicMythicCraftRecipes(player)] : CRAFT_RECIPES
+  return base.filter((r) => !r.requiredClass || r.requiredClass === player?.classId)
 }
 
 export function findCraftRecipe(recipeId: string, player: Player | null): CraftRecipe | undefined {

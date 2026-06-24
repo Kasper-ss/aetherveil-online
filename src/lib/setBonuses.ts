@@ -50,11 +50,14 @@ export function getActiveSetBonuses(player: Player): ActiveSetBonus[] {
   for (const set of SET_DATA) {
     const count = bySetId[set.id] ?? 0
     if (count >= 7) {
+      const isLucky = set.id.startsWith('lucky_')
       bonuses.push({
         id: set.id,
-        name: `Сет «${set.name}»`,
+        name: isLucky ? `Lucky «${'classLabel' in set ? (set as { classLabel: string }).classLabel : set.name}»` : `Сет «${set.name}»`,
         description: set.bonus,
-        stats: { crit: 12, speed: 8, atk: 10, def: 6, hp: 40 },
+        stats: isLucky
+          ? { crit: 8, speed: 6, atk: 6, def: 4, hp: 30 }
+          : { crit: 12, speed: 8, atk: 10, def: 6, hp: 40 },
       })
     }
   }

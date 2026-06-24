@@ -60,15 +60,15 @@ export function generateCombatResources(floor: number, isBoss: boolean): Partial
   return Object.fromEntries(Object.entries(res).filter(([, v]) => v > 0)) as Partial<Record<ResourceId, number>>
 }
 
-export function generateVictoryLoot(floor: number, isBoss: boolean): Item[] {
+export function generateVictoryLoot(floor: number, isBoss: boolean, lootMult = 1): Item[] {
   const loot: Item[] = []
-  const drop = rollEquipmentDrop(floor, isBoss)
+  const drop = rollEquipmentDrop(floor, isBoss, lootMult)
   if (drop) loot.push(drop)
   if (isBoss && Math.random() > 0.4) {
-    const bonus = rollEquipmentDrop(floor, true)
+    const bonus = rollEquipmentDrop(floor, true, lootMult)
     if (bonus) loot.push(bonus)
   } else if (Math.random() > 0.55) {
-    const bonus = rollEquipmentDrop(floor, false)
+    const bonus = rollEquipmentDrop(floor, false, lootMult)
     if (bonus) loot.push(bonus)
   }
   return loot
@@ -137,6 +137,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     auraEffectId: player.auraEffectId,
     cosmeticAvatarId: player.cosmeticAvatarId,
     friendIds: player.friendIds ?? [],
+    fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
 }
 
@@ -168,5 +169,6 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     bankLastInterestAt: new Date().toISOString(),
     guildId: GUILD_ID,
     friendIds: [],
+    fairStats: { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
 }

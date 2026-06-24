@@ -17,6 +17,7 @@ import { ArenaPage } from '@/pages/ArenaPage'
 import { ProfessionsPage } from '@/pages/ProfessionsPage'
 import { ForgePage } from '@/pages/ForgePage'
 import { BankPage } from '@/pages/BankPage'
+import { FairPage } from '@/pages/FairPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
@@ -50,6 +51,7 @@ function AppRoutes() {
           <Route path="/forge" element={<ForgePage />} />
           <Route path="/bank" element={<BankPage />} />
           <Route path="/skills" element={<SkillsPage />} />
+          <Route path="/fair" element={<FairPage />} />
         </Routes>
       </div>
     </>

@@ -18,6 +18,7 @@ import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
 import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
+import { calcFairPayout, spinFairWheel, type FairColor } from '@/lib/fairGame'
 import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
 
@@ -90,6 +91,7 @@ interface PlayerState {
   getPlayerSkillMissing: (skillId: import('@/types/game').SkillId) => MissingCost[]
   addFriendById: (friendId: number) => boolean
   removeFriend: (friendId: number) => boolean
+  playFairBet: (bet: number, pick: FairColor) => { won: boolean; result: FairColor; payout: number } | null
   resetAllocatedStats: () => boolean
 }
 
@@ -570,6 +572,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const levels = player.professionLevels[recipe.requiredProfession!] ?? []
       if (levels.reduce((s, l) => s + l, 0) < recipe.requiredProfessionLevel) return false
     }
+    if (recipe.requiredClass && recipe.requiredClass !== player.classId) return false
 
     if (recipe.isMythicCraft && recipe.sourceInstanceId) {
       const source = player.inventory.find((i) => i.instanceId === recipe.sourceInstanceId)
@@ -871,6 +874,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (friends.length === (player.friendIds ?? []).length) return false
     get().updatePlayer({ friendIds: friends })
     return true
+  },
+
+  playFairBet: (bet, pick) => {
+    const { player } = get()
+    if (!player) return null
+    const amount = Math.floor(bet)
+    if (amount < 1 || amount > player.gold) return null
+    if (!get().spendGold(amount)) return null
+
+    const result = spinFairWheel()
+    const payout = calcFairPayout(amount, pick, result)
+    const won = payout > 0
+    const stats = {
+      gamesPlayed: 0,
+      gamesWon: 0,
+      gamesLost: 0,
+      goldWon: 0,
+      goldLost: 0,
+      ...player.fairStats,
+    }
+
+    stats.gamesPlayed++
+    if (won) {
+      const current = get().player!
+      get().updatePlayer({ gold: current.gold + payout })
+      stats.gamesWon++
+      stats.goldWon += payout
+    } else {
+      stats.gamesLost++
+      stats.goldLost += amount
+    }
+
+    get().updatePlayer({ fairStats: stats })
+    return { won, result, payout }
   },
 
   resetAllocatedStats: () => {

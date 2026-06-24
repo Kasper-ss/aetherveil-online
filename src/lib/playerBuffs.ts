@@ -1,4 +1,5 @@
 import type { Player } from '@/types/game'
+import { getLuckyMultipliers } from '@/lib/luckyBonuses'
 
 export function isBuffActive(until?: string): boolean {
   if (!until) return false
@@ -18,11 +19,17 @@ export function hasInfiniteEnergy(player: Player): boolean {
 }
 
 export function getExpMultiplier(player: Player): number {
-  return isBuffActive(player.buffDoubleExpUntil) ? 2 : 1
+  const buff = isBuffActive(player.buffDoubleExpUntil) ? 2 : 1
+  return buff * getLuckyMultipliers(player).exp
 }
 
 export function getGoldMultiplier(player: Player): number {
-  return isBuffActive(player.buffTripleGoldUntil) ? 3 : 1
+  const buff = isBuffActive(player.buffTripleGoldUntil) ? 3 : 1
+  return buff * getLuckyMultipliers(player).gold
+}
+
+export function getLootMultiplier(player: Player): number {
+  return getLuckyMultipliers(player).loot
 }
 
 export function getDailyBonusExtra(player: Player): { gold: number; gems: number } {

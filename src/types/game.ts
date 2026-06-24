@@ -48,8 +48,9 @@ export interface CraftRecipe {
   isSetCraft?: boolean
   isMythicCraft?: boolean
   requiresMaxUpgrade?: boolean
-  setCraftRarity?: 'epic' | 'legendary'
+  setCraftRarity?: 'epic' | 'legendary' | 'lucky'
   sourceInstanceId?: string
+  requiredClass?: PlayerClass
 }
 
 export interface ProfessionSkill {
@@ -221,6 +222,15 @@ export interface Player {
   auraEffectId?: string
   cosmeticAvatarId?: string
   friendIds?: number[]
+  fairStats?: FairGameStats
+}
+
+export interface FairGameStats {
+  gamesPlayed: number
+  gamesWon: number
+  gamesLost: number
+  goldWon: number
+  goldLost: number
 }
 
 export interface GuildChatMessage {

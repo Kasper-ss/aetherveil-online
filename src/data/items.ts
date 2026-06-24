@@ -1,4 +1,5 @@
 import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/game'
+import { LUCKY_SETS } from '@/data/luckySets'
 
 export type EquipSlot = Exclude<ItemSlot, 'consumable'>
 
@@ -98,7 +99,7 @@ for (const slot of Object.keys(SLOT_NAMES_RU) as EquipSlot[]) {
   }
 }
 
-// 3 legendary sets — craft-only in forge
+// Legendary sets — craft-only in forge
 const SETS = [
   {
     id: 'shadow_ascension',
@@ -252,7 +253,31 @@ for (const set of EPIC_SETS) {
   }
 }
 
-export const SET_DATA = [...SETS, ...EPIC_SETS]
+for (const set of LUCKY_SETS) {
+  for (const piece of set.pieces) {
+    const id = `${set.id}_${piece.slot}`
+    const statDesc = Object.entries(piece.stats).map(([k, v]) => {
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+      return `${labels[k] ?? k} +${v}`
+    }).join(', ')
+    generated[id] = {
+      id,
+      name: piece.name,
+      description: `Lucky-сет «${set.classLabel}». ${statDesc}. ${set.bonus}`,
+      slot: piece.slot,
+      rarity: 'legendary',
+      stats: piece.stats,
+      icon: piece.icon,
+      sellPrice: 3500,
+      setId: set.id,
+      setName: set.name,
+      upgradeLevel: 1,
+      starLevel: 0,
+    }
+  }
+}
+
+export const SET_DATA = [...SETS, ...EPIC_SETS, ...LUCKY_SETS]
 
 export const CONSUMABLES: Record<string, Item> = {
   hp_potion: {
@@ -317,8 +342,8 @@ export function getLootTableForFloor(floor: number): string[] {
   return slots.map((s) => `${s}_t${Math.max(1, Math.min(10, tier + Math.floor(Math.random() * 2) + 1))}`)
 }
 
-export function rollEquipmentDrop(floor: number, isBoss: boolean): Item | null {
-  const chance = isBoss ? 0.85 : 0.45
+export function rollEquipmentDrop(floor: number, isBoss: boolean, lootMult = 1): Item | null {
+  const chance = Math.min(0.98, (isBoss ? 0.85 : 0.45) * lootMult)
   if (Math.random() > chance) return null
   const dropTier = Math.floor(Math.random() * 4) + Math.min(8, Math.floor(floor / 4))
   const tier = Math.min(10, Math.max(1, dropTier))

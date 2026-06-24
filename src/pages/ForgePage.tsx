@@ -176,7 +176,9 @@ export function ForgePage() {
                       : recipe.isSetCraft
                         ? recipe.setCraftRarity === 'epic'
                           ? 'border-aether-purple/50'
-                          : 'border-aether-gold glow-purple'
+                          : recipe.setCraftRarity === 'lucky'
+                            ? 'border-aether-gold glow-cyan'
+                            : 'border-aether-gold glow-purple'
                         : ''
                   }
                 >
@@ -205,7 +207,7 @@ export function ForgePage() {
                         {recipe.isMythicCraft && <Badge variant="mythic" className="mt-1">Мифический крафт</Badge>}
                         {recipe.isSetCraft && !recipe.isMythicCraft && (
                           <Badge variant={recipe.setCraftRarity === 'epic' ? 'epic' : 'legendary'} className="mt-1">
-                            {recipe.setCraftRarity === 'epic' ? 'Эпический сет' : 'Легендарный сет'}
+                            {recipe.setCraftRarity === 'epic' ? 'Эпический сет' : recipe.setCraftRarity === 'lucky' ? 'Lucky · легендарный' : 'Легендарный сет'}
                           </Badge>
                         )}
                       </div>

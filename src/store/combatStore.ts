@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { CombatState, CombatResult, FloorEnemy, SkillId, CombatLogEntry } from '@/types/game'
 import type { OnlinePlayerSnapshot } from '@/lib/multiplayer'
+import { getLootMultiplier } from '@/lib/playerBuffs'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
@@ -271,7 +272,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       } else {
         exp = combat.enemy.expReward
         gold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss))
+        const pvePlayer = usePlayerStore.getState().player
+        const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult))
         resources = generateCombatResources(combat.floor, combat.isBoss)
       }
     } else if (combat.isPvp) {
