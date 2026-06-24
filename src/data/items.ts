@@ -320,8 +320,8 @@ export function getLootTableForFloor(floor: number): string[] {
 export function rollEquipmentDrop(floor: number, isBoss: boolean): Item | null {
   const chance = isBoss ? 0.85 : 0.45
   if (Math.random() > chance) return null
-  const dropTier = Math.floor(Math.random() * 6) + Math.min(2, Math.floor(floor / 2))
-  const tier = Math.min(5, dropTier)
+  const dropTier = Math.floor(Math.random() * 4) + Math.min(8, Math.floor(floor / 4))
+  const tier = Math.min(10, Math.max(1, dropTier))
   const slots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']
   const slot = slots[Math.floor(Math.random() * slots.length)]
   const id = `${slot}_t${tier + 1}`

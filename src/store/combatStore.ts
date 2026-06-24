@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { CombatState, CombatResult, FloorEnemy, SkillId, CombatLogEntry } from '@/types/game'
 import type { OnlinePlayerSnapshot } from '@/lib/multiplayer'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
+import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { randomInt } from '@/lib/utils'
@@ -170,22 +171,24 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const skill = SKILLS[skillId]
     if (!skill) return
+    const player = usePlayerStore.getState().player
+    const skillLevel = player?.skillLevels[skillId] ?? 1
+    const scaled = getScaledSkill(skill, skillLevel)
     if ((combat.skillCooldowns[skillId] ?? 0) > 0) return
 
-    const player = usePlayerStore.getState().player
-    if (!player || player.energy < skill.energyCost) return
+    if (!player || player.energy < scaled.energyCost) return
 
-    usePlayerStore.getState().spendEnergy(skill.energyCost)
+    usePlayerStore.getState().spendEnergy(scaled.energyCost)
     const logs = [...combat.combatLog]
 
-    if (skillId === 'healing_light') {
-      const heal = Math.floor(combat.playerMaxHp * 0.25)
-      logs.push(logEntry(`💚 Исцеление: +${heal} HP`, 'heal'))
+    if (scaled.healPercent > 0 && skill.damageMultiplier === 0) {
+      const heal = Math.floor(combat.playerMaxHp * scaled.healPercent)
+      logs.push(logEntry(`💚 ${skill.nameRu}: +${heal} HP`, 'heal'))
       set({
         combat: {
           ...combat,
           playerHp: Math.min(combat.playerMaxHp, combat.playerHp + heal),
-          skillCooldowns: { ...combat.skillCooldowns, [skillId]: skill.cooldown },
+          skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
           combatLog: logs.slice(-30),
         },
       })
@@ -194,9 +197,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const stats = getEffectiveStats(player)
     const isCrit = Math.random() * 100 < stats.crit + 10
-    const damage = Math.floor(stats.atk * skill.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
+    let damage = Math.floor(stats.atk * scaled.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
     const finalDmg = Math.max(1, damage)
     const newEnemyHp = combat.enemyHp - finalDmg
+    let playerHpAfter = combat.playerHp
+
+    if (scaled.healPercent > 0 && skill.damageMultiplier > 0) {
+      const heal = Math.floor(combat.playerMaxHp * scaled.healPercent)
+      playerHpAfter = Math.min(combat.playerMaxHp, combat.playerHp + heal)
+      logs.push(logEntry(`💚 +${heal} HP`, 'heal'))
+    }
 
     logs.push(logEntry(
       `✨ ${skill.nameRu}! ${isCrit ? 'КРИТ! ' : ''}Урон: ${finalDmg}`,
@@ -207,8 +217,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       logs.push(logEntry(`✅ ${combat.enemy.name} повержен!`, 'system'))
       set({
         combat: {
-          ...combat, enemyHp: 0, combo: combat.combo + 3,
-          skillCooldowns: { ...combat.skillCooldowns, [skillId]: skill.cooldown },
+          ...combat, enemyHp: 0, playerHp: playerHpAfter, combo: combat.combo + 3,
+          skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
           combatLog: logs,
         },
       })
@@ -219,7 +229,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     // Enemy counter after skill
     const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk * 0.8 - stats.def * 0.3))
     logs.push(logEntry(`🔴 ${combat.enemy.name} контратакует: ${enemyDmg} урона`, 'enemy'))
-    const newPlayerHp = combat.playerHp - enemyDmg
+    const newPlayerHp = playerHpAfter - enemyDmg
 
     if (newPlayerHp <= 0) {
       get().endCombat(false)
@@ -232,7 +242,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         enemyHp: newEnemyHp,
         playerHp: newPlayerHp,
         combo: combat.combo + 3,
-        skillCooldowns: { ...combat.skillCooldowns, [skillId]: skill.cooldown },
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
         combatLog: logs.slice(-30),
         turn: combat.turn + 1,
       },

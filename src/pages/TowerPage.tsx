@@ -70,18 +70,15 @@ export function TowerPage() {
       {player.highestFloor > 1 && (
         <div className="px-4 pt-3">
           <p className="text-xs text-slate-400 mb-2">Выбор этажа для фарма:</p>
-          <div className="flex gap-2 flex-wrap">
+          <select
+            className="w-full bg-aether-bg border border-aether-border rounded-lg px-3 py-2 text-sm text-white"
+            value={farmFloor}
+            onChange={(e) => setFarmFloor(Number(e.target.value))}
+          >
             {Array.from({ length: player.highestFloor }, (_, i) => i + 1).map((f) => (
-              <Button
-                key={f}
-                size="sm"
-                variant={farmFloor === f ? 'default' : 'secondary'}
-                onClick={() => setFarmFloor(f)}
-              >
-                Этаж {f}
-              </Button>
+              <option key={f} value={f}>Этаж {f} — {getFloorData(f).name}</option>
             ))}
-          </div>
+          </select>
         </div>
       )}
 

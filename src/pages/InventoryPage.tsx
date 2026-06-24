@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { SKILLS } from '@/data/gameData'
+import { getScaledSkill } from '@/data/playerSkills'
 import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
 import type { Item, EquipSlot } from '@/types/game'
@@ -126,10 +127,14 @@ export function InventoryPage() {
         </TabsContent>
 
         <TabsContent value="skills">
+          <Button variant="secondary" className="w-full mb-3" onClick={() => navigate('/skills')}>
+            ✨ Открыть древо навыков
+          </Button>
           <div className="space-y-2">
             {player.skills.map((skillId) => {
               const skill = SKILLS[skillId]
               const level = player.skillLevels[skillId] ?? 1
+              const scaled = getScaledSkill(skill, level)
               return (
                 <Card key={skillId}>
                   <CardContent className="p-3 flex items-center gap-3">
@@ -138,7 +143,7 @@ export function InventoryPage() {
                       <div className="text-sm font-medium text-white">{skill.nameRu} Ур.{level}</div>
                       <div className="text-[10px] text-slate-400">{skill.descriptionRu}</div>
                       <div className="text-[10px] text-aether-cyan mt-1">
-                        Перезарядка: {skill.cooldown}с · Энергия: {skill.energyCost}
+                        Перезарядка: {scaled.cooldown}с · Энергия: {scaled.energyCost}
                       </div>
                     </div>
                   </CardContent>

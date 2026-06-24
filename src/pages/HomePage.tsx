@@ -1,12 +1,11 @@
 import { useNavigate } from 'react-router-dom'
-import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark } from 'lucide-react'
+import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { PlayerStatsPanel } from '@/components/ui/stat-bar'
 import { EnergyTimer } from '@/components/ui/EnergyTimer'
 import { HpTimer } from '@/components/ui/HpTimer'
-import { Sparkles } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { usePlayerStore, usePlayerStats } from '@/store/playerStore'
 import { useUIStore } from '@/store/uiStore'
@@ -77,6 +76,7 @@ export function HomePage() {
     { icon: Package, label: t('hub.inventory'), path: '/inventory', variant: 'secondary' as const },
     { icon: ShoppingBag, label: t('hub.shop'), path: '/shop', variant: 'purple' as const },
     { icon: Briefcase, label: t('hub.professions'), path: '/professions', variant: 'secondary' as const },
+    { icon: Sparkles, label: t('hub.skills'), path: '/skills', variant: 'purple' as const },
     { icon: Anvil, label: t('hub.forge'), path: '/forge', variant: 'gold' as const },
     { icon: Landmark, label: t('hub.bank'), path: '/bank', variant: 'gold' as const },
     { icon: Trophy, label: t('hub.leaderboard'), path: '/leaderboard', variant: 'secondary' as const },

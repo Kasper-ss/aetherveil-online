@@ -3,7 +3,14 @@ export type ItemSlot =
   | 'helmet' | 'chestplate' | 'leggings' | 'boots'
   | 'necklace' | 'ring' | 'weapon' | 'pet' | 'consumable'
 export type EquipSlot = Exclude<ItemSlot, 'consumable'>
-export type SkillId = 'dual_blades' | 'sword_skill' | 'dash_strike' | 'healing_light'
+export type SkillId =
+  | 'dual_blades' | 'sword_skill' | 'dash_strike' | 'healing_light'
+  | 'power_slash' | 'whirlwind' | 'battle_cry' | 'executioner' | 'aether_rampage'
+  | 'piercing_shot' | 'volley' | 'trap_shot' | 'headshot' | 'aether_rain'
+  | 'fireball' | 'ice_lance' | 'chain_lightning' | 'arcane_orb' | 'aether_storm'
+  | 'spirit_bolt' | 'summon_guardian' | 'draining_touch' | 'group_heal' | 'aether_avatar'
+  | 'backstab' | 'poison_dagger' | 'smoke_bomb' | 'lethal_strike' | 'aether_blade'
+  | 'shield_bash' | 'holy_smite' | 'iron_fortress' | 'judgment' | 'aether_aegis'
 export type EnemyPattern = 'aggressive' | 'defensive' | 'berserker' | 'boss'
 export type PlayerClass = 'warrior' | 'archer' | 'mage' | 'summoner' | 'assassin' | 'knight'
 export type ProfessionId = 'blacksmith' | 'alchemist' | 'hunter' | 'jeweler' | 'sorcerer'
@@ -123,6 +130,7 @@ export interface Skill {
   cooldown: number
   energyCost: number
   icon: string
+  healPercent: number
 }
 
 export interface EquippedItems {

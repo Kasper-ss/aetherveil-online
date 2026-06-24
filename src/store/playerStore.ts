@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey } from '@/types/game'
-import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS } from '@/data/gameData'
+import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
+import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
@@ -85,6 +86,8 @@ interface PlayerState {
   tryRegenVitals: () => void
   purchaseStarProduct: (productId: StarProductId) => Promise<boolean>
   applyStarProductReward: (productId: StarProductId) => boolean
+  upgradePlayerSkill: (skillId: import('@/types/game').SkillId) => boolean
+  getPlayerSkillMissing: (skillId: import('@/types/game').SkillId) => MissingCost[]
   resetAllocatedStats: () => boolean
 }
 
@@ -162,7 +165,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     while (exp >= xpForLevel(level)) { exp -= xpForLevel(level); level++ }
     const levelsGained = level - startLevel
     const statPoints = player.statPoints + levelsGained * 5
-    get().updatePlayer({ exp, level, statPoints, ...syncEnergyFields(player) })
+    const synced = syncPlayerSkills(player.classId, level, player.skills, player.skillLevels)
+    get().updatePlayer({ exp, level, statPoints, ...synced, ...syncEnergyFields(player) })
   },
 
   addGold: (amount) => {
@@ -247,7 +251,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   advanceFloor: () => {
     const { player } = get()
     if (!player) return
-    const next = Math.min(5, player.currentFloor + 1)
+    const next = Math.min(MAX_FLOOR, player.currentFloor + 1)
     get().updatePlayer({
       currentFloor: next,
       highestFloor: Math.max(player.highestFloor, next),
@@ -463,13 +467,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (classId === 'summoner') equipped.pet = mainItem
       else equipped.weapon = mainItem
     }
+    const level = get().player?.level ?? 1
+    const synced = syncPlayerSkills(classId, level, [classData.startingSkill], { [classData.startingSkill]: 1 })
     get().updatePlayer({
       classId, classSelected: true,
       stats: { ...classData.stats },
       statPoints: 0,
       allocatedStats: { atk: 0, hp: 0, def: 0, stealth: 0, endurance: 0 },
-      skills: [classData.startingSkill],
-      skillLevels: { [classData.startingSkill]: 1 },
+      skills: synced.skills,
+      skillLevels: synced.skillLevels,
       equipped,
       inventory: [],
       maxEnergy: BASE_MAX_ENERGY,
@@ -817,6 +823,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (bought.resourceId && bought.resourceAmount) {
       get().addResources({ [bought.resourceId]: bought.resourceAmount })
     }
+    return true
+  },
+
+  getPlayerSkillMissing: (skillId) => {
+    const { player } = get()
+    if (!player) return []
+    const current = player.skillLevels[skillId] ?? 0
+    if (current >= SKILL_MAX_LEVEL) return []
+    const cost = getSkillUpgradeCost(skillId, current)
+    return getMissingCosts(player, cost.gold, cost.resources)
+  },
+
+  upgradePlayerSkill: (skillId) => {
+    const { player } = get()
+    if (!player || !player.skills.includes(skillId)) return false
+    const current = player.skillLevels[skillId] ?? 1
+    if (current >= SKILL_MAX_LEVEL) return false
+    const cost = getSkillUpgradeCost(skillId, current)
+    if (!get().spendGold(cost.gold)) return false
+    if (!get().spendResources(cost.resources)) {
+      get().addGold(cost.gold)
+      return false
+    }
+    const skillLevels = { ...player.skillLevels, [skillId]: current + 1 }
+    get().updatePlayer({ skillLevels })
     return true
   },
 

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { SKILLS } from '@/data/gameData'
+import { getScaledSkill } from '@/data/playerSkills'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
@@ -127,13 +128,15 @@ export function CombatPage() {
           <div className="grid grid-cols-2 gap-2">
             {skills.map((sid) => {
               const skill = SKILLS[sid]
+              const skillLevel = player?.skillLevels[sid] ?? 1
+              const scaled = getScaledSkill(skill, skillLevel)
               const cd = combat.skillCooldowns[sid as SkillId] ?? 0
               return (
                 <Button
                   key={sid}
                   variant="secondary"
                   size="sm"
-                  disabled={cd > 0 || (player?.energy ?? 0) < skill.energyCost}
+                  disabled={cd > 0 || (player?.energy ?? 0) < scaled.energyCost}
                   onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
                 >
                   {skill.icon} {skill.nameRu}
