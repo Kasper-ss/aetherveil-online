@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,8 +33,15 @@ export function ForgePage() {
   const addItem = usePlayerStore((s) => s.addItem)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
+
+  useEffect(() => {
+    if (selectedItem) {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [selectedItem?.instanceId])
 
   if (!player) return null
 
@@ -107,7 +114,7 @@ export function ForgePage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden page-enter">
+    <div className="h-full overflow-y-auto page-enter pb-6">
       <MissingResourcesModal
         open={!!missingModal}
         onClose={() => setMissingModal(null)}
@@ -115,14 +122,14 @@ export function ForgePage() {
         missing={missingModal?.missing ?? []}
       />
 
-      <div className="flex items-center gap-3 p-4 border-b border-aether-border shrink-0">
+      <div className="flex items-center gap-3 p-4 border-b border-aether-border">
         <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">🔨 {t('forge.title')}</h1>
       </div>
 
-      <div className="flex gap-2 px-4 py-2 overflow-x-auto shrink-0">
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto">
         {(Object.entries(player.resources) as [import('@/types/game').ResourceId, number][]).map(([id, amt]) => {
           if (!amt) return null
           const res = RESOURCES[id]
@@ -135,13 +142,13 @@ export function ForgePage() {
         })}
       </div>
 
-      <Tabs defaultValue="craft" className="flex flex-col flex-1 min-h-0 p-4">
-        <TabsList className="w-full shrink-0">
+      <Tabs defaultValue="craft" className="p-4">
+        <TabsList className="w-full">
           <TabsTrigger value="craft">{t('forge.recipes')}</TabsTrigger>
           <TabsTrigger value="upgrade">{t('forge.upgrades')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="craft" className="flex-1 min-h-0 overflow-y-auto mt-2">
+        <TabsContent value="craft" className="mt-2">
           <div className="space-y-2">
             {CRAFT_RECIPES.map((recipe) => {
               const result = ALL_ITEMS[recipe.resultItemId]
@@ -178,9 +185,9 @@ export function ForgePage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="upgrade" className="flex flex-col flex-1 min-h-0 mt-2">
-          <p className="text-xs text-slate-400 mb-2 shrink-0">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
-          <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+        <TabsContent value="upgrade" className="mt-2">
+          <p className="text-xs text-slate-400 mb-2">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
             {equippable.map((item) => (
               <Card
                 key={item.instanceId}
@@ -201,8 +208,7 @@ export function ForgePage() {
           </div>
 
           {selectedItem && (
-            <div className="flex-1 min-h-0 overflow-y-auto pb-4">
-            <Card>
+            <Card ref={detailRef}>
               <CardContent className="p-4 space-y-3">
                 <div className="text-center">
                   <div className="text-4xl mb-1">{selectedItem.icon}</div>
@@ -279,7 +285,6 @@ export function ForgePage() {
                 </div>
               </CardContent>
             </Card>
-            </div>
           )}
         </TabsContent>
       </Tabs>
