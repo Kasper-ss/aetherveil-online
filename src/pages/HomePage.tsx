@@ -81,7 +81,7 @@ export function HomePage() {
   ]
 
   return (
-    <div className="h-full overflow-y-auto page-enter">
+    <div className="h-full min-h-0 overflow-y-auto page-enter pb-4">
       <div className="relative p-4 pb-0">
         <div className="absolute inset-0 bg-gradient-to-b from-aether-purple/20 to-transparent pointer-events-none" />
         <div className="relative flex items-center gap-3">

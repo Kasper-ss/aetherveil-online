@@ -33,7 +33,7 @@ function AppRoutes() {
       <StatDistributionModal />
       <IdleRewardModal />
 
-      <div className="h-full bg-aether-bg">
+      <div className="h-full min-h-0 bg-aether-bg overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/tower" element={<TowerPage />} />

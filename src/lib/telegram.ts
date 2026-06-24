@@ -25,11 +25,18 @@ export interface TelegramWebApp {
   viewportStableHeight: number
   platform: string
   version: string
+  safeAreaInset?: { top: number; bottom: number; left: number; right: number }
+  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number }
   ready: () => void
   expand: () => void
   close: () => void
   requestFullscreen?: () => void
   exitFullscreen?: () => void
+  setHeaderColor?: (color: string) => void
+  setBackgroundColor?: (color: string) => void
+  disableVerticalSwipes?: () => void
+  onEvent?: (eventType: string, callback: () => void) => void
+  offEvent?: (eventType: string, callback: () => void) => void
   enableClosingConfirmation: () => void
   disableClosingConfirmation: () => void
   MainButton: {
@@ -99,7 +106,7 @@ export function isTelegramEnvironment(): boolean {
 }
 
 /**
- * Initialize Telegram WebApp — expand, fullscreen, theme sync.
+ * Initialize Telegram WebApp — expand, safe areas, theme sync.
  * Call once on app mount.
  */
 export function initTelegramWebApp(): TelegramWebApp | null {
@@ -112,17 +119,51 @@ export function initTelegramWebApp(): TelegramWebApp | null {
   webApp.ready()
   webApp.expand()
 
-  // Request fullscreen on supported clients
+  // Не используем requestFullscreen — на iOS контент уезжает под шапку Telegram
   try {
-    webApp.requestFullscreen?.()
+    webApp.setHeaderColor?.('#0a0a1a')
+    webApp.setBackgroundColor?.('#0a0a1a')
+    webApp.disableVerticalSwipes?.()
   } catch {
     // not supported on this client
   }
 
-  // Apply Telegram theme to CSS variables
   applyTelegramTheme(webApp)
+  applyTelegramViewport(webApp)
 
   return webApp
+}
+
+function applyTelegramViewport(webApp: TelegramWebApp) {
+  const root = document.documentElement
+
+  function update() {
+    const safe = webApp.safeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 }
+    let content = webApp.contentSafeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 }
+
+    // Старые клиенты Telegram не отдают contentSafeAreaInset — запас под шапку «Закрыть»
+    if (content.top <= 0 && (webApp.platform === 'ios' || webApp.platform === 'android')) {
+      content = { ...content, top: 52 }
+    }
+
+    const insetTop = safe.top + content.top
+    const insetBottom = safe.bottom + content.bottom
+
+    root.style.setProperty('--app-inset-top', `${insetTop}px`)
+    root.style.setProperty('--app-inset-bottom', `${insetBottom}px`)
+    root.style.setProperty('--app-inset-left', `${safe.left + content.left}px`)
+    root.style.setProperty('--app-inset-right', `${safe.right + content.right}px`)
+
+    const vh = webApp.viewportStableHeight || webApp.viewportHeight
+    if (vh > 0) {
+      root.style.setProperty('--tg-viewport-stable-height', `${vh}px`)
+    }
+  }
+
+  update()
+  webApp.onEvent?.('viewportChanged', update)
+  webApp.onEvent?.('safeAreaChanged', update)
+  webApp.onEvent?.('contentSafeAreaChanged', update)
 }
 
 function applyTelegramTheme(webApp: TelegramWebApp): void {
