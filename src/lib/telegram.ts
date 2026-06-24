@@ -35,8 +35,10 @@ export interface TelegramWebApp {
   setHeaderColor?: (color: string) => void
   setBackgroundColor?: (color: string) => void
   disableVerticalSwipes?: () => void
-  onEvent?: (eventType: string, callback: () => void) => void
-  offEvent?: (eventType: string, callback: () => void) => void
+  onEvent?: (eventType: string, callback: (data?: unknown) => void) => void
+  offEvent?: (eventType: string, callback: (data?: unknown) => void) => void
+  showAlert?: (message: string, callback?: () => void) => void
+  showConfirm?: (message: string, callback?: (confirmed: boolean) => void) => void
   enableClosingConfirmation: () => void
   disableClosingConfirmation: () => void
   MainButton: {
@@ -102,7 +104,9 @@ export function getTelegramUser(): TelegramUser {
 }
 
 export function isTelegramEnvironment(): boolean {
-  return !!getWebApp()?.initDataUnsafe?.user
+  const webApp = getWebApp()
+  if (!webApp) return false
+  return !!(webApp.initDataUnsafe?.user || (webApp.initData && webApp.initData.length > 10))
 }
 
 /**
@@ -186,6 +190,17 @@ export function hapticSuccess(): void {
 
 export function hapticError(): void {
   getWebApp()?.HapticFeedback?.notificationOccurred('error')
+}
+
+/** alert() часто не виден в WebView Telegram — используем showAlert */
+export function showTelegramAlert(message: string, onClose?: () => void): void {
+  const webApp = getWebApp()
+  if (webApp?.showAlert) {
+    webApp.showAlert(message, onClose)
+    return
+  }
+  alert(message)
+  onClose?.()
 }
 
 /**

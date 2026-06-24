@@ -42,7 +42,11 @@ export async function createPendingPayment(record: PaymentRecord): Promise<void>
       stars: record.stars,
       status: 'pending',
     })
-    if (error) throw new Error(error.message)
+    if (error) {
+      console.error('[paymentStore] Supabase insert failed, using memory:', error.message)
+      memoryStore().set(record.payload, { ...record, status: 'pending' })
+      return
+    }
     return
   }
   memoryStore().set(record.payload, { ...record, status: 'pending' })

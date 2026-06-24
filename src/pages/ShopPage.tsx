@@ -10,7 +10,7 @@ import { SHOP_ITEMS } from '@/data/gameData'
 import { RESOURCES } from '@/data/classes'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, SET_DATA } from '@/data/items'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
-import { hapticSuccess, hapticError } from '@/lib/telegram'
+import { hapticSuccess, hapticError, hapticImpact, showTelegramAlert } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import { formatNumber } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
@@ -63,6 +63,7 @@ export function ShopPage() {
   const removeMarketListing = usePlayerStore((s) => s.removeMarketListing)
   const purchaseStarProduct = usePlayerStore((s) => s.purchaseStarProduct)
   const [buyingStarId, setBuyingStarId] = useState<StarProductId | null>(null)
+  const [starShopMessage, setStarShopMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const [listPrice, setListPrice] = useState('100')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedResource, setSelectedResource] = useState<ResourceId | null>(null)
@@ -87,19 +88,24 @@ export function ShopPage() {
   }
 
   async function handleStarPurchase(productId: StarProductId) {
+    hapticImpact('light')
+    setStarShopMessage(null)
     setBuyingStarId(productId)
     try {
       const ok = await purchaseStarProduct(productId)
       if (ok) {
         hapticSuccess()
         playSfx('loot')
+        setStarShopMessage({ type: 'success', text: 'Покупка успешно применена!' })
       }
     } catch (error) {
       hapticError()
       const message = error instanceof StarsPaymentError
         ? error.message
         : 'Не удалось выполнить оплату'
-      alert(message)
+      console.error('[Stars]', error)
+      setStarShopMessage({ type: 'error', text: message })
+      showTelegramAlert(message)
     } finally {
       setBuyingStarId(null)
     }
@@ -315,6 +321,18 @@ export function ShopPage() {
             </Card>
           )}
 
+          {starShopMessage && (
+            <div
+              className={`mb-3 rounded-lg border px-3 py-2 text-xs ${
+                starShopMessage.type === 'error'
+                  ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                  : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+              }`}
+            >
+              {starShopMessage.text}
+            </div>
+          )}
+
           <h3 className="text-sm font-medium text-white mb-2">Купить</h3>
           <div className="space-y-3 max-h-[62vh] overflow-y-auto">
             {STAR_SHOP_PRODUCTS.map((product) => (
@@ -329,9 +347,10 @@ export function ShopPage() {
                     </div>
                   </div>
                   <Button
+                    type="button"
                     variant="gold"
                     size="sm"
-                    disabled={buyingStarId !== null}
+                    disabled={buyingStarId === product.id}
                     onClick={() => handleStarPurchase(product.id)}
                   >
                     <Star className="h-3 w-3" />

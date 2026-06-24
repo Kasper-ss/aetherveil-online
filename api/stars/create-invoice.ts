@@ -1,6 +1,14 @@
 import { createStarInvoice } from '../../server/starsPayment.js'
 
 export default async function handler(request: Request): Promise<Response> {
+  if (request.method === 'GET') {
+    return Response.json({
+      ok: true,
+      hasBotToken: !!process.env.TELEGRAM_BOT_TOKEN,
+      miniAppUrl: process.env.MINI_APP_URL ?? null,
+    })
+  }
+
   if (request.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405 })
   }

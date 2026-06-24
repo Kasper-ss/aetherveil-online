@@ -1,5 +1,10 @@
 import type { StarProductId } from '@/data/starShop'
-import { getInitData, getWebApp, hapticSuccess, isTelegramEnvironment } from '@/lib/telegram'
+import {
+  getInitData,
+  getWebApp,
+  hapticSuccess,
+  isTelegramEnvironment,
+} from '@/lib/telegram'
 import { delay } from '@/lib/utils'
 
 export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending'
@@ -11,36 +16,121 @@ export class StarsPaymentError extends Error {
   }
 }
 
-function openStarsInvoice(invoiceUrl: string): Promise<InvoiceStatus> {
-  const webApp = getWebApp() as ReturnType<typeof getWebApp> & {
-    openInvoice?: (url: string, callback?: (status: string) => void) => void
-  }
+async function fetchStarsApi<T>(
+  url: string,
+  body: Record<string, unknown>,
+  timeoutMs = 25_000,
+): Promise<{ ok: boolean; status: number; data: T }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
 
-  if (!webApp?.openInvoice) {
-    return Promise.reject(new StarsPaymentError('Платежи Stars недоступны в этой версии Telegram'))
-  }
-
-  return new Promise((resolve) => {
-    webApp.openInvoice!(invoiceUrl, (status) => {
-      resolve(status as InvoiceStatus)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
     })
+
+    const text = await res.text()
+    let data: T
+    try {
+      data = JSON.parse(text) as T
+    } catch {
+      const hint =
+        res.status === 404 || text.includes('<!doctype')
+          ? 'Сервер оплаты недоступен. Проверьте деплой на Vercel и переменные TELEGRAM_BOT_TOKEN, MINI_APP_URL.'
+          : `Ошибка сервера (${res.status})`
+      throw new StarsPaymentError(hint)
+    }
+
+    return { ok: res.ok, status: res.status, data }
+  } catch (error) {
+    if (error instanceof StarsPaymentError) throw error
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new StarsPaymentError('Сервер оплаты не отвечает. Попробуйте позже.')
+    }
+    throw new StarsPaymentError('Нет связи с сервером оплаты')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function openStarsInvoice(invoiceUrl: string): Promise<InvoiceStatus> {
+  const webApp = getWebApp()
+  if (!webApp?.openInvoice) {
+    return Promise.reject(
+      new StarsPaymentError('Обновите Telegram — оплата Stars недоступна в этой версии'),
+    )
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+
+    const finish = (status: InvoiceStatus) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      webApp.offEvent?.('invoiceClosed', onInvoiceClosed)
+      resolve(status)
+    }
+
+    const fail = (message: string) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      webApp.offEvent?.('invoiceClosed', onInvoiceClosed)
+      reject(new StarsPaymentError(message))
+    }
+
+    const onInvoiceClosed = (data?: unknown) => {
+      const status = (data as { status?: string } | undefined)?.status
+      if (status) finish(status as InvoiceStatus)
+    }
+
+    const timer = setTimeout(() => {
+      fail('Окно оплаты не ответило. Обновите Telegram и попробуйте снова.')
+    }, 90_000)
+
+    webApp.onEvent?.('invoiceClosed', onInvoiceClosed)
+
+    const openInvoice = webApp.openInvoice
+    if (!openInvoice) {
+      fail('Обновите Telegram — оплата Stars недоступна в этой версии')
+      return
+    }
+
+    try {
+      openInvoice.call(webApp, invoiceUrl, (status) => finish(status as InvoiceStatus))
+    } catch {
+      fail('Не удалось открыть окно оплаты')
+    }
   })
 }
 
-async function fulfillWithRetry(initData: string, payload: string, productId: StarProductId): Promise<void> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const res = await fetch('/api/stars/fulfill', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, payload, productId }),
+async function fulfillWithRetry(
+  initData: string,
+  payload: string,
+  productId: StarProductId,
+): Promise<void> {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const { ok, data } = await fetchStarsApi<{ error?: string }>('/api/stars/fulfill', {
+      initData,
+      payload,
+      productId,
     })
 
-    if (res.ok) return
+    if (ok) return
 
-    const data = await res.json().catch(() => ({})) as { error?: string }
-    if (data.error === 'not_paid_yet' && attempt < 9) {
+    if (data.error === 'not_paid_yet' && attempt < 11) {
       await delay(1000)
       continue
+    }
+
+    if (data.error === 'not_paid_yet') {
+      throw new StarsPaymentError(
+        'Оплата получена, но сервер ещё не подтвердил платёж. Настройте webhook: /api/telegram/setup-webhook',
+      )
     }
 
     throw new StarsPaymentError(data.error ?? 'Не удалось подтвердить оплату на сервере')
@@ -57,22 +147,16 @@ export async function requestStarsPayment(productId: StarProductId): Promise<boo
 
   const initData = getInitData()
   if (!initData) {
-    throw new StarsPaymentError('Не удалось получить данные авторизации Telegram')
+    throw new StarsPaymentError('Не удалось получить данные авторизации Telegram. Перезапустите игру из бота.')
   }
 
-  const createRes = await fetch('/api/stars/create-invoice', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData, productId }),
-  })
-
-  const createData = await createRes.json().catch(() => ({})) as {
+  const { ok, data: createData } = await fetchStarsApi<{
     invoiceLink?: string
     payload?: string
     error?: string
-  }
+  }>('/api/stars/create-invoice', { initData, productId })
 
-  if (!createRes.ok || !createData.invoiceLink || !createData.payload) {
+  if (!ok || !createData.invoiceLink || !createData.payload) {
     throw new StarsPaymentError(createData.error ?? 'Не удалось создать счёт на оплату')
   }
 
