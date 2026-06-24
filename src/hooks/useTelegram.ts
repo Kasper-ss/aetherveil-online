@@ -73,6 +73,7 @@ export function useOnlineHeartbeat() {
     const tick = () => {
       const player = usePlayerStore.getState().player
       if (player) registerOnlinePlayer(player)
+      void usePlayerStore.getState().syncPlayerState()
     }
     tick()
     const interval = setInterval(tick, 15_000)

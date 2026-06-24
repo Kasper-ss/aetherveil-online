@@ -19,3 +19,15 @@ CREATE TABLE IF NOT EXISTS market_listings (
 
 CREATE INDEX IF NOT EXISTS idx_public_players_floor ON public_players (highest_floor DESC, level DESC);
 CREATE INDEX IF NOT EXISTS idx_market_listings_seller ON market_listings (seller_id);
+
+CREATE TABLE IF NOT EXISTS market_sales (
+  id TEXT PRIMARY KEY,
+  listing_id TEXT NOT NULL,
+  seller_id BIGINT NOT NULL,
+  buyer_id BIGINT NOT NULL,
+  gold_amount INT NOT NULL,
+  settled BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_sales_seller ON market_sales (seller_id, settled);

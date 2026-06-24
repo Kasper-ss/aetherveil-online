@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }).filter((l) => l.id && l.goldPrice > 0)
 
-    await syncPublicPlayer({
+    const result = await syncPublicPlayer({
       telegramId: user.id,
       username: body.username ?? user.username ?? `user_${user.id}`,
       displayName: body.displayName ?? user.first_name,
@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       marketListings,
     })
 
-    return res.status(200).json({ ok: true })
+    return res.status(200).json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })

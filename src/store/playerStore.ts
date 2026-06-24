@@ -59,6 +59,7 @@ interface PlayerState {
   listResourceOnMarket: (resourceId: ResourceId, amount: number, price: number) => boolean
   removeMarketListing: (listingId: string) => void
   buyMarketListing: (listing: MarketListing) => Promise<boolean>
+  syncPlayerState: () => Promise<void>
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
   allocateStat: (key: AllocStatKey, points?: number) => boolean
@@ -109,7 +110,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle })
       get().tryRegenVitals()
-      void syncPlayerToServer(get().player ?? player)
+      void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, resetting save', error)
@@ -545,7 +546,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isPlayerListing: true,
     }
     get().updatePlayer({ marketListings: [...player.marketListings, listing] })
-    void syncPlayerToServer(get().player!)
+    void get().syncPlayerState()
     return true
   },
 
@@ -565,7 +566,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isPlayerListing: true,
     }
     get().updatePlayer({ resources: updated, marketListings: [...player.marketListings, listing] })
-    void syncPlayerToServer(get().player!)
+    void get().syncPlayerState()
     return true
   },
 
@@ -653,7 +654,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().addResources({ [listing.resourceId]: listing.resourceAmount })
     }
     get().updatePlayer({ marketListings: player.marketListings.filter((l) => l.id !== listingId) })
-    void syncPlayerToServer(get().player!)
+    void get().syncPlayerState()
+  },
+
+  syncPlayerState: async () => {
+    const { player } = get()
+    if (!player) return
+    const result = await syncPlayerToServer(player)
+    if (!result) return
+
+    const soldSet = new Set(result.soldListingIds)
+    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0
+    if (!needsUpdate) return
+
+    const updated = {
+      ...player,
+      gold: player.gold + result.pendingGold,
+      marketListings: soldSet.size > 0
+        ? player.marketListings.filter((l) => !soldSet.has(l.id))
+        : player.marketListings,
+    }
+    set({ player: updated })
+    updated.lastOnlineAt = new Date().toISOString()
+    storageSet(SAVE_KEY, updated)
+    await savePlayerToSupabase(updated)
+    registerOnlinePlayer(updated)
   },
 
   buyMarketListing: async (listing) => {

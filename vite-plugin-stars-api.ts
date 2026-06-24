@@ -112,7 +112,7 @@ export function starsApiPlugin(): Plugin {
                 isPlayerListing: true,
               }
             }).filter((l) => l.id && l.goldPrice > 0)
-            await syncPublicPlayer({
+            const result = await syncPublicPlayer({
               telegramId: user.id,
               username: body.username ?? user.username ?? `user_${user.id}`,
               displayName: body.displayName ?? user.first_name,
@@ -121,7 +121,7 @@ export function starsApiPlugin(): Plugin {
               guildId: body.guildId,
               marketListings,
             })
-            sendJson(res, 200, { ok: true })
+            sendJson(res, 200, { ok: true, ...result })
             return
           }
 

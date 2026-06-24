@@ -8,12 +8,17 @@ function mapListing(raw: MarketListing): MarketListing {
   }
 }
 
-export async function syncPlayerToServer(player: Player): Promise<void> {
+export interface SyncResult {
+  pendingGold: number
+  soldListingIds: string[]
+}
+
+export async function syncPlayerToServer(player: Player): Promise<SyncResult | null> {
   const initData = getInitData()
-  if (!initData) return
+  if (!initData) return null
 
   try {
-    await fetch('/api/multiplayer/sync', {
+    const res = await fetch('/api/multiplayer/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -29,8 +34,15 @@ export async function syncPlayerToServer(player: Player): Promise<void> {
         })),
       }),
     })
+    const data = await res.json() as { pendingGold?: number; soldListingIds?: string[] }
+    if (!res.ok) return null
+    return {
+      pendingGold: data.pendingGold ?? 0,
+      soldListingIds: data.soldListingIds ?? [],
+    }
   } catch (error) {
     console.warn('[multiplayer] sync failed', error)
+    return null
   }
 }
 

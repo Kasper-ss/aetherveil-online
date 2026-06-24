@@ -2,7 +2,6 @@ import type { Player, Stats, GuildMember, GuildChatMessage } from '@/types/game'
 import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { storageGet, storageSet } from '@/lib/utils'
-import { syncPlayerToServer } from '@/lib/multiplayerSync'
 
 export const GUILD_MAX_MEMBERS = 10
 export const GUILD_ID = 'guild_tower_1'
@@ -63,7 +62,6 @@ export function registerOnlinePlayer(player: Player) {
   const registry = pruneOnline(readOnline())
   registry[String(player.telegramId)] = snapshot
   writeOnline(registry)
-  void syncPlayerToServer(player)
 }
 
 export function setArenaStatus(telegramId: number, inArena: boolean) {

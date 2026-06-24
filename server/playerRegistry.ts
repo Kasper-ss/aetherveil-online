@@ -21,14 +21,31 @@ export interface MarketListingPayload {
   isPlayerListing?: boolean
 }
 
+export interface SyncResult {
+  pendingGold: number
+  soldListingIds: string[]
+}
+
+interface MarketSaleRecord {
+  id: string
+  listing_id: string
+  seller_id: number
+  buyer_id: number
+  gold_amount: number
+  settled: boolean
+  created_at: string
+}
+
 const PLAYER_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 type PlayerMap = Map<number, PublicPlayerRecord>
 type ListingMap = Map<string, MarketListingPayload & { created_at: string }>
+type SalesMap = Map<string, MarketSaleRecord>
 
 const globalStore = globalThis as typeof globalThis & {
   __aetherveilPublicPlayers?: PlayerMap
   __aetherveilMarketListings?: ListingMap
+  __aetherveilMarketSales?: SalesMap
 }
 
 function players(): PlayerMap {
@@ -43,6 +60,13 @@ function listings(): ListingMap {
     globalStore.__aetherveilMarketListings = new Map()
   }
   return globalStore.__aetherveilMarketListings
+}
+
+function sales(): SalesMap {
+  if (!globalStore.__aetherveilMarketSales) {
+    globalStore.__aetherveilMarketSales = new Map()
+  }
+  return globalStore.__aetherveilMarketSales
 }
 
 function getSupabase(): SupabaseClient | null {
@@ -62,6 +86,97 @@ function prunePlayers(map: PlayerMap): PlayerMap {
   return map
 }
 
+async function getSoldListingIdsForSeller(sellerId: number): Promise<Set<string>> {
+  const supabase = getSupabase()
+  const sold = new Set<string>()
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('market_sales')
+      .select('listing_id')
+      .eq('seller_id', sellerId)
+    for (const row of data ?? []) {
+      sold.add(row.listing_id as string)
+    }
+    return sold
+  }
+
+  for (const sale of sales().values()) {
+    if (sale.seller_id === sellerId) sold.add(sale.listing_id)
+  }
+  return sold
+}
+
+async function collectPendingSales(sellerId: number): Promise<{ gold: number; listingIds: string[] }> {
+  const supabase = getSupabase()
+  let gold = 0
+  const listingIds: string[] = []
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('market_sales')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .eq('settled', false)
+
+    for (const row of data ?? []) {
+      gold += row.gold_amount as number
+      listingIds.push(row.listing_id as string)
+    }
+
+    if (listingIds.length > 0) {
+      await supabase
+        .from('market_sales')
+        .update({ settled: true })
+        .eq('seller_id', sellerId)
+        .eq('settled', false)
+    }
+    return { gold, listingIds }
+  }
+
+  for (const [id, sale] of sales().entries()) {
+    if (sale.seller_id === sellerId && !sale.settled) {
+      gold += sale.gold_amount
+      listingIds.push(sale.listing_id)
+      sales().set(id, { ...sale, settled: true })
+    }
+  }
+  return { gold, listingIds }
+}
+
+async function recordMarketSale(input: {
+  listingId: string
+  sellerId: number
+  buyerId: number
+  goldAmount: number
+}) {
+  const id = `sale_${input.listingId}_${Date.now()}`
+  const now = new Date().toISOString()
+  const record: MarketSaleRecord = {
+    id,
+    listing_id: input.listingId,
+    seller_id: input.sellerId,
+    buyer_id: input.buyerId,
+    gold_amount: input.goldAmount,
+    settled: false,
+    created_at: now,
+  }
+
+  const supabase = getSupabase()
+  if (supabase) {
+    await supabase.from('market_sales').insert({
+      id: record.id,
+      listing_id: record.listing_id,
+      seller_id: record.seller_id,
+      buyer_id: record.buyer_id,
+      gold_amount: record.gold_amount,
+      settled: false,
+      created_at: now,
+    })
+  }
+  sales().set(id, record)
+}
+
 export async function syncPublicPlayer(input: {
   telegramId: number
   username: string
@@ -70,7 +185,15 @@ export async function syncPublicPlayer(input: {
   highestFloor: number
   guildId?: string
   marketListings: MarketListingPayload[]
-}) {
+}): Promise<SyncResult> {
+  const payout = await collectPendingSales(input.telegramId)
+  const soldIds = await getSoldListingIdsForSeller(input.telegramId)
+  const activeListings = input.marketListings.filter((l) => !soldIds.has(l.id))
+
+  const soldFromClient = input.marketListings
+    .filter((l) => soldIds.has(l.id))
+    .map((l) => l.id)
+
   const now = new Date().toISOString()
   const record: PublicPlayerRecord = {
     telegram_id: input.telegramId,
@@ -94,9 +217,9 @@ export async function syncPublicPlayer(input: {
       updated_at: now,
     })
     await supabase.from('market_listings').delete().eq('seller_id', input.telegramId)
-    if (input.marketListings.length > 0) {
+    if (activeListings.length > 0) {
       await supabase.from('market_listings').insert(
-        input.marketListings.map((l) => ({
+        activeListings.map((l) => ({
           id: l.id,
           seller_id: input.telegramId,
           seller_name: l.sellerName,
@@ -113,9 +236,12 @@ export async function syncPublicPlayer(input: {
   for (const [id, listing] of listings().entries()) {
     if (listing.sellerId === input.telegramId) listings().delete(id)
   }
-  for (const listing of input.marketListings) {
+  for (const listing of activeListings) {
     listings().set(listing.id, { ...listing, created_at: now })
   }
+
+  const soldListingIds = [...new Set([...payout.listingIds, ...soldFromClient])]
+  return { pendingGold: payout.gold, soldListingIds }
 }
 
 export async function getLeaderboardRecords(): Promise<PublicPlayerRecord[]> {
@@ -182,6 +308,12 @@ export async function buyMarketListing(
     if (listing.sellerId === buyerId) return null
     await supabase.from('market_listings').delete().eq('id', listingId)
     listings().delete(listingId)
+    await recordMarketSale({
+      listingId,
+      sellerId: listing.sellerId,
+      buyerId,
+      goldAmount: listing.goldPrice,
+    })
     return listing
   }
 
@@ -189,5 +321,11 @@ export async function buyMarketListing(
   if (!listing || listing.sellerId === buyerId) return null
   listings().delete(listingId)
   const { created_at: _, ...payload } = listing
+  await recordMarketSale({
+    listingId,
+    sellerId: payload.sellerId,
+    buyerId,
+    goldAmount: payload.goldPrice,
+  })
   return payload
 }

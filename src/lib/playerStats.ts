@@ -37,8 +37,12 @@ export function getEnergyRegenIntervalMs(player: Player): number {
 }
 
 export function getHpRegenIntervalMs(player: Player): number {
+  const max = getCombatMaxHp(player)
   const end = getAllocatedStats(player).endurance
-  return Math.max(30_000, BASE_HP_REGEN_MS - end * 3_000)
+  const targetFullHealMs = 3_600_000
+  const baseInterval = max > 1 ? Math.floor(targetFullHealMs / (max - 1)) : targetFullHealMs
+  const enduranceBonus = Math.min(0.3, end * 0.025)
+  return Math.max(2_000, Math.floor(baseInterval * (1 - enduranceBonus)))
 }
 
 export function getCombatMaxHp(player: Player): number {
