@@ -20,6 +20,7 @@ export interface Resource {
 
 export interface MarketListing {
   id: string
+  sellerId?: number
   sellerName: string
   item?: Item
   resourceId?: ResourceId
@@ -284,6 +285,7 @@ export interface LeaderboardEntry {
   displayName: string
   floor: number
   level: number
+  guildId?: string
   isFriend?: boolean
 }
 

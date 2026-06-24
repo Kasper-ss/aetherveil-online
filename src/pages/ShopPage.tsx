@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Star, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,13 +14,13 @@ import { hapticSuccess, hapticError, hapticImpact, showTelegramAlert } from '@/l
 import { playSfx } from '@/lib/audio'
 import { formatNumber } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
-import { useLocaleStore } from '@/store/localeStore'
 import { createItemInstance } from '@/data/items'
 import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { getActiveBuffs, formatBuffRemaining } from '@/lib/playerBuffs'
 import type { StarProductId } from '@/data/starShop'
-import type { Item, ItemRarity, ResourceId } from '@/types/game'
+import type { Item, ItemRarity, ResourceId, MarketListing } from '@/types/game'
+import { fetchServerMarket } from '@/lib/multiplayerSync'
 
 const SHOP_TYPE_RU: Record<string, string> = {
   consumable: 'Расходник',
@@ -54,15 +54,18 @@ const SET_FILTERS: { id: SetFilter; label: string }[] = [
 export function ShopPage() {
   const navigate = useNavigate()
   const t = useT()
-  const locale = useLocaleStore((s) => s.locale)
   const player = usePlayerStore((s) => s.player)
   const spendGold = usePlayerStore((s) => s.spendGold)
   const spendGems = usePlayerStore((s) => s.spendGems)
   const listOnMarket = usePlayerStore((s) => s.listOnMarket)
   const listResourceOnMarket = usePlayerStore((s) => s.listResourceOnMarket)
   const removeMarketListing = usePlayerStore((s) => s.removeMarketListing)
+  const buyMarketListing = usePlayerStore((s) => s.buyMarketListing)
   const purchaseStarProduct = usePlayerStore((s) => s.purchaseStarProduct)
   const [buyingStarId, setBuyingStarId] = useState<StarProductId | null>(null)
+  const [buyingListingId, setBuyingListingId] = useState<string | null>(null)
+  const [marketListings, setMarketListings] = useState<MarketListing[]>([])
+  const [marketLoading, setMarketLoading] = useState(false)
   const [starShopMessage, setStarShopMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const [listPrice, setListPrice] = useState('100')
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -74,7 +77,39 @@ export function ShopPage() {
 
   useTelegramBackButton(() => navigate('/'), true)
 
+  const loadMarket = useCallback(async () => {
+    if (!player) return
+    setMarketLoading(true)
+    const listings = await fetchServerMarket(player.telegramId)
+    setMarketListings(listings)
+    setMarketLoading(false)
+  }, [player])
+
+  useEffect(() => {
+    loadMarket()
+    const interval = setInterval(loadMarket, 20_000)
+    return () => clearInterval(interval)
+  }, [loadMarket])
+
   if (!player) return null
+
+  async function handleBuyListing(listing: MarketListing) {
+    setBuyingListingId(listing.id)
+    try {
+      const ok = await buyMarketListing(listing)
+      if (ok) {
+        hapticSuccess()
+        playSfx('loot')
+        await loadMarket()
+      } else {
+        hapticError()
+        showTelegramAlert('Не удалось купить лот. Возможно, его уже купили.')
+        await loadMarket()
+      }
+    } finally {
+      setBuyingListingId(null)
+    }
+  }
 
   function buyNpcItem(shopItem: typeof SHOP_ITEMS[0]) {
     if (shopItem.goldPrice && !spendGold(shopItem.goldPrice)) { hapticError(); return }
@@ -122,6 +157,7 @@ export function ShopPage() {
       setSelectedItem(null)
       hapticSuccess()
       playSfx('loot')
+      void loadMarket()
     } else {
       hapticError()
     }
@@ -138,6 +174,7 @@ export function ShopPage() {
       setResourceAmount('1')
       hapticSuccess()
       playSfx('loot')
+      void loadMarket()
     } else {
       hapticError()
     }
@@ -500,12 +537,40 @@ export function ShopPage() {
           </Tabs>
 
           <div className="space-y-2">
-            <p className="text-xs text-slate-500 text-center py-4">{t('shop.noListings')}</p>
-            <p className="text-[10px] text-slate-600 text-center">
-              {locale === 'ru'
-                ? 'Лоты других игроков появятся при подключении Supabase Realtime'
-                : 'Other players\' listings will appear when Supabase Realtime is connected'}
-            </p>
+            <h3 className="text-sm font-medium text-slate-300">{t('shop.playerListings')}</h3>
+            {marketLoading && marketListings.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-4">Загрузка лотов...</p>
+            ) : marketListings.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-4">{t('shop.noListings')}</p>
+            ) : (
+              marketListings.map((listing) => {
+                const res = listing.resourceId ? RESOURCES[listing.resourceId] : null
+                return (
+                  <Card key={listing.id}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <span className="text-2xl">{listing.item?.icon ?? res?.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">
+                          {listing.item?.name ?? res?.nameRu}
+                          {listing.resourceAmount ? ` ×${listing.resourceAmount}` : ''}
+                        </div>
+                        <div className="text-[10px] text-slate-500">{listing.sellerName}</div>
+                        <div className="text-xs text-aether-gold">🪙 {formatNumber(listing.goldPrice)}</div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="gold"
+                        disabled={buyingListingId === listing.id || player.gold < listing.goldPrice}
+                        onClick={() => handleBuyListing(listing)}
+                      >
+                        {buyingListingId === listing.id ? '...' : 'Купить'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
           </div>
         </TabsContent>
       </Tabs>

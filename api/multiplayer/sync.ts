@@ -1,0 +1,55 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { syncPublicPlayer } from '../../server/playerRegistry.js'
+import { validateInitData, getBotToken } from '../../server/telegram.js'
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  try {
+    const body = req.body as {
+      initData?: string
+      level?: number
+      highestFloor?: number
+      displayName?: string
+      username?: string
+      guildId?: string
+      marketListings?: unknown[]
+    }
+
+    const user = validateInitData(body.initData ?? '', getBotToken())
+    if (!user) {
+      return res.status(401).json({ error: 'Недействительные данные Telegram' })
+    }
+
+    const marketListings = (body.marketListings ?? []).map((raw) => {
+      const l = raw as Record<string, unknown>
+      return {
+        id: String(l.id ?? ''),
+        sellerId: user.id,
+        sellerName: String(l.sellerName ?? user.first_name),
+        item: l.item as Record<string, unknown> | undefined,
+        resourceId: l.resourceId as string | undefined,
+        resourceAmount: l.resourceAmount as number | undefined,
+        goldPrice: Number(l.goldPrice ?? 0),
+        isPlayerListing: true,
+      }
+    }).filter((l) => l.id && l.goldPrice > 0)
+
+    await syncPublicPlayer({
+      telegramId: user.id,
+      username: body.username ?? user.username ?? `user_${user.id}`,
+      displayName: body.displayName ?? user.first_name,
+      level: Number(body.level ?? 1),
+      highestFloor: Number(body.highestFloor ?? 1),
+      guildId: body.guildId,
+      marketListings,
+    })
+
+    return res.status(200).json({ ok: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Sync error'
+    return res.status(500).json({ error: message })
+  }
+}

@@ -3,6 +3,8 @@ import type { Plugin } from 'vite'
 import { loadEnv } from 'vite'
 import { createStarInvoice, fulfillStarPurchase, handleTelegramWebhook } from './server/starsPayment.js'
 import { setWebhook, getMiniAppUrl } from './server/telegram.js'
+import { syncPublicPlayer, getLeaderboardRecords, getMarketListingRecords, buyMarketListing } from './server/playerRegistry.js'
+import { validateInitData, getBotToken } from './server/telegram.js'
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -79,6 +81,84 @@ export function starsApiPlugin(): Plugin {
             const appUrl = getMiniAppUrl() || 'http://localhost:5173'
             await setWebhook(`${appUrl}/api/telegram/webhook`, process.env.TELEGRAM_WEBHOOK_SECRET)
             sendJson(res, 200, { ok: true, webhookUrl: `${appUrl}/api/telegram/webhook` })
+            return
+          }
+
+          if (req.method === 'POST' && req.url === '/api/multiplayer/sync') {
+            const body = await readJsonBody(req) as {
+              initData?: string
+              level?: number
+              highestFloor?: number
+              displayName?: string
+              username?: string
+              guildId?: string
+              marketListings?: unknown[]
+            }
+            const user = validateInitData(body.initData ?? '', getBotToken())
+            if (!user) {
+              sendJson(res, 401, { error: 'Недействительные данные Telegram' })
+              return
+            }
+            const marketListings = (body.marketListings ?? []).map((raw) => {
+              const l = raw as Record<string, unknown>
+              return {
+                id: String(l.id ?? ''),
+                sellerId: user.id,
+                sellerName: String(l.sellerName ?? user.first_name),
+                item: l.item as Record<string, unknown> | undefined,
+                resourceId: l.resourceId as string | undefined,
+                resourceAmount: l.resourceAmount as number | undefined,
+                goldPrice: Number(l.goldPrice ?? 0),
+                isPlayerListing: true,
+              }
+            }).filter((l) => l.id && l.goldPrice > 0)
+            await syncPublicPlayer({
+              telegramId: user.id,
+              username: body.username ?? user.username ?? `user_${user.id}`,
+              displayName: body.displayName ?? user.first_name,
+              level: Number(body.level ?? 1),
+              highestFloor: Number(body.highestFloor ?? 1),
+              guildId: body.guildId,
+              marketListings,
+            })
+            sendJson(res, 200, { ok: true })
+            return
+          }
+
+          if (req.method === 'GET' && req.url === '/api/multiplayer/leaderboard') {
+            const players = await getLeaderboardRecords()
+            const entries = players.map((p, index) => ({
+              rank: index + 1,
+              telegramId: p.telegram_id,
+              username: p.username,
+              displayName: p.display_name,
+              floor: p.highest_floor,
+              level: p.level,
+              guildId: p.guild_id,
+            }))
+            sendJson(res, 200, { ok: true, entries })
+            return
+          }
+
+          if (req.method === 'GET' && req.url === '/api/multiplayer/market') {
+            const listings = await getMarketListingRecords()
+            sendJson(res, 200, { ok: true, listings })
+            return
+          }
+
+          if (req.method === 'POST' && req.url === '/api/multiplayer/market-buy') {
+            const body = await readJsonBody(req) as { initData?: string; listingId?: string }
+            const user = validateInitData(body.initData ?? '', getBotToken())
+            if (!user) {
+              sendJson(res, 401, { error: 'Недействительные данные Telegram' })
+              return
+            }
+            const listing = await buyMarketListing(user.id, body.listingId ?? '')
+            if (!listing) {
+              sendJson(res, 404, { error: 'Лот не найден' })
+              return
+            }
+            sendJson(res, 200, { ok: true, listing })
             return
           }
 

@@ -14,6 +14,7 @@ import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS } from '@/data/items'
 import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMaxHp, getHpRegenIntervalMs, getPlayerCurrentHp, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
+import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
 import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
 import { type StarProductId } from '@/data/starShop'
 
@@ -57,6 +58,7 @@ interface PlayerState {
   listOnMarket: (item: Item, price: number) => boolean
   listResourceOnMarket: (resourceId: ResourceId, amount: number, price: number) => boolean
   removeMarketListing: (listingId: string) => void
+  buyMarketListing: (listing: MarketListing) => Promise<boolean>
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
   allocateStat: (key: AllocStatKey, points?: number) => boolean
@@ -107,6 +109,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle })
       get().tryRegenVitals()
+      void syncPlayerToServer(get().player ?? player)
       registerOnlinePlayer(get().player ?? player)
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, resetting save', error)
@@ -535,12 +538,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().removeItemByInstance(item.instanceId)
     const listing: MarketListing = {
       id: `listing_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      sellerId: player.telegramId,
       sellerName: player.displayName,
       item,
       goldPrice: price,
       isPlayerListing: true,
     }
     get().updatePlayer({ marketListings: [...player.marketListings, listing] })
+    void syncPlayerToServer(get().player!)
     return true
   },
 
@@ -552,6 +557,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const updated = { ...player.resources, [resourceId]: have - amount }
     const listing: MarketListing = {
       id: `listing_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      sellerId: player.telegramId,
       sellerName: player.displayName,
       resourceId,
       resourceAmount: amount,
@@ -559,6 +565,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isPlayerListing: true,
     }
     get().updatePlayer({ resources: updated, marketListings: [...player.marketListings, listing] })
+    void syncPlayerToServer(get().player!)
     return true
   },
 
@@ -646,6 +653,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().addResources({ [listing.resourceId]: listing.resourceAmount })
     }
     get().updatePlayer({ marketListings: player.marketListings.filter((l) => l.id !== listingId) })
+    void syncPlayerToServer(get().player!)
+  },
+
+  buyMarketListing: async (listing) => {
+    const { player } = get()
+    if (!player || listing.sellerId === player.telegramId) return false
+    if (player.gold < listing.goldPrice) return false
+
+    const bought = await buyServerMarketListing(listing.id)
+    if (!bought) return false
+    if (!get().spendGold(listing.goldPrice)) return false
+
+    if (bought.item) get().addItem(bought.item)
+    if (bought.resourceId && bought.resourceAmount) {
+      get().addResources({ [bought.resourceId]: bought.resourceAmount })
+    }
+    return true
   },
 
   resetAllocatedStats: () => {

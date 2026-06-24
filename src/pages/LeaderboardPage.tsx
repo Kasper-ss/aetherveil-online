@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,6 @@ function LeaderboardRow({ entry, selfId }: { entry: LeaderboardEntry; selfId: nu
           <div className="text-sm font-medium text-white truncate">
             {entry.displayName}
             {isMe && <span className="text-aether-cyan ml-1">(Вы)</span>}
-            {entry.isFriend && !isMe && <span className="text-aether-purple ml-1">★</span>}
           </div>
           <div className="text-[10px] text-slate-500 truncate">@{entry.username}</div>
         </div>
@@ -47,22 +46,38 @@ export function LeaderboardPage() {
   const navigate = useNavigate()
   const t = useT()
   const player = usePlayerStore((s) => s.player)
-  const [, setTick] = useState(0)
+  const [globalBoard, setGlobalBoard] = useState<LeaderboardEntry[]>([])
+  const [friendsBoard, setFriendsBoard] = useState<LeaderboardEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
   useTelegramBackButton(() => navigate('/'), true)
 
+  const loadBoards = useCallback(async () => {
+    if (!player) return
+    setLoading(true)
+    const [global, friends] = await Promise.all([
+      getLeaderboardEntries(player, false),
+      getLeaderboardEntries(player, true),
+    ])
+    setGlobalBoard(global)
+    setFriendsBoard(friends)
+    setLoading(false)
+  }, [player])
+
   useEffect(() => {
-    const interval = setInterval(() => setTick((n) => n + 1), 60_000)
+    loadBoards()
+    const interval = setInterval(loadBoards, 30_000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadBoards])
 
   if (!player) return null
 
   const selfId = player.telegramId
-  const globalBoard = getLeaderboardEntries(player, false)
-  const friendsBoard = getLeaderboardEntries(player, true)
 
   function renderBoard(entries: LeaderboardEntry[]) {
+    if (loading) {
+      return <p className="text-sm text-slate-500 text-center py-8">Загрузка рейтинга...</p>
+    }
     if (entries.length === 0) {
       return <p className="text-sm text-slate-500 text-center py-8">{t('leaderboard.empty')}</p>
     }
