@@ -88,6 +88,8 @@ interface PlayerState {
   applyStarProductReward: (productId: StarProductId) => boolean
   upgradePlayerSkill: (skillId: import('@/types/game').SkillId) => boolean
   getPlayerSkillMissing: (skillId: import('@/types/game').SkillId) => MissingCost[]
+  addFriendById: (friendId: number) => boolean
+  removeFriend: (friendId: number) => boolean
   resetAllocatedStats: () => boolean
 }
 
@@ -97,10 +99,10 @@ function syncEnergyFields(player: Player): Partial<Player> {
   return { maxEnergy: getMaxEnergy(player) }
 }
 
-function getEquipSlotForItem(item: Item, classId?: PlayerClass): keyof Player['equipped'] | null {
+function getEquipSlotForItem(item: Item, _classId?: PlayerClass): keyof Player['equipped'] | null {
   if (item.slot === 'consumable') return null
   if (item.slot === 'pet') return 'pet'
-  if (item.slot === 'weapon') return classId === 'summoner' ? null : 'weapon'
+  if (item.slot === 'weapon') return 'weapon'
   return item.slot as keyof Player['equipped']
 }
 
@@ -848,6 +850,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     const skillLevels = { ...player.skillLevels, [skillId]: current + 1 }
     get().updatePlayer({ skillLevels })
+    return true
+  },
+
+  addFriendById: (friendId) => {
+    const { player } = get()
+    if (!player) return false
+    const id = Math.floor(Number(friendId))
+    if (!Number.isFinite(id) || id <= 0 || id === player.telegramId) return false
+    const friends = [...(player.friendIds ?? [])]
+    if (friends.includes(id)) return false
+    get().updatePlayer({ friendIds: [...friends, id] })
+    return true
+  },
+
+  removeFriend: (friendId) => {
+    const { player } = get()
+    if (!player) return false
+    const friends = (player.friendIds ?? []).filter((id) => id !== friendId)
+    if (friends.length === (player.friendIds ?? []).length) return false
+    get().updatePlayer({ friendIds: friends })
     return true
   },
 

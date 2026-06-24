@@ -106,7 +106,13 @@ export function LeaderboardPage() {
         </TabsList>
 
         <TabsContent value="global">{renderBoard(globalBoard)}</TabsContent>
-        <TabsContent value="friends">{renderBoard(friendsBoard)}</TabsContent>
+        <TabsContent value="friends">
+          {!loading && friendsBoard.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-8">{t('friends.emptyHint')}</p>
+          ) : (
+            renderBoard(friendsBoard)
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   )

@@ -26,9 +26,7 @@ export function InventoryPage() {
 
   if (!player) return null
 
-  const visibleSlots = player.classId === 'summoner'
-    ? EQUIP_ORDER.filter((s) => s !== 'weapon')
-    : EQUIP_ORDER.filter((s) => s !== 'pet')
+  const visibleSlots = EQUIP_ORDER
 
   const setBonuses = getActiveSetBonuses(player)
 

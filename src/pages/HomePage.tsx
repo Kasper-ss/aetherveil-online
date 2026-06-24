@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles } from 'lucide-react'
+import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -10,7 +11,8 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { usePlayerStore, usePlayerStats } from '@/store/playerStore'
 import { useUIStore } from '@/store/uiStore'
 import { xpForLevel, formatNumber } from '@/lib/utils'
-import { shareInviteLink, hapticImpact } from '@/lib/telegram'
+import { hapticImpact, hapticSuccess } from '@/lib/telegram'
+import { InviteFriendDialog } from '@/components/InviteFriendDialog'
 import { playSfx } from '@/lib/audio'
 import { getFloorData } from '@/data/gameData'
 import { getMobsRequiredForFloor } from '@/data/items'
@@ -23,6 +25,7 @@ export function HomePage() {
   const t = useT()
   const setShowDaily = useUIStore((s) => s.setShowDailyReward)
   const setShowStats = useUIStore((s) => s.setShowStatDistribution)
+  const [showInvite, setShowInvite] = useState(false)
   const player = usePlayerStore((s) => s.player)
   const playerLoading = usePlayerStore((s) => s.isLoading)
   const stats = usePlayerStats()
@@ -65,8 +68,17 @@ export function HomePage() {
   }
 
   function handleShare() {
-    void shareInviteLink(player!.referralCode)
+    setShowInvite(true)
     hapticImpact('medium')
+  }
+
+  async function copyPlayerId() {
+    try {
+      await navigator.clipboard.writeText(String(player!.telegramId))
+      hapticSuccess()
+    } catch {
+      /* clipboard unavailable */
+    }
   }
 
   const menuItems = [
@@ -92,17 +104,28 @@ export function HomePage() {
             {classData?.icon ?? '⚔️'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-bold text-white truncate">{player.displayName}</h1>
+              <span className="text-[11px] font-bold bg-aether-cyan/20 text-aether-cyan px-2 py-0.5 rounded-full shrink-0">
+                {t('hub.level')}{player.level}
+              </span>
               {player.statPoints > 0 && (
                 <span className="text-[10px] bg-aether-gold/20 text-aether-gold px-1.5 py-0.5 rounded-full shrink-0">
                   +{player.statPoints}
                 </span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => void copyPlayerId()}
+              className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 hover:text-aether-cyan transition-colors"
+            >
+              ID: {player.telegramId}
+              <Copy className="h-3 w-3" />
+            </button>
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-xs text-aether-cyan truncate">
-                {t('hub.level')}{player.level} · {t('hub.floor')} {player.farmFloor}
+                {t('hub.floor')} {player.farmFloor}
                 {classData && ` · ${classData.nameRu}`}
               </p>
               <Button
@@ -165,6 +188,8 @@ export function HomePage() {
           <Share2 className="h-4 w-4" /> {t('hub.invite')}
         </Button>
       </div>
+
+      <InviteFriendDialog open={showInvite} onOpenChange={setShowInvite} />
 
       <div className="grid grid-cols-2 gap-3 p-4">
         {menuItems.map((item) => (

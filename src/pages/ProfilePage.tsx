@@ -89,6 +89,7 @@ export function ProfilePage() {
         <h2 className="text-xl font-bold text-white">{player.displayName}</h2>
         <p className="text-sm text-slate-400">@{player.username}</p>
         <p className="text-xs text-aether-cyan mt-1">Ур. {player.level} · Этаж {player.highestFloor}</p>
+        <p className="text-[10px] text-slate-500 mt-1 font-mono">ID: {player.telegramId}</p>
         <Button variant="outline" size="sm" className="mt-2" onClick={() => { setNewName(player.displayName); setShowRename(true) }}>
           Сменить ник
         </Button>

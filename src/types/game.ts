@@ -220,6 +220,7 @@ export interface Player {
   buffDailyBonusUntil?: string
   auraEffectId?: string
   cosmeticAvatarId?: string
+  friendIds?: number[]
 }
 
 export interface GuildChatMessage {

@@ -87,10 +87,8 @@ function buildSelfOnly(self: Player): LeaderboardEntry[] {
 }
 
 export function filterFriendsLeaderboard(entries: LeaderboardEntry[], self: Player): LeaderboardEntry[] {
-  const guildId = self.guildId
-  const filtered = entries.filter(
-    (e) => e.telegramId === self.telegramId || (guildId && e.guildId === guildId),
-  )
+  const friendSet = new Set([self.telegramId, ...(self.friendIds ?? [])])
+  const filtered = entries.filter((e) => friendSet.has(e.telegramId))
   return filtered.map((entry, index) => ({ ...entry, rank: index + 1 }))
 }
 

@@ -333,10 +333,9 @@ export const EMPTY_EQUIPPED: EquippedItems = {
   necklace: null, ring: null, weapon: null, pet: null,
 }
 
-export function getEquipSlotsForClass(classId?: string): EquipSlot[] {
+export function getEquipSlotsForClass(_classId?: string): EquipSlot[] {
   const base: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring']
-  if (classId === 'summoner') return [...base, 'pet']
-  return [...base, 'weapon']
+  return [...base, 'weapon', 'pet']
 }
 
 export function getMobsRequiredForFloor(floor: number): number {

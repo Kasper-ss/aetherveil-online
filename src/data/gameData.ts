@@ -136,6 +136,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     buffDailyBonusUntil: player.buffDailyBonusUntil,
     auraEffectId: player.auraEffectId,
     cosmeticAvatarId: player.cosmeticAvatarId,
+    friendIds: player.friendIds ?? [],
   }
 }
 
@@ -166,5 +167,6 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     bankBalance: 0,
     bankLastInterestAt: new Date().toISOString(),
     guildId: GUILD_ID,
+    friendIds: [],
   }
 }
