@@ -22,6 +22,8 @@ import { getActiveBuffs, formatBuffRemaining } from '@/lib/playerBuffs'
 import type { StarProductId } from '@/data/starShop'
 import type { Item, ItemRarity, ResourceId, MarketListing } from '@/types/game'
 import { fetchServerMarket } from '@/lib/multiplayerSync'
+import { getNpcSellGold, NPC_SELL_RATE_LABEL } from '@/data/resourceShop'
+import { playerHasTool } from '@/data/tools'
 
 const SHOP_TYPE_RU: Record<string, string> = {
   consumable: 'Расходник',
@@ -30,12 +32,15 @@ const SHOP_TYPE_RU: Record<string, string> = {
   equipment: 'Снаряжение',
   tool: 'Инструмент',
   scroll: 'Свиток',
+  resource: 'Ресурсы',
 }
 
 const BASE_NPC = SHOP_ITEMS.filter(
-  (i) => i.type !== 'equipment' && i.type !== 'tool' && i.type !== 'scroll' && !i.starsPrice,
+  (i) => i.type !== 'equipment' && i.type !== 'tool' && i.type !== 'scroll' && i.type !== 'resource'
+    && i.id !== 'shop_fishing_bait_bulk' && !i.starsPrice,
 )
 const TOOL_NPC = SHOP_ITEMS.filter((i) => i.type === 'tool' || i.id === 'shop_fishing_bait')
+const RESOURCE_NPC = SHOP_ITEMS.filter((i) => i.type === 'resource' || i.id === 'shop_fishing_bait_bulk')
 const SCROLL_NPC = SHOP_ITEMS.filter((i) => i.type === 'scroll')
 const EQUIP_NPC = SHOP_ITEMS.filter((i) => i.type === 'equipment')
 
@@ -70,6 +75,8 @@ export function ShopPage() {
   const removeMarketListing = usePlayerStore((s) => s.removeMarketListing)
   const buyMarketListing = usePlayerStore((s) => s.buyMarketListing)
   const purchaseStarProduct = usePlayerStore((s) => s.purchaseStarProduct)
+  const sellResourceToNpc = usePlayerStore((s) => s.sellResourceToNpc)
+  const sellItemToNpc = usePlayerStore((s) => s.sellItemToNpc)
   const [buyingStarId, setBuyingStarId] = useState<StarProductId | null>(null)
   const [buyingListingId, setBuyingListingId] = useState<string | null>(null)
   const [marketListings, setMarketListings] = useState<MarketListing[]>([])
@@ -123,6 +130,8 @@ export function ShopPage() {
   function buyNpcItem(shopItem: typeof SHOP_ITEMS[0]) {
     if (shopItem.type === 'tool' && shopItem.toolId) {
       if (p.ownedTools?.includes(shopItem.toolId)) { hapticError(); return }
+      if (shopItem.toolId === 'pickaxe' && playerHasTool(p, 'pickaxe')) { hapticError(); return }
+      if (shopItem.toolId === 'fishing_rod' && playerHasTool(p, 'fishing_rod')) { hapticError(); return }
     }
     if (shopItem.type === 'scroll' && shopItem.scrollId) {
       if (p.unlockedSetScrolls?.includes(shopItem.scrollId)) { hapticError(); return }
@@ -134,6 +143,8 @@ export function ShopPage() {
       updatePlayer({ ownedTools: [...(p.ownedTools ?? []), shopItem.toolId] })
     } else if (shopItem.type === 'scroll' && shopItem.scrollId) {
       updatePlayer({ unlockedSetScrolls: [...(p.unlockedSetScrolls ?? []), shopItem.scrollId] })
+    } else if (shopItem.resourceBundle) {
+      usePlayerStore.getState().addResources(shopItem.resourceBundle)
     } else if (shopItem.itemId) {
       const count = shopItem.bundleCount ?? 1
       for (let i = 0; i < count; i++) {
@@ -143,6 +154,28 @@ export function ShopPage() {
     }
     hapticSuccess()
     playSfx('loot')
+  }
+
+  function handleNpcSellResource() {
+    if (!selectedResource) { hapticError(); return }
+    const amount = parseInt(resourceAmount, 10)
+    if (isNaN(amount) || amount < 1) { hapticError(); return }
+    if (sellResourceToNpc(selectedResource, amount)) {
+      hapticSuccess()
+      playSfx('loot')
+    } else {
+      hapticError()
+    }
+  }
+
+  function handleNpcSellItem(item: Item) {
+    if (sellItemToNpc(item)) {
+      hapticSuccess()
+      playSfx('loot')
+      setSelectedItem(null)
+    } else {
+      hapticError()
+    }
   }
 
   async function handleStarPurchase(productId: StarProductId) {
@@ -248,9 +281,19 @@ export function ShopPage() {
 
   function renderNpcCard(item: typeof SHOP_ITEMS[0]) {
     const template = item.itemId ? ALL_ITEMS[item.itemId] : null
-    const ownedTool = item.toolId && p.ownedTools?.includes(item.toolId)
+    const ownedTool = item.toolId && (
+      p.ownedTools?.includes(item.toolId)
+      || (item.toolId === 'pickaxe' && playerHasTool(p, 'pickaxe'))
+      || (item.toolId === 'fishing_rod' && playerHasTool(p, 'fishing_rod'))
+    )
     const ownedScroll = item.scrollId && p.unlockedSetScrolls?.includes(item.scrollId)
     const disabled = !!(ownedTool || ownedScroll)
+    const bundleLabel = item.resourceBundle
+      ? Object.entries(item.resourceBundle)
+        .filter(([, v]) => v)
+        .map(([rid, v]) => `${RESOURCES[rid as ResourceId].icon}${v}`)
+        .join(' ')
+      : null
     return (
       <Card key={item.id}>
         <CardContent className="p-3 flex items-center gap-3">
@@ -271,6 +314,9 @@ export function ShopPage() {
             </div>
             {template && Object.keys(template.stats).length > 0 && (
               <div className="text-[9px] text-aether-cyan mt-0.5">{formatItemStats(template)}</div>
+            )}
+            {bundleLabel && (
+              <div className="text-[9px] text-aether-cyan mt-0.5">{bundleLabel}</div>
             )}
           </div>
           <Button
@@ -313,6 +359,7 @@ export function ShopPage() {
             <TabsList className="mb-3 w-full">
               <TabsTrigger value="general" className="flex-1 text-[10px]">Товары</TabsTrigger>
               <TabsTrigger value="tools" className="flex-1 text-[10px]">Инструменты</TabsTrigger>
+              <TabsTrigger value="resources" className="flex-1 text-[10px]">Ресурсы</TabsTrigger>
               <TabsTrigger value="scrolls" className="flex-1 text-[10px]">Свитки</TabsTrigger>
               <TabsTrigger value="equipment" className="flex-1 text-[10px]">Снаряжение</TabsTrigger>
             </TabsList>
@@ -320,8 +367,12 @@ export function ShopPage() {
               <div className="space-y-3">{BASE_NPC.map(renderNpcCard)}</div>
             </TabsContent>
             <TabsContent value="tools">
-              <p className="text-[10px] text-slate-500 mb-2">Инструменты для фарма профессий.</p>
+              <p className="text-[10px] text-slate-500 mb-2">Инструменты для профессий, шахты и рыбалки. Улучшенные версии дают бонусы.</p>
               <div className="space-y-3">{TOOL_NPC.map(renderNpcCard)}</div>
+            </TabsContent>
+            <TabsContent value="resources">
+              <p className="text-[10px] text-slate-500 mb-2">Готовые наборы ресурсов для крафта и кухни.</p>
+              <div className="space-y-3">{RESOURCE_NPC.map(renderNpcCard)}</div>
             </TabsContent>
             <TabsContent value="scrolls">
               <p className="text-[10px] text-slate-500 mb-2">Открывают рецепты эпических и легендарных сетов в Кузнице.</p>
@@ -477,6 +528,29 @@ export function ShopPage() {
             </TabsList>
 
             <TabsContent value="items">
+              <Card className="mb-4 border-aether-gold/20">
+                <CardContent className="p-3">
+                  <h3 className="text-sm font-medium text-white mb-1">Продать торговцу</h3>
+                  <p className="text-[10px] text-slate-500 mb-2">Мгновенно за золото по фиксированной цене.</p>
+                  {sellableItems.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-2">Нет предметов</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-[28vh] overflow-y-auto">
+                      {sellableItems.filter((i) => (i.sellPrice ?? 0) > 0).map((item) => (
+                        <button
+                          key={item.instanceId}
+                          type="button"
+                          onClick={() => handleNpcSellItem(item)}
+                          className="p-2 rounded-lg text-left border border-aether-border hover:border-aether-gold/50"
+                        >
+                          <div className="text-[11px] text-white truncate">{item.name}</div>
+                          <div className="text-[10px] text-aether-gold">🪙 {item.sellPrice}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
               <Card className="mb-4">
                 <CardContent className="p-3">
                   <h3 className="text-sm font-medium text-white mb-2">{t('shop.listItem')}</h3>
@@ -532,6 +606,60 @@ export function ShopPage() {
             </TabsContent>
 
             <TabsContent value="resources">
+              <Card className="mb-4 border-aether-gold/20">
+                <CardContent className="p-3">
+                  <h3 className="text-sm font-medium text-white mb-1">Продать торговцу</h3>
+                  <p className="text-[10px] text-slate-500 mb-2">{NPC_SELL_RATE_LABEL}</p>
+                  {sellableResources.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">Нет ресурсов</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-4 gap-1 mb-3">
+                        {sellableResources.map((id) => {
+                          const res = RESOURCES[id]
+                          const have = player.resources[id] ?? 0
+                          const unitPrice = getNpcSellGold(id, 1)
+                          if (unitPrice <= 0) return null
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => { setSelectedResource(id); setSelectedItem(null) }}
+                              className={`p-2 rounded-lg text-center border transition-colors ${
+                                selectedResource === id
+                                  ? 'border-aether-gold bg-aether-gold/10'
+                                  : 'border-aether-border hover:border-aether-gold/50'
+                              }`}
+                            >
+                              <div className="text-lg">{res.icon}</div>
+                              <div className="text-[8px] text-slate-400">{have}</div>
+                              <div className="text-[7px] text-aether-gold">🪙{unitPrice}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {selectedResource && getNpcSellGold(selectedResource, 1) > 0 && (
+                        <>
+                          <p className="text-xs text-slate-400 mb-2 text-center">
+                            {RESOURCES[selectedResource].nameRu} · 🪙{getNpcSellGold(selectedResource, parseInt(resourceAmount, 10) || 0)} за {resourceAmount || 0} шт.
+                          </p>
+                          <input
+                            type="number"
+                            value={resourceAmount}
+                            onChange={(e) => setResourceAmount(e.target.value)}
+                            className="w-full bg-aether-bg border border-aether-border rounded-lg px-3 py-2 text-sm text-white mb-2"
+                            placeholder="Количество"
+                            min={1}
+                          />
+                          <Button className="w-full h-11 mb-3" variant="gold" onClick={handleNpcSellResource}>
+                            Продать торговцу
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
               <Card className="mb-4">
                 <CardContent className="p-3">
                   <h3 className="text-sm font-medium text-white mb-2">Продать ресурсы</h3>

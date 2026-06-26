@@ -29,9 +29,10 @@ const JUNK_WEIGHT = 12
 
 export const FISHING_ENERGY_COST = 8
 
-export function rollFishCatch(): { fish: FishEntry | null; junk: boolean } {
+export function rollFishCatch(junkReduction = 0): { fish: FishEntry | null; junk: boolean } {
   const fishWeight = FISH_TABLE.reduce((s, f) => s + f.weight, 0)
-  const total = fishWeight + JUNK_WEIGHT
+  const junkWeight = Math.max(4, JUNK_WEIGHT * (1 - junkReduction))
+  const total = fishWeight + junkWeight
   let roll = Math.random() * total
 
   if (roll > fishWeight) return { fish: null, junk: true }

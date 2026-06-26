@@ -409,7 +409,7 @@ export interface ShopItem {
   nameRu: string
   description: string
   descriptionRu: string
-  type: 'cosmetic' | 'consumable' | 'convenience' | 'equipment' | 'tool' | 'scroll'
+  type: 'cosmetic' | 'consumable' | 'convenience' | 'equipment' | 'tool' | 'scroll' | 'resource'
   goldPrice?: number
   gemsPrice?: number
   starsPrice?: number
@@ -418,6 +418,7 @@ export interface ShopItem {
   toolId?: string
   scrollId?: string
   bundleCount?: number
+  resourceBundle?: Partial<Record<ResourceId, number>>
 }
 
 export interface IdleReward {

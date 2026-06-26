@@ -41,12 +41,13 @@ import {
   acceptGuildInvite as acceptGuildInviteMp, declineGuildInvite, getGuildInvitesFor, isInGuildRoster,
 } from '@/lib/multiplayer'
 import { PROFESSION_ACTIVITIES } from '@/data/professionActivities'
-import { playerHasTool } from '@/data/tools'
+import { playerHasTool, getMineDoubleBonus, getFishingJunkReduction, getHerbGatherBonus } from '@/data/tools'
 import {
   getMineLevelData, getUnlockedMineLevel, rollMineRewards,
 } from '@/data/mineLevels'
 import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { getNpcSellGold } from '@/data/resourceShop'
 
 interface PlayerState {
   player: Player | null
@@ -145,6 +146,8 @@ interface PlayerState {
   declineGuildInvite: (guildId: string) => void
   getPendingGuildInvites: () => import('@/lib/multiplayer').GuildInvite[]
   sendGuildGift: (toId: number, item: Item) => Promise<boolean>
+  sellResourceToNpc: (resourceId: ResourceId, amount: number) => boolean
+  sellItemToNpc: (item: Item) => boolean
 }
 
 const SAVE_KEY = 'player'
@@ -690,6 +693,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     get().addResources(activity.rewards)
+    if (activity.id === 'herb_gather' || activity.id === 'herb_rare') {
+      const extra = getHerbGatherBonus(player)
+      if (extra > 0) get().addResources({ herb: extra })
+    }
     const prevExp = getProfessionExp(player, activity.professionId)
     get().updatePlayer({
       professionExp: {
@@ -709,9 +716,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
     const level = Math.min(targetLevel ?? player.mineLevel ?? 1, unlocked)
     const mine = getMineLevelData(level)
+    const mineWithBonus = {
+      ...mine,
+      doubleChance: mine.doubleChance + getMineDoubleBonus(player),
+    }
     if (!hasInfiniteEnergy(player) && !get().spendEnergy(mine.energyCost)) return { ok: false }
 
-    const { resources, isDouble, isVein } = rollMineRewards(mine)
+    const { resources, isDouble, isVein } = rollMineRewards(mineWithBonus)
     get().addResources(resources)
     const newXp = (player.mineDigXp ?? 0) + mine.xpPerDig
     get().updatePlayer({
@@ -735,7 +746,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!hasInfiniteEnergy(player) && !get().spendEnergy(FISHING_ENERGY_COST)) return { ok: false }
 
     get().removeItemByInstance(bait.instanceId)
-    const { fish, junk } = rollFishCatch()
+    const { fish, junk } = rollFishCatch(getFishingJunkReduction(player))
 
     if (junk) {
       get().addResources({ fishing_junk: 1 })
@@ -1559,6 +1570,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().addItem(item)
       return false
     }
+  },
+
+  sellResourceToNpc: (resourceId, amount) => {
+    const { player } = get()
+    if (!player || amount < 1) return false
+    const have = player.resources[resourceId] ?? 0
+    if (have < amount) return false
+    const gold = getNpcSellGold(resourceId, amount)
+    if (gold <= 0) return false
+    if (!get().spendResources({ [resourceId]: amount })) return false
+    get().addGold(gold)
+    return true
+  },
+
+  sellItemToNpc: (item) => {
+    const { player } = get()
+    if (!player || !item.instanceId || item.slot === 'consumable') return false
+    if (!player.inventory.some((i) => i.instanceId === item.instanceId)) return false
+    const price = item.sellPrice ?? 0
+    if (price <= 0) return false
+    get().removeItemByInstance(item.instanceId)
+    get().addGold(price)
+    return true
   },
 }))
 

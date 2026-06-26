@@ -7,6 +7,7 @@ import { GUILD_ID } from '@/lib/multiplayer'
 import { syncPlayerSkills } from '@/data/playerSkills'
 import { TOOL_SHOP_ITEMS } from '@/data/tools'
 import { SCROLL_SHOP_ITEMS } from '@/data/setScrolls'
+import { RESOURCE_SHOP_ITEMS } from '@/data/resourceShop'
 import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
 import { defaultQuestState } from '@/lib/quests'
 
@@ -35,7 +36,13 @@ const EQUIPMENT_SHOP: ShopItem[] = Object.values(ALL_ITEMS)
     itemId: i.id,
   }))
 
-export const SHOP_ITEMS: ShopItem[] = [...BASE_SHOP, ...TOOL_SHOP_ITEMS, ...SCROLL_SHOP_ITEMS, ...EQUIPMENT_SHOP]
+export const SHOP_ITEMS: ShopItem[] = [
+  ...BASE_SHOP,
+  ...TOOL_SHOP_ITEMS,
+  ...RESOURCE_SHOP_ITEMS,
+  ...SCROLL_SHOP_ITEMS,
+  ...EQUIPMENT_SHOP,
+]
 
 export const DAILY_REWARDS: DailyReward[] = [
   { day: 1, gold: 150, gems: 0 },
