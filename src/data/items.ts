@@ -1,4 +1,5 @@
 import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/game'
+import { ensureItemDurability, getDurabilityStatMult } from '@/lib/equipmentDurability'
 import { LUCKY_SETS } from '@/data/luckySets'
 
 export type EquipSlot = Exclude<ItemSlot, 'consumable'>
@@ -311,21 +312,23 @@ export function getItemTemplate(id: string): Item | undefined {
 export function createItemInstance(templateId: string): Item | null {
   const template = ALL_ITEMS[templateId]
   if (!template) return null
-  return {
+  const base: Item = {
     ...template,
     instanceId: `${template.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     upgradeLevel: template.upgradeLevel ?? 1,
     starLevel: template.starLevel ?? 0,
   }
+  return ensureItemDurability(base)
 }
 
 export function getEffectiveItemStats(item: Item): Partial<Stats> {
   const lvl = item.upgradeLevel ?? 1
   const stars = item.starLevel ?? 0
   const mult = 1 + (lvl - 1) * 0.08 + stars * 0.05
+  const duraMult = getDurabilityStatMult(item)
   const result: Partial<Stats> = {}
   for (const [k, v] of Object.entries(item.stats ?? {})) {
-    result[k as keyof Stats] = Math.floor((v as number) * mult)
+    result[k as keyof Stats] = Math.floor((v as number) * mult * duraMult)
   }
   return result
 }

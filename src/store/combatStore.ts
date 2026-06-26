@@ -6,6 +6,7 @@ import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gam
 import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
+import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
 import { CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 
@@ -186,9 +187,20 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const scaled = getScaledSkill(skill, skillLevel)
     if ((combat.skillCooldowns[skillId] ?? 0) > 0) return
 
-    if (!player || player.energy < scaled.energyCost) return
+    const manaCost = scaled.energyCost
+    if (!player) return
+    if (usesMana(player)) {
+      if (getPlayerCurrentMana(player) < manaCost) return
+    } else if (player.energy < manaCost) {
+      return
+    }
 
-    usePlayerStore.getState().spendEnergy(scaled.energyCost)
+    const playerStore = usePlayerStore.getState()
+    if (usesMana(player)) {
+      if (!playerStore.spendMana(manaCost)) return
+    } else {
+      playerStore.spendEnergy(manaCost)
+    }
     const logs = [...combat.combatLog]
 
     if (scaled.healPercent > 0 && skill.damageMultiplier === 0) {
@@ -366,6 +378,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (!victory && !combat.isPvp) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
+    }
+
+    if (!combat.isPvp) {
+      usePlayerStore.getState().applyCombatDurabilityWear(victory, combat.isBoss)
     }
 
     const playerStore = usePlayerStore.getState()

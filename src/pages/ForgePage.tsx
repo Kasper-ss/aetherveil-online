@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
+import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
+import {
+  canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
+} from '@/lib/rarityUpgrade'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
@@ -33,7 +37,14 @@ export function ForgePage() {
   const dismantleItem = usePlayerStore((s) => s.dismantleItem)
   const dismantleAllCommonItems = usePlayerStore((s) => s.dismantleAllCommonItems)
   const replaceItemInstance = usePlayerStore((s) => s.replaceItemInstance)
+  const repairItem = usePlayerStore((s) => s.repairItem)
+  const repairAllItems = usePlayerStore((s) => s.repairAllItems)
+  const getRepairAllCost = usePlayerStore((s) => s.getRepairAllCost)
+  const upgradeItemRarity = usePlayerStore((s) => s.upgradeItemRarity)
+  const getRarityUpgradeMissing = usePlayerStore((s) => s.getRarityUpgradeMissing)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  const [selectedRepairItem, setSelectedRepairItem] = useState<Item | null>(null)
+  const [selectedRarityItem, setSelectedRarityItem] = useState<Item | null>(null)
   const [upgradeSource, setUpgradeSource] = useState<'inventory' | 'equipped'>('inventory')
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
@@ -53,6 +64,13 @@ export function ForgePage() {
   const equippable = upgradeSource === 'inventory' ? equippableInventory : equippableEquipped
   const craftRecipes = getForgeCraftRecipes(player)
   const commonCount = equippable.filter((i) => i.rarity === 'common').length
+  const allGear = [
+    ...player.inventory.filter((i) => i.slot !== 'consumable'),
+    ...equippableEquipped,
+  ]
+  const damagedGear = allGear.filter((i) => needsRepair(ensureItemDurability(i)))
+  const repairAllCost = getRepairAllCost()
+  const rarityCandidates = player.inventory.filter((i) => canUpgradeRarity(i))
 
   function showMissing(title: string, missing: MissingCost[]) {
     if (missing.length === 0) return false
@@ -124,6 +142,30 @@ export function ForgePage() {
     }
   }
 
+  function handleRepair() {
+    if (!selectedRepairItem) return
+    if (repairItem(selectedRepairItem)) {
+      hapticSuccess()
+      setSelectedRepairItem(null)
+    } else hapticError()
+  }
+
+  function handleRepairAll() {
+    if (repairAllItems()) hapticSuccess()
+    else hapticError()
+  }
+
+  function handleRarityUpgrade() {
+    if (!selectedRarityItem) return
+    const missing = getRarityUpgradeMissing(selectedRarityItem)
+    if (missing.length > 0) { showMissing('Недостаточно для повышения редкости', missing); return }
+    const upgraded = upgradeItemRarity(selectedRarityItem)
+    if (upgraded) {
+      setSelectedRarityItem(upgraded)
+      hapticSuccess()
+    } else hapticError()
+  }
+
   function formatYield(resources: Partial<Record<import('@/types/game').ResourceId, number>>, gold: number) {
     const parts = gold > 0 ? [`🪙${gold}`] : []
     for (const [k, v] of Object.entries(resources)) {
@@ -162,9 +204,11 @@ export function ForgePage() {
       </div>
 
       <Tabs defaultValue="craft" className="p-4">
-        <TabsList className="w-full">
+        <TabsList className="w-full grid grid-cols-4">
           <TabsTrigger value="craft">{t('forge.recipes')}</TabsTrigger>
           <TabsTrigger value="upgrade">{t('forge.upgrades')}</TabsTrigger>
+          <TabsTrigger value="repair">Починка</TabsTrigger>
+          <TabsTrigger value="rarity">Редкость</TabsTrigger>
         </TabsList>
 
         <TabsContent value="craft" className="mt-2">
@@ -335,6 +379,101 @@ export function ForgePage() {
                     Разобрать
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="repair" className="mt-2">
+          <p className="text-xs text-slate-400 mb-2">Восстановите прочность снаряжения за золото. Изношенные предметы теряют эффективность статов.</p>
+          {repairAllCost > 0 && (
+            <Button variant="gold" size="sm" className="w-full mb-3" onClick={handleRepairAll}>
+              Починить всё (🪙{repairAllCost})
+            </Button>
+          )}
+          {damagedGear.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-6">Всё снаряжение в идеальном состоянии</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {damagedGear.map((item) => (
+                <Card
+                  key={item.instanceId}
+                  className={`cursor-pointer ${selectedRepairItem?.instanceId === item.instanceId ? 'border-aether-cyan glow-cyan' : ''}`}
+                  onClick={() => setSelectedRepairItem(item)}
+                >
+                  <CardContent className="p-2">
+                    <div className="flex items-start gap-2">
+                      <EquipmentSlotIcon slot={item.slot as EquipSlot} rarity={item.rarity} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs text-white truncate">{item.name}</div>
+                        <ItemSummary item={item} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {selectedRepairItem && (
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <p className="text-sm font-medium text-white">{selectedRepairItem.name}</p>
+                <ItemSummary item={selectedRepairItem} />
+                <p className="text-xs text-slate-400">Стоимость починки: 🪙{getRepairCost(ensureItemDurability(selectedRepairItem))}</p>
+                <Button className="w-full" onClick={handleRepair}>Починить</Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rarity" className="mt-2">
+          <p className="text-xs text-slate-400 mb-2">
+            Повысьте редкость предмета: нужно {RARITY_DUPLICATES_REQUIRED} копии + ресурсы. Только предметы из инвентаря.
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {rarityCandidates.map((item) => (
+              <Card
+                key={item.instanceId}
+                className={`cursor-pointer ${selectedRarityItem?.instanceId === item.instanceId ? 'border-aether-cyan glow-cyan' : ''}`}
+                onClick={() => setSelectedRarityItem(item)}
+              >
+                <CardContent className="p-2">
+                  <div className="flex items-start gap-2">
+                    <EquipmentSlotIcon slot={item.slot as EquipSlot} rarity={item.rarity} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-white truncate">{item.name}</div>
+                      <ItemSummary item={item} />
+                      <p className="text-[9px] text-slate-500">
+                        Копий: {countDuplicateItems(allGear, item.id, item.instanceId)}/{RARITY_DUPLICATES_REQUIRED}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {rarityCandidates.length === 0 && (
+              <p className="col-span-2 text-sm text-slate-500 text-center py-6">Нет предметов для повышения редкости</p>
+            )}
+          </div>
+          {selectedRarityItem && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-sm font-bold text-white">{selectedRarityItem.name}</p>
+                <Badge variant={selectedRarityItem.rarity}>{RARITY_LABELS_RU[selectedRarityItem.rarity]}</Badge>
+                <span className="text-aether-cyan mx-1">→</span>
+                <Badge variant={getNextRarity(selectedRarityItem.rarity)!}>
+                  {RARITY_LABELS_RU[getNextRarity(selectedRarityItem.rarity)!]}
+                </Badge>
+                {(() => {
+                  const c = getRarityUpgradeCost(selectedRarityItem)
+                  return (
+                    <p className="text-[10px] text-slate-500">
+                      🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
+                      · Копий: {countDuplicateItems(allGear, selectedRarityItem.id, selectedRarityItem.instanceId)}/{RARITY_DUPLICATES_REQUIRED}
+                    </p>
+                  )
+                })()}
+                <Button className="w-full" onClick={handleRarityUpgrade}>Повысить редкость</Button>
               </CardContent>
             </Card>
           )}

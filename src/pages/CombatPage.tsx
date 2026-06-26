@@ -14,6 +14,7 @@ import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
 import { groupConsumableStacks } from '@/lib/consumables'
 import { hasDeathDebuff } from '@/lib/playerStats'
+import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
   player: 'text-aether-cyan',
@@ -58,6 +59,9 @@ export function CombatPage() {
   if (showLootScreen && result?.victory && !combat.isPvp) return <LootScreen />
 
   const energyPct = player ? (player.energy / player.maxEnergy) * 100 : 0
+  const manaMax = player && usesMana(player) ? getMaxMana(player) : 0
+  const manaCurrent = player && usesMana(player) ? getPlayerCurrentMana(player) : 0
+  const manaPct = manaMax > 0 ? (manaCurrent / manaMax) * 100 : 0
   const hpPct = (combat.playerHp / combat.playerMaxHp) * 100
   const enemyHpPct = (combat.enemyHp / combat.enemyMaxHp) * 100
 
@@ -123,6 +127,15 @@ export function CombatPage() {
             </div>
             <Progress value={energyPct} indicatorClassName="bg-gradient-to-r from-yellow-600 to-yellow-400" />
           </div>
+          {manaMax > 0 && (
+            <div>
+              <div className="flex justify-between text-[10px] mb-0.5">
+                <span className="text-purple-400">Мана</span>
+                <span>{manaCurrent}/{manaMax}</span>
+              </div>
+              <Progress value={manaPct} indicatorClassName="bg-gradient-to-r from-purple-700 to-purple-400" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -165,15 +178,20 @@ export function CombatPage() {
               const skillLevel = player?.skillLevels[sid] ?? 1
               const scaled = getScaledSkill(skill, skillLevel)
               const cd = combat.skillCooldowns[sid as SkillId] ?? 0
+              const manaCost = scaled.energyCost
+              const lacksResource = player?.classId === 'mage'
+                ? manaCurrent < manaCost
+                : (player?.energy ?? 0) < manaCost
               return (
                 <Button
                   key={sid}
                   variant="secondary"
                   size="sm"
-                  disabled={cd > 0 || (player?.energy ?? 0) < scaled.energyCost}
+                  disabled={cd > 0 || lacksResource}
                   onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
                 >
                   {skill.icon} {skill.nameRu}
+                  {player?.classId === 'mage' ? ` (${manaCost}🔮)` : ''}
                   {cd > 0 ? ` (${cd})` : ''}
                 </Button>
               )

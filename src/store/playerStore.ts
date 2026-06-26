@@ -13,6 +13,12 @@ import {
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS } from '@/data/items'
+import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
+import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
+import {
+  applyRarityUpgrade, canUpgradeRarity, countDuplicateItems,
+  getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
+} from '@/lib/rarityUpgrade'
 import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMaxHp, getHpRegenIntervalMs, getPlayerCurrentHp, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
@@ -39,6 +45,7 @@ interface PlayerState {
   spendGold: (amount: number) => boolean
   spendGems: (amount: number) => boolean
   spendEnergy: (amount: number) => boolean
+  spendMana: (amount: number) => boolean
   addItem: (item: Item) => void
   removeItemByInstance: (instanceId: string) => void
   equipItem: (item: Item) => void
@@ -88,6 +95,7 @@ interface PlayerState {
   tryRegenEnergy: () => void
   tryRegenHp: () => void
   tryRegenVitals: () => void
+  tryRegenMana: () => void
   purchaseStarProduct: (productId: StarProductId) => Promise<boolean>
   applyStarProductReward: (productId: StarProductId) => boolean
   upgradePlayerSkill: (skillId: import('@/types/game').SkillId) => boolean
@@ -101,6 +109,12 @@ interface PlayerState {
   applyCosmetic: (type: 'avatar' | 'frame', id: string) => boolean
   unlockCosmetic: (id: string) => boolean
   grantEffectPreset: (preset: keyof typeof EFFECT_PRESETS, durationMs: number) => void
+  repairItem: (item: Item) => boolean
+  repairAllItems: () => boolean
+  upgradeItemRarity: (item: Item) => Item | null
+  applyCombatDurabilityWear: (victory: boolean, isBoss: boolean) => void
+  getRarityUpgradeMissing: (item: Item) => MissingCost[]
+  getRepairAllCost: () => number
 }
 
 const SAVE_KEY = 'player'
@@ -179,7 +193,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const levelsGained = level - startLevel
     const statPoints = player.statPoints + levelsGained * 5
     const synced = syncPlayerSkills(player.classId, level, player.skills, player.skillLevels)
-    get().updatePlayer({ exp, level, statPoints, ...synced, ...syncEnergyFields(player) })
+    const updates: Partial<Player> = { exp, level, statPoints, ...synced, ...syncEnergyFields(player) }
+    if (usesMana(player)) updates.maxMana = getMaxMana({ ...player, level })
+    get().updatePlayer(updates)
   },
 
   addGold: (amount) => {
@@ -215,10 +231,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true
   },
 
+  spendMana: (amount) => {
+    const { player } = get()
+    if (!player || !usesMana(player)) return false
+    const current = getPlayerCurrentMana(player)
+    if (current < amount) return false
+    const max = getMaxMana(player)
+    const wasFull = current >= max
+    const partial: Partial<Player> = { currentMana: current - amount, maxMana: max }
+    if (wasFull) partial.manaLastRegenAt = new Date().toISOString()
+    get().updatePlayer(partial)
+    return true
+  },
+
   addItem: (item) => {
     const { player } = get()
     if (!player) return
-    const inst = item.instanceId ? item : { ...item, instanceId: `${item.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
+    const base = item.instanceId ? item : { ...item, instanceId: `${item.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
+    const inst = ensureItemDurability(base)
     get().updatePlayer({ inventory: [...player.inventory, inst] })
   },
 
@@ -382,7 +412,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   tryRegenVitals: () => {
     get().tryRegenEnergy()
     get().tryRegenHp()
+    get().tryRegenMana()
     get().accrueBankInterest()
+  },
+
+  tryRegenMana: () => {
+    const { player } = get()
+    if (!player || !usesMana(player)) return
+    const max = getMaxMana(player)
+    const current = getPlayerCurrentMana(player)
+    if (current >= max) return
+    const interval = getManaRegenIntervalMs(player)
+    const last = new Date(player.manaLastRegenAt ?? Date.now()).getTime()
+    const elapsed = Date.now() - last
+    const ticks = Math.floor(elapsed / interval)
+    if (ticks < 1) return
+    const newMana = Math.min(max, current + ticks)
+    const remainder = elapsed % interval
+    get().updatePlayer({
+      currentMana: newMana,
+      maxMana: max,
+      manaLastRegenAt: new Date(Date.now() - remainder).toISOString(),
+    })
   },
 
   allocateStat: (key, points = 1) => {
@@ -501,6 +552,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       maxEnergy: BASE_MAX_ENERGY,
       currentHp: getCombatMaxHp({ ...get().player!, classId, stats: classData.stats, level: get().player!.level }),
       hpLastRegenAt: new Date().toISOString(),
+      ...(classId === 'mage' ? {
+        maxMana: getMaxMana({ ...get().player!, classId, level: get().player!.level }),
+        currentMana: getMaxMana({ ...get().player!, classId, level: get().player!.level }),
+        manaLastRegenAt: new Date().toISOString(),
+      } : {}),
     })
   },
 
@@ -622,7 +678,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const cost = getUpgradeLevelCost(item)
     if (!get().spendGold(cost.gold)) return null
     if (!get().spendResources(cost.resources)) return null
-    return { ...item, upgradeLevel: lvl + 1, name: item.name.replace(/ \+\d+$/, '') + ` +${lvl + 1}` }
+    return ensureItemDurability({ ...item, upgradeLevel: lvl + 1, name: item.name.replace(/ \+\d+$/, '') + ` +${lvl + 1}` })
   },
 
   upgradeItemStars: (item) => {
@@ -632,7 +688,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!get().spendGold(cost.gold)) return null
     if (!get().spendResources(cost.resources)) return null
     const starStr = '★'.repeat(stars + 1)
-    return { ...item, starLevel: stars + 1, name: `${item.name.replace(/ ★+$/, '')} ${starStr}` }
+    return ensureItemDurability({ ...item, starLevel: stars + 1, name: `${item.name.replace(/ ★+$/, '')} ${starStr}` })
   },
 
   listOnMarket: (item, price) => {
@@ -1101,6 +1157,105 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().updatePlayer({
       activeEffects: addActiveEffect(player.activeEffects, { ...p, durationMs }),
     })
+  },
+
+  applyCombatDurabilityWear: (victory, isBoss) => {
+    const { player } = get()
+    if (!player) return
+    const wear = victory ? (isBoss ? 2 : 1) : 3
+    const equipped = { ...player.equipped }
+    let changed = false
+    for (const slot of Object.keys(equipped) as (keyof Player['equipped'])[]) {
+      const item = equipped[slot]
+      if (!item) continue
+      equipped[slot] = wearItem(ensureItemDurability(item), wear)
+      changed = true
+    }
+    if (changed) get().updatePlayer({ equipped })
+  },
+
+  getRepairAllCost: () => {
+    const { player } = get()
+    if (!player) return 0
+    const items = [
+      ...player.inventory.filter((i) => i.slot !== 'consumable'),
+      ...(Object.values(player.equipped).filter(Boolean) as Item[]),
+    ]
+    return items.reduce((sum, item) => sum + getRepairCost(ensureItemDurability(item)), 0)
+  },
+
+  repairItem: (item) => {
+    if (!item.instanceId) return false
+    const cost = getRepairCost(ensureItemDurability(item))
+    if (cost <= 0) return true
+    if (!get().spendGold(cost)) return false
+    get().replaceItemInstance(item.instanceId, repairItemFull(ensureItemDurability(item)))
+    return true
+  },
+
+  repairAllItems: () => {
+    const cost = get().getRepairAllCost()
+    if (cost <= 0) return true
+    if (!get().spendGold(cost)) return false
+    const { player } = get()
+    if (!player) return false
+    const inventory = player.inventory.map((i) =>
+      i.slot === 'consumable' ? i : repairItemFull(ensureItemDurability(i)),
+    )
+    const equipped = { ...player.equipped }
+    for (const slot of Object.keys(equipped) as (keyof Player['equipped'])[]) {
+      const item = equipped[slot]
+      if (item) equipped[slot] = repairItemFull(ensureItemDurability(item))
+    }
+    get().updatePlayer({ inventory, equipped })
+    return true
+  },
+
+  getRarityUpgradeMissing: (item) => {
+    const { player } = get()
+    if (!player || !canUpgradeRarity(item)) {
+      return [{ key: 'rarity', label: 'Максимальная редкость', icon: '✦', have: 0, need: 1 }]
+    }
+    const dupes = countDuplicateItems(
+      [...player.inventory, ...(Object.values(player.equipped).filter(Boolean) as Item[])],
+      item.id,
+      item.instanceId,
+    )
+    const missing: MissingCost[] = []
+    if (dupes < RARITY_DUPLICATES_REQUIRED) {
+      missing.push({
+        key: 'duplicates',
+        label: `Копии предмета`,
+        icon: '📦',
+        have: dupes,
+        need: RARITY_DUPLICATES_REQUIRED,
+      })
+    }
+    const cost = getRarityUpgradeCost(item)
+    missing.push(...getMissingCosts(player, cost.gold, cost.resources))
+    return missing
+  },
+
+  upgradeItemRarity: (item) => {
+    const { player } = get()
+    if (!player || !item.instanceId || !canUpgradeRarity(item)) return null
+    if (get().getRarityUpgradeMissing(item).length > 0) return null
+    const allItems = [
+      ...player.inventory,
+      ...(Object.values(player.equipped).filter(Boolean) as Item[]),
+    ]
+    const dupes = allItems.filter(
+      (i) => i.id === item.id && i.instanceId !== item.instanceId && i.slot !== 'consumable',
+    )
+    const cost = getRarityUpgradeCost(item)
+    if (!get().spendGold(cost.gold)) return null
+    if (!get().spendResources(cost.resources)) return null
+    for (let i = 0; i < RARITY_DUPLICATES_REQUIRED; i++) {
+      get().removeItemByInstance(dupes[i].instanceId!)
+    }
+    const upgraded = ensureItemDurability(applyRarityUpgrade(item)!)
+    get().replaceItemInstance(item.instanceId, upgraded)
+    return upgraded
   },
 }))
 

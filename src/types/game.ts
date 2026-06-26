@@ -130,6 +130,8 @@ export interface Item {
   setId?: string
   setName?: string
   tier?: number
+  durability?: number
+  maxDurability?: number
 }
 
 export interface Skill {
@@ -223,6 +225,9 @@ export interface Player {
   energyLastRegenAt?: string
   currentHp?: number
   hpLastRegenAt?: string
+  currentMana?: number
+  maxMana?: number
+  manaLastRegenAt?: string
   expEasterEggClaimed?: boolean
   underwearEasterEggClaimed?: boolean
   bankBalance?: number

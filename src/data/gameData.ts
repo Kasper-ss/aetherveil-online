@@ -1,6 +1,8 @@
 import type { ShopItem, DailyReward, ResourceId, Item } from '@/types/game'
 import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS } from '@/data/items'
 import { EMPTY_ALLOCATED, getMaxEnergy } from '@/lib/playerStats'
+import { ensureItemDurability } from '@/lib/equipmentDurability'
+import { getMaxMana, usesMana } from '@/lib/mana'
 import { GUILD_ID } from '@/lib/multiplayer'
 import { syncPlayerSkills } from '@/data/playerSkills'
 
@@ -87,13 +89,14 @@ export function generateVictoryLoot(floor: number, isBoss: boolean, lootMult = 1
 }
 
 function sanitizeItem(i: import('@/types/game').Item): import('@/types/game').Item {
-  return {
+  const base = {
     ...i,
     stats: i.stats ?? {},
     rarity: (i.rarity as string) === 'uncommon' ? 'rare' : i.rarity,
     upgradeLevel: i.upgradeLevel ?? 1,
     starLevel: i.starLevel ?? 0,
   }
+  return ensureItemDurability(base)
 }
 
 function sanitizeEquipped(equipped: Partial<import('@/types/game').EquippedItems>): import('@/types/game').EquippedItems {
@@ -112,7 +115,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     player.skills ?? [],
     player.skillLevels ?? {},
   )
-  return {
+  const migrated: import('@/types/game').Player = {
     ...player,
     ...synced,
     stats: player.stats ?? { atk: 10, def: 5, hp: 100, crit: 5, speed: 10 },
@@ -154,6 +157,12 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     activeEffects: player.activeEffects ?? [],
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
+  if (usesMana(migrated)) {
+    migrated.maxMana = getMaxMana(migrated)
+    migrated.currentMana = migrated.currentMana ?? migrated.maxMana
+    migrated.manaLastRegenAt = migrated.manaLastRegenAt ?? new Date().toISOString()
+  }
+  return migrated
 }
 
 export function createDefaultPlayer(telegramId: number, displayName: string, username: string): import('@/types/game').Player {

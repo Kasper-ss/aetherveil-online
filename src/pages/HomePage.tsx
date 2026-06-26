@@ -17,6 +17,8 @@ import { playSfx } from '@/lib/audio'
 import { getFloorData } from '@/data/gameData'
 import { getMobsRequiredForFloor } from '@/data/items'
 import { getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
+import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
+import { ManaTimer } from '@/components/ui/ManaTimer'
 import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
 
@@ -51,6 +53,8 @@ export function HomePage() {
   const xpPct = (player.exp / xpNeeded) * 100
   const maxHp = getCombatMaxHp(player)
   const currentHp = getPlayerCurrentHp(player)
+  const maxMana = usesMana(player) ? getMaxMana(player) : 0
+  const currentMana = usesMana(player) ? getPlayerCurrentMana(player) : 0
   const classData = player.classId ? CLASSES.find((c) => c.id === player.classId) : null
   const mobsRequired = getMobsRequiredForFloor(player.farmFloor)
   const mobsKilled = player.floorMobKills[player.farmFloor] ?? 0
@@ -161,12 +165,14 @@ export function HomePage() {
           <PlayerStatsPanel
             hp={currentHp} maxHp={maxHp}
             energy={player.energy} maxEnergy={player.maxEnergy}
+            mana={currentMana} maxMana={maxMana}
             atk={stats.atk} def={stats.def}
             compact
           />
-          <div className="mt-1 flex justify-between gap-2">
+          <div className="mt-1 flex justify-between gap-2 flex-wrap">
             <HpTimer />
             <EnergyTimer />
+            {maxMana > 0 && <ManaTimer />}
           </div>
         </CardContent>
       </Card>

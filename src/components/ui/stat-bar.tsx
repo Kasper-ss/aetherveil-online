@@ -40,23 +40,30 @@ interface PlayerStatsPanelProps {
   maxHp: number
   energy: number
   maxEnergy: number
+  mana?: number
+  maxMana?: number
   atk: number
   def: number
   compact?: boolean
 }
 
 export function PlayerStatsPanel({
-  hp, maxHp, energy, maxEnergy, atk, def, compact,
+  hp, maxHp, energy, maxEnergy, mana, maxMana, atk, def, compact,
 }: PlayerStatsPanelProps) {
   if (compact) {
     return (
-      <div className="flex gap-3 text-xs">
+      <div className="flex flex-wrap gap-3 text-xs">
         <span className="flex items-center gap-1 text-red-400">
           <Heart className="h-3 w-3" /> {hp}/{maxHp}
         </span>
         <span className="flex items-center gap-1 text-yellow-400">
           <Zap className="h-3 w-3" /> {energy}/{maxEnergy}
         </span>
+        {maxMana != null && maxMana > 0 && (
+          <span className="flex items-center gap-1 text-purple-400">
+            🔮 {mana ?? maxMana}/{maxMana}
+          </span>
+        )}
         <span className="flex items-center gap-1 text-orange-400">
           <Swords className="h-3 w-3" /> {atk}
         </span>
@@ -71,6 +78,9 @@ export function PlayerStatsPanel({
     <div className="space-y-2">
       <StatBar label="HP" value={hp} max={maxHp} icon={<Heart className="h-3 w-3 text-red-400" />} color="bg-red-500" />
       <StatBar label="Energy" value={energy} max={maxEnergy} icon={<Zap className="h-3 w-3 text-yellow-400" />} color="bg-yellow-500" />
+      {maxMana != null && maxMana > 0 && (
+        <StatBar label="Mana" value={mana ?? maxMana} max={maxMana} icon={<span className="text-purple-400">🔮</span>} color="bg-purple-500" />
+      )}
       <div className="flex gap-4 pt-1">
         <span className="flex items-center gap-1 text-sm text-orange-400">
           <Swords className="h-4 w-4" /> ATK {atk}

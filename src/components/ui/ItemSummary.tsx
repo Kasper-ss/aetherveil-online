@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { formatItemStats, RARITY_LABELS_RU } from '@/data/items'
+import { formatDurability, getDurabilityRatio, needsRepair } from '@/lib/equipmentDurability'
 import type { Item } from '@/types/game'
 
 interface ItemSummaryProps {
@@ -22,6 +23,11 @@ export function ItemSummary({ item, showUpgrade = true }: ItemSummaryProps) {
       </div>
       {Object.keys(item.stats ?? {}).length > 0 && (
         <p className="text-[9px] text-aether-cyan mt-0.5 leading-tight">{formatItemStats(item)}</p>
+      )}
+      {item.slot !== 'consumable' && (
+        <p className={`text-[9px] mt-0.5 ${needsRepair(item) ? 'text-amber-500' : 'text-slate-500'}`}>
+          Прочность {formatDurability(item)} ({Math.round(getDurabilityRatio(item) * 100)}%)
+        </p>
       )}
     </div>
   )
