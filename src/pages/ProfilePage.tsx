@@ -14,6 +14,8 @@ import { getCombatMaxHp, hasDeathDebuff } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
+import { getNotificationSettings, requestBrowserNotificationPermission } from '@/lib/vitalNotifications'
+import { normalizeMonthlyStats } from '@/lib/monthlyStats'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -23,6 +25,7 @@ export function ProfilePage() {
   const claimUnderwearEasterEgg = usePlayerStore((s) => s.claimUnderwearEasterEgg)
   const changeDisplayName = usePlayerStore((s) => s.changeDisplayName)
   const applyCosmetic = usePlayerStore((s) => s.applyCosmetic)
+  const updateNotificationSettings = usePlayerStore((s) => s.updateNotificationSettings)
   const [soundOn, setSoundOn] = useState(localStorage.getItem('aetherveil_sound') !== 'false')
   const [musicOn, setMusicOn] = useState(localStorage.getItem('aetherveil_music') !== 'false')
   const [showRename, setShowRename] = useState(false)
@@ -40,6 +43,8 @@ export function ProfilePage() {
   const avatarEmoji = getAvatarPreview(player.cosmeticAvatarId)
   const frameClass = getFrameClass(player.profileFrameId)
   const className = player.classId ? getClassData(player.classId).nameRu : '—'
+  const notify = getNotificationSettings(player)
+  const monthly = normalizeMonthlyStats(player)
 
   function handleExpClick() {
     if (player!.expEasterEggClaimed) return
@@ -224,6 +229,50 @@ export function ProfilePage() {
             })}
           </div>
           <p className="text-[10px] text-slate-500">Платные варианты разблокируются за кристаллы при выборе</p>
+        </CardContent>
+      </Card>
+
+      <Card className="mx-4 mt-3">
+        <CardContent className="p-4 space-y-3">
+          <p className="text-sm font-medium text-white">Уведомления о восстановлении</p>
+          <p className="text-[10px] text-slate-500">Сообщение, когда HP, энергия или мана полностью восстановлены.</p>
+          {([
+            ['hpFull', '❤️ HP'] as const,
+            ['energyFull', '⚡ Энергия'] as const,
+            ['manaFull', '🔮 Мана'] as const,
+          ]).map(([key, label]) => (
+            <div key={key} className="flex items-center justify-between">
+              <span className="text-xs text-slate-300">{label}</span>
+              <Button
+                size="sm"
+                variant={notify[key] ? 'default' : 'secondary'}
+                className="h-7 text-[10px]"
+                onClick={() => updateNotificationSettings({ [key]: !notify[key] })}
+              >
+                {notify[key] ? 'Вкл' : 'Выкл'}
+              </Button>
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => void requestBrowserNotificationPermission()}
+          >
+            Разрешить push-уведомления браузера
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mx-4 mt-3">
+        <CardContent className="p-4 space-y-2">
+          <p className="text-sm font-medium text-white">Статистика месяца ({monthly.monthKey})</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="text-slate-400">🪙 Золото: <span className="text-white">{monthly.goldEarned}</span></div>
+            <div className="text-slate-400">⚔️ Мобы: <span className="text-white">{monthly.mobsKilled}</span></div>
+            <div className="text-slate-400">🎣 Рыба: <span className="text-white">{monthly.fishCaught}</span></div>
+            <div className="text-slate-400">🏰 Этаж: <span className="text-white">{monthly.highestFloor}</span></div>
+          </div>
         </CardContent>
       </Card>
 

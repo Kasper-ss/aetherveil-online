@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { buildMonthlyLeaderboardFromProfiles } from './monthlyLeaderboard.js'
 
 export interface PublicPlayerRecord {
   telegram_id: number
@@ -377,4 +378,8 @@ export async function getPlayerProfileRecord(telegramId: number): Promise<Record
     pvpWins: 0,
     pvpLosses: 0,
   }
+}
+
+export function getMonthlyLeaderboardRecords() {
+  return buildMonthlyLeaderboardFromProfiles(profiles())
 }

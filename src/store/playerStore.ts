@@ -48,6 +48,9 @@ import {
 import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
+import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
+import { maybeNotifyVitalFull, getNotificationSettings } from '@/lib/vitalNotifications'
+import type { NotificationSettings } from '@/types/game'
 
 interface PlayerState {
   player: Player | null
@@ -148,6 +151,8 @@ interface PlayerState {
   sendGuildGift: (toId: number, item: Item) => Promise<boolean>
   sellResourceToNpc: (resourceId: ResourceId, amount: number) => boolean
   sellItemToNpc: (item: Item) => boolean
+  claimMonthlyReward: (categoryId: string, rank: 1 | 2 | 3) => boolean
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void
 }
 
 const SAVE_KEY = 'player'
@@ -247,7 +252,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const boosted = Math.floor(amount * getGoldMultiplier(player))
-    get().updatePlayer({ gold: player.gold + boosted })
+    if (boosted <= 0) return
+    get().updatePlayer({
+      gold: player.gold + boosted,
+      monthlyStats: bumpMonthlyStat(player, 'goldEarned', boosted),
+    })
   },
 
   spendGold: (amount) => {
@@ -333,7 +342,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return
     const kills = { ...player.floorMobKills }
     kills[floor] = (kills[floor] ?? 0) + 1
-    get().updatePlayer({ floorMobKills: kills })
+    get().updatePlayer({ floorMobKills: kills, monthlyStats: bumpMonthlyStat(player, 'mobsKilled', 1) })
     applyQuestTracking(get, 'kill_mob', 1)
   },
 
@@ -346,6 +355,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentFloor: next,
       highestFloor: Math.max(player.highestFloor, next),
       farmFloor: next,
+      monthlyStats: bumpMonthlyStat(player, 'highestFloor', next),
     })
     if (next > prevHighest) applyQuestTracking(get, 'advance_floor', 1)
   },
@@ -432,6 +442,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (ticks <= 0) return
     const newEnergy = Math.min(max, player.energy + ticks)
     const remainder = elapsed % interval
+    maybeNotifyVitalFull(player, 'energy', player.energy, newEnergy)
     get().updatePlayer({
       energy: newEnergy,
       maxEnergy: max,
@@ -452,6 +463,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (ticks <= 0) return
     const newHp = Math.min(max, current + ticks)
     const remainder = elapsed % interval
+    maybeNotifyVitalFull(player, 'hp', current, newHp)
     get().updatePlayer({
       currentHp: newHp,
       hpLastRegenAt: new Date(Date.now() - remainder).toISOString(),
@@ -478,6 +490,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (ticks < 1) return
     const newMana = Math.min(max, current + ticks)
     const remainder = elapsed % interval
+    maybeNotifyVitalFull(player, 'mana', current, newMana)
     get().updatePlayer({
       currentMana: newMana,
       maxMana: max,
@@ -762,6 +775,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           ...player.professionExp,
           hunter: getProfessionExp(player, 'hunter') + profXp,
         },
+        monthlyStats: bumpMonthlyStat(player, 'fishCaught', 1),
       })
       applyQuestTracking(get, 'fish', 1)
       return { ok: true, fishName: fish.nameRu }
@@ -1593,6 +1607,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().removeItemByInstance(item.instanceId)
     get().addGold(price)
     return true
+  },
+
+  claimMonthlyReward: (categoryId, rank) => {
+    const { player } = get()
+    if (!player || rank < 1 || rank > 3) return false
+    const key = `${categoryId}_${rank}`
+    const claimed = player.monthlyRewardsClaimed ?? []
+    if (claimed.includes(key)) return false
+    const reward = MONTHLY_RANK_REWARDS[rank as 1 | 2 | 3]
+    get().updatePlayer({
+      gold: player.gold + reward.gold,
+      gems: player.gems + reward.gems,
+      monthlyRewardsClaimed: [...claimed, key],
+    })
+    return true
+  },
+
+  updateNotificationSettings: (settings) => {
+    const { player } = get()
+    if (!player) return
+    get().updatePlayer({
+      notificationSettings: { ...getNotificationSettings(player), ...settings },
+    })
   },
 }))
 

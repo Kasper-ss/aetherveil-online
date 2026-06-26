@@ -261,6 +261,43 @@ export interface Player {
   fairStats?: FairGameStats
   questState?: QuestState
   guildJoinedAt?: string
+  monthlyStats?: MonthlyStats
+  monthlyRewardsClaimed?: string[]
+  notificationSettings?: NotificationSettings
+}
+
+export interface MonthlyStats {
+  monthKey: string
+  goldEarned: number
+  mobsKilled: number
+  fishCaught: number
+  highestFloor: number
+}
+
+export interface NotificationSettings {
+  hpFull: boolean
+  energyFull: boolean
+  manaFull: boolean
+}
+
+export interface MonthlyLeaderboardEntry {
+  rank: number
+  telegramId: number
+  displayName: string
+  username: string
+  value: number
+}
+
+export interface MonthlyLeaderboardCategory {
+  categoryId: string
+  nameRu: string
+  icon: string
+  entries: MonthlyLeaderboardEntry[]
+}
+
+export interface MonthlyLeaderboardResponse {
+  monthKey: string
+  categories: MonthlyLeaderboardCategory[]
 }
 
 export interface FairGameStats {
@@ -401,6 +438,7 @@ export interface PublicPlayerProfile {
   pvpWins: number
   pvpLosses: number
   guildId?: string
+  monthlyStats?: MonthlyStats
 }
 
 export interface ShopItem {

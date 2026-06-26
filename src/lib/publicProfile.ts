@@ -1,6 +1,7 @@
 import type { Player, PublicPlayerProfile, ItemRarity } from '@/types/game'
 import { getEffectiveStats } from '@/lib/playerStats'
 import { SLOT_LABELS_RU } from '@/data/items'
+import { normalizeMonthlyStats } from '@/lib/monthlyStats'
 
 const EQUIP_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet'] as const
 
@@ -27,5 +28,6 @@ export function buildPublicProfile(player: Player): PublicPlayerProfile {
     pvpWins: player.pvpWins,
     pvpLosses: player.pvpLosses,
     guildId: player.guildId,
+    monthlyStats: normalizeMonthlyStats(player),
   }
 }

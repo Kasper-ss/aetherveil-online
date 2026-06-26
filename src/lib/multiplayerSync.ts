@@ -1,4 +1,4 @@
-import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile } from '@/types/game'
+import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile, MonthlyLeaderboardResponse } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
 
@@ -50,6 +50,17 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
     }
   } catch (error) {
     console.warn('[multiplayer] sync failed', error)
+    return null
+  }
+}
+
+export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardResponse | null> {
+  try {
+    const res = await fetch('/api/multiplayer/monthly-leaderboard')
+    const data = await res.json() as MonthlyLeaderboardResponse & { ok?: boolean }
+    if (!res.ok || !data.categories) return null
+    return { monthKey: data.monthKey, categories: data.categories }
+  } catch {
     return null
   }
 }
