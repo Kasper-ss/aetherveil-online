@@ -1,5 +1,6 @@
 import type { Player } from '@/types/game'
 import { getLuckyMultipliers } from '@/lib/luckyBonuses'
+import { FATE_EXP_MULTIPLIER, FATE_GOLD_MULTIPLIER } from '@/lib/fateCards'
 
 export function isBuffActive(until?: string): boolean {
   if (!until) return false
@@ -20,12 +21,14 @@ export function hasInfiniteEnergy(player: Player): boolean {
 
 export function getExpMultiplier(player: Player): number {
   const buff = isBuffActive(player.buffDoubleExpUntil) ? 2 : 1
-  return buff * getLuckyMultipliers(player).exp
+  const fate = isBuffActive(player.buffFateExpUntil) ? FATE_EXP_MULTIPLIER : 1
+  return buff * fate * getLuckyMultipliers(player).exp
 }
 
 export function getGoldMultiplier(player: Player): number {
   const buff = isBuffActive(player.buffTripleGoldUntil) ? 3 : 1
-  return buff * getLuckyMultipliers(player).gold
+  const fate = isBuffActive(player.buffFateGoldUntil) ? FATE_GOLD_MULTIPLIER : 1
+  return buff * fate * getLuckyMultipliers(player).gold
 }
 
 export function getLootMultiplier(player: Player): number {
@@ -56,6 +59,12 @@ export function getActiveBuffs(player: Player): ActiveBuffInfo[] {
   }
   if (isBuffActive(player.buffDailyBonusUntil)) {
     buffs.push({ id: 'daily', label: '+50 к ежедневным наградам', until: player.buffDailyBonusUntil! })
+  }
+  if (isBuffActive(player.buffFateGoldUntil)) {
+    buffs.push({ id: 'fateGold', label: 'Карта: золото', until: player.buffFateGoldUntil! })
+  }
+  if (isBuffActive(player.buffFateExpUntil)) {
+    buffs.push({ id: 'fateExp', label: 'Карта: опыт', until: player.buffFateExpUntil! })
   }
   return buffs
 }

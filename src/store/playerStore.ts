@@ -25,6 +25,9 @@ import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
 import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
 import { calcFairPayout, spinFairWheel, type FairColor } from '@/lib/fairGame'
+import {
+  canDrawFateCard, FATE_CARD_BUFF_DURATION_MS,
+} from '@/lib/fateCards'
 import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
@@ -137,6 +140,7 @@ interface PlayerState {
   addFriendById: (friendId: number) => boolean
   removeFriend: (friendId: number) => boolean
   playFairBet: (bet: number, pick: FairColor) => { won: boolean; result: FairColor; payout: number } | null
+  drawFateCard: (type: import('@/lib/fateCards').FateCardType) => boolean
   resetAllocatedStats: () => boolean
   consumeConsumable: (itemId: ConsumableId) => { healHp?: number; energy?: number } | null
   replaceItemInstance: (oldInstanceId: string, newItem: Item) => void
@@ -1269,6 +1273,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     get().updatePlayer({ fairStats: stats })
     return { won, result, payout }
+  },
+
+  drawFateCard: (type) => {
+    const { player } = get()
+    if (!player || !canDrawFateCard(player)) return false
+    const patch: Partial<Player> = { fateCardLastUsedAt: new Date().toISOString() }
+    if (type === 'gold') {
+      patch.buffFateGoldUntil = extendBuff(player.buffFateGoldUntil, FATE_CARD_BUFF_DURATION_MS)
+    } else {
+      patch.buffFateExpUntil = extendBuff(player.buffFateExpUntil, FATE_CARD_BUFF_DURATION_MS)
+    }
+    get().updatePlayer(patch)
+    return true
   },
 
   resetAllocatedStats: () => {

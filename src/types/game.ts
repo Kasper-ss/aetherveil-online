@@ -250,6 +250,9 @@ export interface Player {
   buffDoubleExpUntil?: string
   buffTripleGoldUntil?: string
   buffDailyBonusUntil?: string
+  buffFateGoldUntil?: string
+  buffFateExpUntil?: string
+  fateCardLastUsedAt?: string
   auraEffectId?: string
   cosmeticAvatarId?: string
   profileFrameId?: string
