@@ -8,6 +8,7 @@ export interface PublicPlayerRecord {
   highest_floor: number
   guild_id?: string
   updated_at: string
+  profile?: Record<string, unknown>
 }
 
 export interface MarketListingPayload {
@@ -39,11 +40,13 @@ interface MarketSaleRecord {
 const PLAYER_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 type PlayerMap = Map<number, PublicPlayerRecord>
+type ProfileMap = Map<number, Record<string, unknown>>
 type ListingMap = Map<string, MarketListingPayload & { created_at: string }>
 type SalesMap = Map<string, MarketSaleRecord>
 
 const globalStore = globalThis as typeof globalThis & {
   __aetherveilPublicPlayers?: PlayerMap
+  __aetherveilPlayerProfiles?: ProfileMap
   __aetherveilMarketListings?: ListingMap
   __aetherveilMarketSales?: SalesMap
 }
@@ -53,6 +56,13 @@ function players(): PlayerMap {
     globalStore.__aetherveilPublicPlayers = new Map()
   }
   return globalStore.__aetherveilPublicPlayers
+}
+
+function profiles(): ProfileMap {
+  if (!globalStore.__aetherveilPlayerProfiles) {
+    globalStore.__aetherveilPlayerProfiles = new Map()
+  }
+  return globalStore.__aetherveilPlayerProfiles
 }
 
 function listings(): ListingMap {
@@ -185,6 +195,7 @@ export async function syncPublicPlayer(input: {
   highestFloor: number
   guildId?: string
   marketListings: MarketListingPayload[]
+  publicProfile?: Record<string, unknown>
 }): Promise<SyncResult> {
   const payout = await collectPendingSales(input.telegramId)
   const soldIds = await getSoldListingIdsForSeller(input.telegramId)
@@ -232,6 +243,9 @@ export async function syncPublicPlayer(input: {
 
   const playerMap = prunePlayers(players())
   playerMap.set(input.telegramId, record)
+  if (input.publicProfile) {
+    profiles().set(input.telegramId, input.publicProfile)
+  }
 
   for (const [id, listing] of listings().entries()) {
     if (listing.sellerId === input.telegramId) listings().delete(id)
@@ -328,4 +342,39 @@ export async function buyMarketListing(
     goldAmount: payload.goldPrice,
   })
   return payload
+}
+
+export async function getPlayerProfileRecord(telegramId: number): Promise<Record<string, unknown> | null> {
+  const cached = profiles().get(telegramId)
+  if (cached) return cached
+
+  const supabase = getSupabase()
+  if (supabase) {
+    const { data } = await supabase
+      .from('player_profiles')
+      .select('profile')
+      .eq('telegram_id', telegramId)
+      .maybeSingle()
+    if (data?.profile) {
+      const profile = data.profile as Record<string, unknown>
+      profiles().set(telegramId, profile)
+      return profile
+    }
+  }
+
+  const player = players().get(telegramId)
+  if (!player) return null
+
+  return {
+    telegramId: player.telegram_id,
+    displayName: player.display_name,
+    username: player.username,
+    level: player.level,
+    highestFloor: player.highest_floor,
+    guildId: player.guild_id,
+    stats: { atk: 0, def: 0, hp: 0, crit: 0, speed: 0 },
+    equipped: [],
+    pvpWins: 0,
+    pvpLosses: 0,
+  }
 }

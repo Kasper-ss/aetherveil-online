@@ -1,5 +1,6 @@
-import type { LeaderboardEntry, MarketListing, Player, Item } from '@/types/game'
+import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
+import { buildPublicProfile } from '@/lib/publicProfile'
 
 function mapListing(raw: MarketListing): MarketListing {
   return {
@@ -32,6 +33,7 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
           ...l,
           sellerId: player.telegramId,
         })),
+        publicProfile: buildPublicProfile(player),
       }),
     })
     const data = await res.json() as { pendingGold?: number; soldListingIds?: string[] }
@@ -102,6 +104,17 @@ export async function fetchServerMarket(selfId: number): Promise<MarketListing[]
       .map(mapListing)
   } catch {
     return []
+  }
+}
+
+export async function fetchPlayerProfile(telegramId: number): Promise<PublicPlayerProfile | null> {
+  try {
+    const res = await fetch(`/api/multiplayer/profile?telegramId=${telegramId}`)
+    const data = await res.json() as { profile?: PublicPlayerProfile }
+    if (!res.ok || !data.profile) return null
+    return data.profile
+  } catch {
+    return null
   }
 }
 

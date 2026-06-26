@@ -12,6 +12,8 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
+import { groupConsumableStacks } from '@/lib/consumables'
+import { hasDeathDebuff } from '@/lib/playerStats'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
   player: 'text-aether-cyan',
@@ -30,6 +32,8 @@ export function CombatPage() {
   const showLootScreen = useCombatStore((s) => s.showLootScreen)
   const playerAttack = useCombatStore((s) => s.playerAttack)
   const playerSkill = useCombatStore((s) => s.playerSkill)
+  const useConsumableInCombat = useCombatStore((s) => s.useConsumableInCombat)
+  const fleeCombat = useCombatStore((s) => s.fleeCombat)
   const clearCombat = useCombatStore((s) => s.clearCombat)
   const player = usePlayerStore((s) => s.player)
   const logRef = useRef<HTMLDivElement>(null)
@@ -58,6 +62,18 @@ export function CombatPage() {
   const enemyHpPct = (combat.enemyHp / combat.enemyMaxHp) * 100
 
   const skills = player?.skills ?? []
+  const potionStacks = player ? groupConsumableStacks(player.inventory) : []
+  const hpPotions = potionStacks.find((s) => s.itemId === 'hp_potion')?.count ?? 0
+
+  function handleFlee() {
+    hapticImpact('light')
+    fleeCombat()
+  }
+
+  function handleFledContinue() {
+    clearCombat()
+    navigate('/tower')
+  }
 
   function handleDefeatContinue() {
     const isPvp = combat?.isPvp
@@ -122,9 +138,27 @@ export function CombatPage() {
       {/* Actions */}
       {useCombatStore.getState().isActive && (
         <div className="p-3 border-t border-aether-border space-y-2 shrink-0 bg-aether-surface/90">
-          <Button className="w-full h-12 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
-            ⚔️ Атаковать
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1 h-12 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
+              ⚔️ Атаковать
+            </Button>
+            {!combat.isPvp && !combat.isBoss && (
+              <Button variant="outline" className="h-12 px-3" onClick={handleFlee}>
+                🏃
+              </Button>
+            )}
+          </div>
+          {hpPotions > 0 && !combat.isPvp && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              disabled={combat.playerHp >= combat.playerMaxHp}
+              onClick={() => { hapticImpact('light'); useConsumableInCombat('hp_potion') }}
+            >
+              🧪 Зелье HP ×{hpPotions} (+50% HP)
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2">
             {skills.map((sid) => {
               const skill = SKILLS[sid]
@@ -148,16 +182,36 @@ export function CombatPage() {
         </div>
       )}
 
-      {result && !result.victory && (
+      {result && !result.victory && result.fled && (
+        <Dialog open onOpenChange={handleFledContinue}>
+          <DialogContent className="text-center">
+            <DialogHeader>
+              <DialogTitle>Вы сбежали</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-400">Бой прерван. Награды не получены.</p>
+            <Button onClick={handleFledContinue} className="w-full">{t('combat.continue')}</Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {result && !result.victory && !result.fled && (
         <Dialog open onOpenChange={handleDefeatContinue}>
           <DialogContent className="text-center">
             <DialogHeader>
               <div className="text-5xl mb-2">💀</div>
               <DialogTitle className="text-aether-danger">{t('combat.defeat')}</DialogTitle>
             </DialogHeader>
+            {result.killedBy && (
+              <p className="text-sm text-red-400 font-medium">Вас убил {result.killedBy}</p>
+            )}
             <p className="text-sm text-slate-400">
-              {combat?.isPvp ? 'Соперник оказался сильнее. Попробуйте снова!' : 'Вы потеряли часть золота. Тренируйтесь и попробуйте снова!'}
+              {combat?.isPvp
+                ? 'Соперник оказался сильнее. Попробуйте снова!'
+                : 'Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.'}
             </p>
+            {player && hasDeathDebuff(player) && (
+              <p className="text-xs text-amber-500">Дебафф смерти активен (−30% к статам)</p>
+            )}
             <Button onClick={handleDefeatContinue} className="w-full">{t('combat.continue')}</Button>
           </DialogContent>
         </Dialog>

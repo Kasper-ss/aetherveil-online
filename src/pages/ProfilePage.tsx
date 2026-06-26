@@ -10,7 +10,9 @@ import { xpForLevel, formatNumber } from '@/lib/utils'
 import { toggleMusic, toggleSound } from '@/lib/audio'
 import { useRef, useState } from 'react'
 import { shareInviteLink, hapticSuccess } from '@/lib/telegram'
-import { getCombatMaxHp } from '@/lib/playerStats'
+import { getCombatMaxHp, hasDeathDebuff } from '@/lib/playerStats'
+import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
+import { getClassData } from '@/data/classes'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -19,6 +21,7 @@ export function ProfilePage() {
   const claimEasterEgg = usePlayerStore((s) => s.claimExpEasterEgg)
   const claimUnderwearEasterEgg = usePlayerStore((s) => s.claimUnderwearEasterEgg)
   const changeDisplayName = usePlayerStore((s) => s.changeDisplayName)
+  const applyCosmetic = usePlayerStore((s) => s.applyCosmetic)
   const [soundOn, setSoundOn] = useState(localStorage.getItem('aetherveil_sound') !== 'false')
   const [musicOn, setMusicOn] = useState(localStorage.getItem('aetherveil_music') !== 'false')
   const [showRename, setShowRename] = useState(false)
@@ -33,11 +36,9 @@ export function ProfilePage() {
 
   const xpNeeded = xpForLevel(player.level)
   const maxHp = getCombatMaxHp(player)
-
-  const avatarEmoji = player.cosmeticAvatarId === 'telegram_hero' ? '✈️'
-    : player.cosmeticAvatarId === 'mythic_starter' ? '💎' : '⚔️'
-  const avatarGlow = player.auraEffectId === 'telegram_hero' ? 'glow-cyan border-aether-cyan'
-    : player.auraEffectId === 'mythic_starter' ? 'glow-purple border-aether-purple' : 'glow-cyan border-aether-cyan'
+  const avatarEmoji = getAvatarPreview(player.cosmeticAvatarId)
+  const frameClass = getFrameClass(player.profileFrameId)
+  const className = player.classId ? getClassData(player.classId).nameRu : '—'
 
   function handleExpClick() {
     if (player!.expEasterEggClaimed) return
@@ -83,12 +84,15 @@ export function ProfilePage() {
       </div>
 
       <div className="p-4 text-center">
-        <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-aether-cyan to-aether-purple flex items-center justify-center text-4xl border-2 ${avatarGlow} mb-3`}>
+        <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-aether-cyan to-aether-purple flex items-center justify-center text-4xl ${frameClass} mb-3`}>
           {avatarEmoji}
         </div>
         <h2 className="text-xl font-bold text-white">{player.displayName}</h2>
         <p className="text-sm text-slate-400">@{player.username}</p>
-        <p className="text-xs text-aether-cyan mt-1">Ур. {player.level} · Этаж {player.highestFloor}</p>
+        <p className="text-xs text-aether-cyan mt-1">Ур. {player.level} · {className} · Этаж {player.highestFloor}</p>
+        {hasDeathDebuff(player) && (
+          <p className="text-[10px] text-red-400 mt-1">Дебафф смерти: −30% к статам (30 мин)</p>
+        )}
         <p className="text-[10px] text-slate-500 mt-1 font-mono">ID: {player.telegramId}</p>
         <Button variant="outline" size="sm" className="mt-2" onClick={() => { setNewName(player.displayName); setShowRename(true) }}>
           Сменить ник
@@ -170,6 +174,50 @@ export function ProfilePage() {
             <span className="text-slate-400">Серия наград</span>
             <span className="text-white">{player.dailyRewardStreak} дн.</span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mx-4 mt-3">
+        <CardContent className="p-4 space-y-3">
+          <p className="text-sm font-medium text-white">Аватар</p>
+          <div className="grid grid-cols-3 gap-2">
+            {AVATAR_OPTIONS.map((opt) => {
+              const active = (player.cosmeticAvatarId ?? 'default') === opt.id
+              const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'}`}
+                  onClick={() => { if (applyCosmetic('avatar', opt.id)) hapticSuccess() }}
+                >
+                  <div className="text-2xl">{opt.preview}</div>
+                  <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
+                  {locked && <div className="text-[8px] text-aether-gold">{opt.stars}⭐</div>}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-sm font-medium text-white pt-1">Рамка профиля</p>
+          <div className="grid grid-cols-3 gap-2">
+            {FRAME_OPTIONS.map((opt) => {
+              const active = (player.profileFrameId ?? 'none') === opt.id
+              const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'}`}
+                  onClick={() => { if (applyCosmetic('frame', opt.id)) hapticSuccess() }}
+                >
+                  <div className="text-lg">{opt.preview}</div>
+                  <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
+                  {locked && <div className="text-[8px] text-aether-gold">{opt.stars}⭐</div>}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-slate-500">Платные варианты разблокируются за кристаллы при выборе</p>
         </CardContent>
       </Card>
 

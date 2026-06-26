@@ -221,6 +221,10 @@ export interface Player {
   buffDailyBonusUntil?: string
   auraEffectId?: string
   cosmeticAvatarId?: string
+  profileFrameId?: string
+  unlockedCosmetics?: string[]
+  deathDebuffUntil?: string
+  lastKilledBy?: string
   friendIds?: number[]
   fairStats?: FairGameStats
 }
@@ -272,6 +276,8 @@ export interface CombatResult {
   isBoss?: boolean
   lootClaimed?: boolean
   mobKilled?: boolean
+  killedBy?: string
+  fled?: boolean
 }
 
 export interface GuildMember {
@@ -311,6 +317,22 @@ export interface LeaderboardEntry {
   level: number
   guildId?: string
   isFriend?: boolean
+}
+
+export interface PublicPlayerProfile {
+  telegramId: number
+  displayName: string
+  username: string
+  level: number
+  highestFloor: number
+  classId?: PlayerClass
+  stats: { atk: number; def: number; hp: number; crit: number; speed: number }
+  equipped: Array<{ slot: string; name: string; rarity: ItemRarity }>
+  cosmeticAvatarId?: string
+  profileFrameId?: string
+  pvpWins: number
+  pvpLosses: number
+  guildId?: string
 }
 
 export interface ShopItem {

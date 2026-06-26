@@ -136,6 +136,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     buffDailyBonusUntil: player.buffDailyBonusUntil,
     auraEffectId: player.auraEffectId,
     cosmeticAvatarId: player.cosmeticAvatarId,
+    profileFrameId: player.profileFrameId,
+    unlockedCosmetics: player.unlockedCosmetics ?? [],
     friendIds: player.friendIds ?? [],
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }

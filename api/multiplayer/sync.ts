@@ -16,6 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       username?: string
       guildId?: string
       marketListings?: unknown[]
+      publicProfile?: Record<string, unknown>
     }
 
     const user = validateInitData(body.initData ?? '', getBotToken())
@@ -45,6 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       highestFloor: Number(body.highestFloor ?? 1),
       guildId: body.guildId,
       marketListings,
+      publicProfile: body.publicProfile,
     })
 
     return res.status(200).json({ ok: true, ...result })

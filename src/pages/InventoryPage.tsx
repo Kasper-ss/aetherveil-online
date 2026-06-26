@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { SKILLS } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
 import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
+import { groupConsumableStacks } from '@/lib/consumables'
+import { hapticSuccess } from '@/lib/telegram'
 import type { Item, EquipSlot } from '@/types/game'
 
 const EQUIP_ORDER: EquipSlot[] = [
@@ -21,17 +24,22 @@ export function InventoryPage() {
   const player = usePlayerStore((s) => s.player)
   const equipItem = usePlayerStore((s) => s.equipItem)
   const unequipItem = usePlayerStore((s) => s.unequipItem)
+  const consumeConsumable = usePlayerStore((s) => s.consumeConsumable)
 
   useTelegramBackButton(() => navigate('/'), true)
 
   if (!player) return null
 
-  const visibleSlots = EQUIP_ORDER
-
   const setBonuses = getActiveSetBonuses(player)
+  const consumableStacks = groupConsumableStacks(player.inventory)
+  const gearItems = player.inventory.filter((i) => i.slot !== 'consumable')
 
   function handleEquip(item: Item) {
     if (item.slot !== 'consumable') equipItem(item)
+  }
+
+  function handleUseConsumable(itemId: 'hp_potion' | 'energy_drink') {
+    if (consumeConsumable(itemId)) hapticSuccess()
   }
 
   return (
@@ -60,27 +68,24 @@ export function InventoryPage() {
         </TabsList>
 
         <TabsContent value="equipment">
-          <div className="space-y-2">
-            {visibleSlots.map((slot) => {
+          <div className="grid grid-cols-1 gap-1.5">
+            {EQUIP_ORDER.map((slot) => {
               const item = player.equipped[slot]
               return (
                 <Card key={slot}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-aether-bg flex items-center justify-center text-2xl border border-aether-border">
-                      {item?.icon ?? '—'}
-                    </div>
+                  <CardContent className="p-2 flex items-center gap-2">
+                    <EquipmentSlotIcon slot={slot} rarity={item?.rarity} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-slate-500">{SLOT_LABELS_RU[slot]}</div>
-                      <div className="text-sm font-medium text-white truncate">{item?.name ?? 'Пусто'}</div>
+                      <div className="text-[10px] text-slate-500">{SLOT_LABELS_RU[slot]}</div>
+                      <div className="text-xs font-medium text-white truncate">{item?.name ?? 'Пусто'}</div>
                       {item && (
-                        <>
-                          <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
-                          <div className="text-[10px] text-aether-cyan mt-0.5">{formatItemStats(item)}</div>
-                        </>
+                        <div className="text-[9px] text-aether-cyan truncate">{formatItemStats(item)}</div>
                       )}
                     </div>
                     {item && (
-                      <Button variant="ghost" size="sm" onClick={() => unequipItem(slot)}>Снять</Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => unequipItem(slot)}>
+                        Снять
+                      </Button>
                     )}
                   </CardContent>
                 </Card>
@@ -90,33 +95,50 @@ export function InventoryPage() {
         </TabsContent>
 
         <TabsContent value="items">
+          {consumableStacks.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs text-slate-400 font-medium">Расходники</p>
+              {consumableStacks.map((stack) => (
+                <Card key={stack.itemId}>
+                  <CardContent className="p-2 flex items-center gap-2">
+                    <span className="text-lg">{stack.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-white">{stack.name}</div>
+                      <div className="text-[10px] text-slate-500">×{stack.count}</div>
+                    </div>
+                    <Button size="sm" className="h-7 text-xs" onClick={() => handleUseConsumable(stack.itemId)}>
+                      Использовать
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
-            {player.inventory.map((item) => (
+            {gearItems.map((item) => (
               <Card
                 key={item.instanceId}
                 className="cursor-pointer active:scale-95 transition-transform"
                 onClick={() => handleEquip(item)}
               >
-                <CardContent className="p-3">
-                  <div className="text-center">
-                    <div className="text-2xl mb-1">{item.icon}</div>
-                    <div className="text-xs font-medium text-white truncate">{item.name}</div>
-                    <Badge variant={item.rarity} className="mt-1 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
-                    <div className="text-[9px] text-slate-500 mt-0.5">{SLOT_LABELS_RU[item.slot as EquipSlot] ?? item.slot}</div>
-                    {Object.keys(item.stats).length > 0 && (
-                      <div className="text-[9px] text-aether-cyan mt-1 leading-tight">{formatItemStats(item)}</div>
+                <CardContent className="p-2">
+                  <div className="flex items-start gap-2">
+                    {item.slot !== 'consumable' && (
+                      <EquipmentSlotIcon slot={item.slot as EquipSlot} rarity={item.rarity} size="sm" />
                     )}
-                    {(item.upgradeLevel ?? 1) > 1 && (
-                      <div className="text-[9px] text-aether-cyan">Ур. {item.upgradeLevel}</div>
-                    )}
-                    {(item.starLevel ?? 0) > 0 && (
-                      <div className="text-[9px] text-aether-gold">{'★'.repeat(item.starLevel!)}</div>
-                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium text-white truncate">{item.name}</div>
+                      <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                      {Object.keys(item.stats).length > 0 && (
+                        <div className="text-[9px] text-aether-cyan mt-0.5 leading-tight">{formatItemStats(item)}</div>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            {player.inventory.length === 0 && (
+            {gearItems.length === 0 && consumableStacks.length === 0 && (
               <p className="col-span-2 text-center text-sm text-slate-500 py-8">
                 Предметов нет. Исследуйте Башню!
               </p>

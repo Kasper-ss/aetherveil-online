@@ -2,6 +2,15 @@ import type { Player, AllocStatKey, AllocatedStats, Stats } from '@/types/game'
 import { getEffectiveItemStats } from '@/data/items'
 import { applySetBonuses } from '@/lib/setBonuses'
 
+export function hasDeathDebuff(player: Player): boolean {
+  if (!player.deathDebuffUntil) return false
+  return new Date(player.deathDebuffUntil).getTime() > Date.now()
+}
+
+export function getDeathDebuffMult(player: Player): number {
+  return hasDeathDebuff(player) ? 0.7 : 1
+}
+
 export type EffectiveStats = Stats & { stealth: number; endurance: number }
 
 export const BASE_MAX_ENERGY = 100
@@ -98,11 +107,11 @@ export function getEffectiveStats(player: Player): EffectiveStats {
   }
 
   return applySetBonuses(player, {
-    atk: base.atk + totals.atk + alloc.atk * 2,
-    def: base.def + totals.def + alloc.def * 2,
-    hp: base.hp + totals.hp + alloc.hp * 15,
-    crit: base.crit + totals.crit + Math.floor(alloc.stealth * 0.5),
-    speed: base.speed + totals.speed + alloc.stealth,
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player)),
+    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player)),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player)),
+    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player)),
+    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player)),
     stealth: alloc.stealth,
     endurance: alloc.endurance,
   })

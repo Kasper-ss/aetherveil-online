@@ -7,6 +7,7 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { randomInt } from '@/lib/utils'
+import { CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 
 interface CombatStore {
   combat: CombatState | null
@@ -19,6 +20,8 @@ interface CombatStore {
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
   playerAttack: () => void
   playerSkill: (skillId: SkillId) => void
+  useConsumableInCombat: (itemId: ConsumableId) => boolean
+  fleeCombat: () => void
   endCombat: (victory: boolean) => void
   claimLoot: () => void
   clearCombat: () => void
@@ -250,6 +253,68 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     })
   },
 
+  useConsumableInCombat: (itemId) => {
+    const { combat, isActive } = get()
+    if (!combat || !isActive || combat.isPvp) return false
+
+    const effect = CONSUMABLE_EFFECTS[itemId]
+    if (!effect) return false
+
+    const playerStore = usePlayerStore.getState()
+    const player = playerStore.player
+    if (!player) return false
+
+    if (itemId === 'hp_potion') {
+      if (combat.playerHp >= combat.playerMaxHp) return false
+      const consumed = playerStore.consumeConsumable(itemId)
+      if (!consumed?.healHp) return false
+      const heal = Math.min(consumed.healHp, combat.playerMaxHp - combat.playerHp)
+      const logs = [...combat.combatLog, logEntry(`🧪 Зелье HP: +${heal} HP`, 'heal')]
+      set({
+        combat: {
+          ...combat,
+          playerHp: combat.playerHp + heal,
+          combatLog: logs.slice(-30),
+        },
+      })
+      return true
+    }
+
+    if (itemId === 'energy_drink') {
+      const consumed = playerStore.consumeConsumable(itemId)
+      if (!consumed?.energy) return false
+      const logs = [...combat.combatLog, logEntry(`⚡ Энергетик: +${consumed.energy} энергии`, 'heal')]
+      set({ combat: { ...combat, combatLog: logs.slice(-30) } })
+      return true
+    }
+
+    return false
+  },
+
+  fleeCombat: () => {
+    const { combat, isActive, tickInterval } = get()
+    if (!combat || !isActive || combat.isPvp || combat.isBoss) return
+    if (tickInterval) clearInterval(tickInterval)
+
+    const playerStore = usePlayerStore.getState()
+    playerStore.updatePlayer({
+      currentHp: combat.playerHp,
+      hpLastRegenAt: new Date().toISOString(),
+    })
+
+    const result: CombatResult = {
+      victory: false,
+      exp: 0,
+      gold: 0,
+      loot: [],
+      resources: {},
+      comboMax: combat.combo,
+      fled: true,
+    }
+
+    set({ isActive: false, result, showLootScreen: false, tickInterval: null })
+  },
+
   endCombat: (victory) => {
     const { combat, tickInterval } = get()
     if (!combat) return
@@ -288,25 +353,21 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isBoss: combat.isBoss,
       lootClaimed: combat.isPvp ? true : false,
       mobKilled: victory && !combat.isBoss && !combat.isPvp,
+      killedBy: !victory ? combat.enemy.name : undefined,
     }
 
     if (!victory && !combat.isPvp) {
-      usePlayerStore.getState().applyDeathPenalty()
+      usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
     }
 
     const playerStore = usePlayerStore.getState()
-    const maxHp = combat.playerMaxHp
     if (victory) {
       playerStore.updatePlayer({
         currentHp: combat.playerHp,
         hpLastRegenAt: new Date().toISOString(),
       })
-    } else {
-      playerStore.updatePlayer({
-        currentHp: Math.max(1, Math.floor(maxHp * 0.05)),
-        hpLastRegenAt: new Date().toISOString(),
-      })
     }
+    // Death penalty handler sets full HP respawn
 
     set({ isActive: false, result, showLootScreen: victory && !combat.isPvp, tickInterval: null })
   },

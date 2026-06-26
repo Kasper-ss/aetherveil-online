@@ -10,10 +10,12 @@ import { usePlayerStore } from '@/store/playerStore'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
+import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item } from '@/types/game'
+import type { EquipSlot } from '@/data/items'
 import type { MissingCost } from '@/lib/craftCosts'
 
 export function ForgePage() {
@@ -30,9 +32,9 @@ export function ForgePage() {
   const getMythicUpgradeMissing = usePlayerStore((s) => s.getMythicUpgradeMissing)
   const dismantleItem = usePlayerStore((s) => s.dismantleItem)
   const dismantleAllCommonItems = usePlayerStore((s) => s.dismantleAllCommonItems)
-  const removeItemByInstance = usePlayerStore((s) => s.removeItemByInstance)
-  const addItem = usePlayerStore((s) => s.addItem)
+  const replaceItemInstance = usePlayerStore((s) => s.replaceItemInstance)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  const [upgradeSource, setUpgradeSource] = useState<'inventory' | 'equipped'>('inventory')
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
 
@@ -46,7 +48,9 @@ export function ForgePage() {
 
   if (!player) return null
 
-  const equippable = player.inventory.filter((i) => i.slot !== 'consumable')
+  const equippableInventory = player.inventory.filter((i) => i.slot !== 'consumable')
+  const equippableEquipped = (Object.values(player.equipped).filter(Boolean) as Item[])
+  const equippable = upgradeSource === 'inventory' ? equippableInventory : equippableEquipped
   const craftRecipes = getForgeCraftRecipes(player)
   const commonCount = equippable.filter((i) => i.rarity === 'common').length
 
@@ -65,8 +69,8 @@ export function ForgePage() {
   }
 
   function replaceItem(old: Item, neu: Item) {
-    removeItemByInstance(old.instanceId!)
-    addItem(neu)
+    if (!old.instanceId) return
+    replaceItemInstance(old.instanceId, neu)
     setSelectedItem(neu)
   }
 
@@ -221,6 +225,12 @@ export function ForgePage() {
         </TabsContent>
 
         <TabsContent value="upgrade" className="mt-2">
+          <Tabs value={upgradeSource} onValueChange={(v) => { setUpgradeSource(v as 'inventory' | 'equipped'); setSelectedItem(null) }}>
+            <TabsList className="mb-2 w-full">
+              <TabsTrigger value="inventory" className="flex-1">В инвентаре</TabsTrigger>
+              <TabsTrigger value="equipped" className="flex-1">Надетое</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <p className="text-xs text-slate-400 mb-2">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
           {commonCount > 0 && (
             <Button variant="secondary" size="sm" className="w-full mb-3" onClick={handleDismantleAllCommon}>
@@ -236,7 +246,7 @@ export function ForgePage() {
               >
                 <CardContent className="p-2">
                   <div className="flex items-start gap-2">
-                    <div className="text-2xl shrink-0">{item.icon}</div>
+                    <EquipmentSlotIcon slot={item.slot as EquipSlot} rarity={item.rarity} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-xs text-white truncate">{item.name}</div>
                       <ItemSummary item={item} />
@@ -251,7 +261,9 @@ export function ForgePage() {
             <Card ref={detailRef}>
               <CardContent className="p-4 space-y-3">
                 <div className="text-center">
-                  <div className="text-4xl mb-1">{selectedItem.icon}</div>
+                  <div className="flex justify-center mb-1">
+                    <EquipmentSlotIcon slot={selectedItem.slot as EquipSlot} rarity={selectedItem.rarity} />
+                  </div>
                   <div className="text-sm font-bold text-white">{selectedItem.name}</div>
                   <Badge variant={selectedItem.rarity}>{RARITY_LABELS_RU[selectedItem.rarity]}</Badge>
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(selectedItem)}</p>

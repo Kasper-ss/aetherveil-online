@@ -19,6 +19,8 @@ import { ForgePage } from '@/pages/ForgePage'
 import { BankPage } from '@/pages/BankPage'
 import { FairPage } from '@/pages/FairPage'
 import { SkillsPage } from '@/pages/SkillsPage'
+import { PlayerViewPage } from '@/pages/PlayerViewPage'
+import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 
@@ -36,6 +38,8 @@ function AppRoutes() {
       <StatDistributionModal />
       <IdleRewardModal />
 
+      <SessionGuard />
+
       <div className="h-full min-h-0 bg-aether-bg overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -46,6 +50,7 @@ function AppRoutes() {
           <Route path="/guild" element={<GuildPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/player/:id" element={<PlayerViewPage />} />
           <Route path="/arena" element={<ArenaPage />} />
           <Route path="/professions" element={<ProfessionsPage />} />
           <Route path="/forge" element={<ForgePage />} />

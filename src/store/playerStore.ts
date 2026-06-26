@@ -21,6 +21,8 @@ import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, ha
 import { calcFairPayout, spinFairWheel, type FairColor } from '@/lib/fairGame'
 import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
+import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
+import { AVATAR_OPTIONS, FRAME_OPTIONS } from '@/data/cosmetics'
 
 interface PlayerState {
   player: Player | null
@@ -44,7 +46,7 @@ interface PlayerState {
   recordMobKill: (floor: number) => void
   advanceFloor: () => void
   applyCombatResult: (result: CombatResult) => void
-  applyDeathPenalty: () => void
+  applyDeathPenalty: (killerName?: string) => void
   claimIdleRewards: () => void
   claimDailyReward: () => { success: boolean; reward?: typeof DAILY_REWARDS[0] }
   getDailyRewardPreview: () => typeof DAILY_REWARDS[0]
@@ -93,6 +95,10 @@ interface PlayerState {
   removeFriend: (friendId: number) => boolean
   playFairBet: (bet: number, pick: FairColor) => { won: boolean; result: FairColor; payout: number } | null
   resetAllocatedStats: () => boolean
+  consumeConsumable: (itemId: ConsumableId) => { healHp?: number; energy?: number } | null
+  replaceItemInstance: (oldInstanceId: string, newItem: Item) => void
+  applyCosmetic: (type: 'avatar' | 'frame', id: string) => boolean
+  unlockCosmetic: (id: string) => boolean
 }
 
 const SAVE_KEY = 'player'
@@ -271,11 +277,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (result.resources) get().addResources(result.resources)
   },
 
-  applyDeathPenalty: () => {
+  applyDeathPenalty: (killerName?: string) => {
     const { player } = get()
     if (!player) return
     const goldLoss = Math.floor(player.gold * 0.03)
-    get().updatePlayer({ gold: Math.max(0, player.gold - goldLoss) })
+    const maxHp = getCombatMaxHp(player)
+    get().updatePlayer({
+      gold: Math.max(0, player.gold - goldLoss),
+      currentHp: maxHp,
+      hpLastRegenAt: new Date().toISOString(),
+      deathDebuffUntil: new Date(Date.now() + 30 * 60_000).toISOString(),
+      lastKilledBy: killerName ?? player.lastKilledBy,
+    })
   },
 
   claimIdleRewards: () => {
@@ -987,6 +1000,90 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         break
       default:
         return false
+    }
+    return true
+  },
+
+  consumeConsumable: (itemId) => {
+    const { player } = get()
+    if (!player) return null
+    const item = findConsumableInstance(player.inventory, itemId)
+    if (!item?.instanceId) return null
+    const effect = CONSUMABLE_EFFECTS[itemId]
+    if (!effect) return null
+
+    const result: { healHp?: number; energy?: number } = {}
+
+    if (effect.healPercent > 0) {
+      const maxHp = getCombatMaxHp(player)
+      const current = getPlayerCurrentHp(player)
+      if (current >= maxHp) return null
+      const heal = Math.floor(maxHp * effect.healPercent)
+      result.healHp = heal
+      get().updatePlayer({
+        currentHp: Math.min(maxHp, current + heal),
+        hpLastRegenAt: new Date().toISOString(),
+      })
+    }
+
+    if (effect.energy > 0) {
+      const maxE = getMaxEnergy(player)
+      if (player.energy >= maxE) {
+        if (!result.healHp) return null
+      } else {
+        result.energy = effect.energy
+        get().updatePlayer({ energy: Math.min(maxE, player.energy + effect.energy) })
+      }
+    }
+
+    get().removeItemByInstance(item.instanceId)
+    return result
+  },
+
+  replaceItemInstance: (oldInstanceId, newItem) => {
+    const { player } = get()
+    if (!player) return
+    const invIdx = player.inventory.findIndex((i) => i.instanceId === oldInstanceId)
+    if (invIdx >= 0) {
+      const inventory = [...player.inventory]
+      inventory[invIdx] = newItem
+      get().updatePlayer({ inventory })
+      return
+    }
+    for (const slot of Object.keys(player.equipped) as (keyof Player['equipped'])[]) {
+      if (player.equipped[slot]?.instanceId === oldInstanceId) {
+        get().updatePlayer({ equipped: { ...player.equipped, [slot]: newItem } })
+        return
+      }
+    }
+  },
+
+  unlockCosmetic: (id) => {
+    const { player } = get()
+    if (!player) return false
+    const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id)
+    if (!opt) return false
+    if (opt.stars === 0) return true
+    if (player.unlockedCosmetics?.includes(id)) return true
+    const gemCost = Math.max(5, Math.floor(opt.stars / 5))
+    if (!get().spendGems(gemCost)) return false
+    const unlocked = [...(player.unlockedCosmetics ?? []), id]
+    get().updatePlayer({ unlockedCosmetics: unlocked })
+    return true
+  },
+
+  applyCosmetic: (type, id) => {
+    const { player } = get()
+    if (!player) return false
+    const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id && o.type === type)
+    if (!opt) return false
+    if (opt.stars > 0 && !player.unlockedCosmetics?.includes(id)) {
+      if (!get().unlockCosmetic(id)) return false
+    }
+    if (type === 'avatar') {
+      get().updatePlayer({ cosmeticAvatarId: id })
+    } else {
+      get().updatePlayer({ profileFrameId: id === 'none' ? undefined : id })
     }
     return true
   },

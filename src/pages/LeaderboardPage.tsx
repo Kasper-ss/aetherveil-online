@@ -17,11 +17,14 @@ function rankStyle(rank: number): string {
   return 'bg-aether-card text-slate-400'
 }
 
-function LeaderboardRow({ entry, selfId }: { entry: LeaderboardEntry; selfId: number }) {
+function LeaderboardRow({ entry, selfId, onOpen }: { entry: LeaderboardEntry; selfId: number; onOpen: (id: number) => void }) {
   const isMe = entry.telegramId === selfId
 
   return (
-    <Card className={isMe ? 'border-aether-cyan glow-cyan' : ''}>
+    <Card
+      className={`cursor-pointer active:scale-[0.99] transition-transform ${isMe ? 'border-aether-cyan glow-cyan' : ''}`}
+      onClick={() => onOpen(entry.telegramId)}
+    >
       <CardContent className="p-3 flex items-center gap-3">
         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${rankStyle(entry.rank)}`}>
           {entry.rank}
@@ -84,7 +87,12 @@ export function LeaderboardPage() {
     return (
       <div className="space-y-2">
         {entries.map((entry) => (
-          <LeaderboardRow key={entry.telegramId} entry={entry} selfId={selfId} />
+          <LeaderboardRow
+            key={entry.telegramId}
+            entry={entry}
+            selfId={selfId}
+            onOpen={(id) => navigate(`/player/${id}`)}
+          />
         ))}
       </div>
     )
