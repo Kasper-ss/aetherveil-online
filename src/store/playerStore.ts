@@ -1526,7 +1526,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         result.energy = effect.energy
         get().updatePlayer({
           energy: Math.min(maxE, player.energy + effect.energy),
-          activeEffects: addActiveEffect(player.activeEffects, { ...EFFECT_PRESETS.potion_might, durationMs: 10 * 60_000 }),
         })
       }
     }

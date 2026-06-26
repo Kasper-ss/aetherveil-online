@@ -1,4 +1,5 @@
 import type { FloorData, FloorEnemy } from '@/types/game'
+import { getMobsRequiredForFloor } from '@/data/items'
 
 export const MAX_FLOOR = 50
 
@@ -42,8 +43,14 @@ export function getFloorDifficultyMult(floor: number): number {
   return 1 + (floor - 1) * 0.12 + Math.pow(floor, 1.35) * 0.075
 }
 
+/** Reward scaling — higher floors yield more gold and EXP, especially bosses */
+function getFloorRewardScale(floor: number): number {
+  return 1 + (floor - 1) * 0.14 + Math.pow(floor, 1.2) * 0.055
+}
+
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)
+  const rewardScale = getFloorRewardScale(floor)
   const floorPower = floor >= 2 ? 1.5 : 1
   const mult = isBoss ? 5 : 1
   const baseHp = Math.floor((200 + floor * 105) * diff * mult * floorPower)
@@ -51,19 +58,19 @@ export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['patt
   const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2 : 1) * floorPower)
   const crit = isBoss ? Math.min(25, 8 + Math.floor(floor / 4)) : Math.min(15, 3 + Math.floor(floor / 6))
   const speed = isBoss ? Math.min(20, 6 + Math.floor(floor / 5)) : Math.min(18, 4 + Math.floor(floor / 4))
-  const expBase = Math.floor((25 + floor * 20) * diff)
-  const goldMin = Math.floor((8 + floor * 5) * diff)
-  const goldMax = Math.floor((20 + floor * 12) * diff)
+  const expBase = Math.floor((35 + floor * 28) * diff * rewardScale)
+  const goldMin = Math.floor((14 + floor * 9) * diff * rewardScale)
+  const goldMax = Math.floor((32 + floor * 18) * diff * rewardScale)
 
   return {
     id: `${floor}_${name.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '_')}`,
     name,
     pattern,
     stats: { hp: baseHp, atk: baseAtk, def: baseDef, crit, speed },
-    expReward: Math.floor(expBase * (isBoss ? 8 : 1)),
+    expReward: Math.floor(expBase * (isBoss ? 14 : 1)),
     goldReward: [
-      Math.floor(goldMin * (isBoss ? 5 : 1)),
-      Math.floor(goldMax * (isBoss ? 8 : 1)),
+      Math.floor(goldMin * (isBoss ? 8 : 1)),
+      Math.floor(goldMax * (isBoss ? 16 : 1)),
     ],
     lootTable: [],
     isBoss,
@@ -139,7 +146,7 @@ function buildFloor(floor: number): FloorData {
     theme: zone.theme,
     enemies,
     boss: makeEnemy(floor, bossName(floor), 'boss', true),
-    mobsRequired: floor * 100,
+    mobsRequired: getMobsRequiredForFloor(floor),
     idleGoldPerHour: idleGold,
     idleExpPerHour: idleExp,
   }

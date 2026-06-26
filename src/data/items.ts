@@ -411,5 +411,6 @@ export function getEquipSlotsForClass(_classId?: string): EquipSlot[] {
 }
 
 export function getMobsRequiredForFloor(floor: number): number {
-  return floor * 100
+  if (floor <= 1) return 100
+  return 200
 }

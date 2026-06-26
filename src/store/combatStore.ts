@@ -8,7 +8,8 @@ import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
-import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion } from '@/lib/consumables'
+import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion, isEnergyDrink } from '@/lib/consumables'
+import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 
 interface CombatStore {
   combat: CombatState | null
@@ -22,6 +23,7 @@ interface CombatStore {
   playerAttack: () => void
   playerSkill: (skillId: SkillId) => void
   useConsumableInCombat: (itemId: ConsumableId) => boolean
+  eatFoodInCombat: (itemId: string) => boolean
   fleeCombat: () => void
   endCombat: (victory: boolean) => void
   claimLoot: () => void
@@ -299,8 +301,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       return true
     }
 
-    if (itemId === 'energy_drink') {
-      const consumed = playerStore.consumeConsumable(itemId)
+    if (isEnergyDrink(itemId)) {
+      const consumed = playerStore.consumeConsumable(itemId as ConsumableId)
       if (!consumed?.energy) return false
       const logs = [...combat.combatLog, logEntry(`⚡ Энергетик: +${consumed.energy} энергии`, 'heal')]
       set({ combat: { ...combat, combatLog: logs.slice(-30) } })
@@ -308,6 +310,33 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     return false
+  },
+
+  eatFoodInCombat: (itemId) => {
+    const { combat, isActive } = get()
+    if (!combat || !isActive || combat.isPvp) return false
+
+    const buff = FOOD_BUFF_MAP[itemId]
+    if (!buff) return false
+
+    const playerStore = usePlayerStore.getState()
+    if (!playerStore.eatFood(itemId)) return false
+
+    const player = playerStore.player!
+    const newMaxHp = getCombatMaxHp(player)
+    const hpGain = Math.max(0, newMaxHp - combat.playerMaxHp)
+    const pct = Math.round((buff.mult - 1) * 100)
+    const logs = [...combat.combatLog, logEntry(`🍖 ${buff.label}: +${pct}% на ${Math.round(buff.durationMs / 60_000)}м`, 'heal')]
+
+    set({
+      combat: {
+        ...combat,
+        playerMaxHp: newMaxHp,
+        playerHp: Math.min(newMaxHp, combat.playerHp + hpGain),
+        combatLog: logs.slice(-30),
+      },
+    })
+    return true
   },
 
   fleeCombat: () => {

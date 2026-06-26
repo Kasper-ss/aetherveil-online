@@ -12,7 +12,8 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
-import { groupConsumableStacks, isHpPotion, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
+import { groupConsumableStacks, isHpPotion, isEnergyDrink, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
+import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { hasDeathDebuff } from '@/lib/playerStats'
 import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
@@ -35,6 +36,7 @@ export function CombatPage() {
   const playerAttack = useCombatStore((s) => s.playerAttack)
   const playerSkill = useCombatStore((s) => s.playerSkill)
   const useConsumableInCombat = useCombatStore((s) => s.useConsumableInCombat)
+  const eatFoodInCombat = useCombatStore((s) => s.eatFoodInCombat)
   const fleeCombat = useCombatStore((s) => s.fleeCombat)
   const clearCombat = useCombatStore((s) => s.clearCombat)
   const player = usePlayerStore((s) => s.player)
@@ -72,6 +74,24 @@ export function CombatPage() {
   const sortedHpPotions = [...potionStacks].sort(
     (a, b) => hpPotionOrder.indexOf(a.itemId) - hpPotionOrder.indexOf(b.itemId),
   )
+  const energyStacks = player
+    ? groupConsumableStacks(player.inventory).filter((s) => isEnergyDrink(s.itemId))
+    : []
+  const foodStacks = player
+    ? Object.entries(
+        player.inventory
+          .filter((i) => FOOD_BUFF_MAP[i.id])
+          .reduce<Record<string, { name: string; icon: string; count: number; buffLabel: string }>>((acc, item) => {
+            const cur = acc[item.id]
+            if (cur) cur.count++
+            else {
+              const buff = FOOD_BUFF_MAP[item.id]
+              acc[item.id] = { name: item.name, icon: item.icon, count: 1, buffLabel: buff.label }
+            }
+            return acc
+          }, {}),
+      )
+    : []
 
   function handleFlee() {
     hapticImpact('light')
@@ -182,6 +202,41 @@ export function CombatPage() {
               </Button>
             )
           })}
+          {energyStacks.length > 0 && !combat.isPvp && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {energyStacks.map((stack) => {
+                const energy = CONSUMABLE_EFFECTS[stack.itemId]?.energy ?? 0
+                const atMax = (player?.energy ?? 0) >= (player?.maxEnergy ?? 100)
+                return (
+                  <Button
+                    key={stack.itemId}
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs"
+                    disabled={atMax}
+                    onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
+                  >
+                    {stack.icon} ×{stack.count} (+{energy}⚡)
+                  </Button>
+                )
+              })}
+            </div>
+          )}
+          {foodStacks.length > 0 && !combat.isPvp && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {foodStacks.map(([itemId, stack]) => (
+                <Button
+                  key={itemId}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { hapticImpact('light'); eatFoodInCombat(itemId) }}
+                >
+                  {stack.icon} {stack.buffLabel} ×{stack.count}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             {skills.map((sid) => {
               const skill = SKILLS[sid]
