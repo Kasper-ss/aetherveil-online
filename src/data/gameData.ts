@@ -5,6 +5,9 @@ import { ensureItemDurability } from '@/lib/equipmentDurability'
 import { getMaxMana, usesMana } from '@/lib/mana'
 import { GUILD_ID } from '@/lib/multiplayer'
 import { syncPlayerSkills } from '@/data/playerSkills'
+import { TOOL_SHOP_ITEMS } from '@/data/tools'
+import { SCROLL_SHOP_ITEMS } from '@/data/setScrolls'
+import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
 
 export { ALL_ITEMS as ITEMS, rollEquipmentDrop, getMobsRequiredForFloor } from '@/data/items'
 export { FLOORS, getFloorData, MAX_FLOOR } from '@/data/floors'
@@ -31,7 +34,7 @@ const EQUIPMENT_SHOP: ShopItem[] = Object.values(ALL_ITEMS)
     itemId: i.id,
   }))
 
-export const SHOP_ITEMS: ShopItem[] = [...BASE_SHOP, ...EQUIPMENT_SHOP]
+export const SHOP_ITEMS: ShopItem[] = [...BASE_SHOP, ...TOOL_SHOP_ITEMS, ...SCROLL_SHOP_ITEMS, ...EQUIPMENT_SHOP]
 
 export const DAILY_REWARDS: DailyReward[] = [
   { day: 1, gold: 150, gems: 0 },
@@ -155,6 +158,11 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     unlockedCosmetics: player.unlockedCosmetics ?? [],
     friendIds: player.friendIds ?? [],
     activeEffects: player.activeEffects ?? [],
+    activeProfessions: player.activeProfessions ?? (player.profession ? [player.profession] : []),
+    professionSlotLimit: player.professionSlotLimit ?? BASE_PROFESSION_SLOTS,
+    professionExp: player.professionExp ?? {},
+    unlockedSetScrolls: player.unlockedSetScrolls ?? [],
+    ownedTools: player.ownedTools ?? [],
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
   if (usesMana(migrated)) {

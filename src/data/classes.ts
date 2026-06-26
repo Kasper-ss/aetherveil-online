@@ -1,6 +1,8 @@
 import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item } from '@/types/game'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
+import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
+import { applyClassCraftModifier } from '@/lib/classCraft'
 
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
@@ -173,8 +175,6 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   { id: 'craft_helmet_t3', resultItemId: 'helmet_t3', name: 'Стальной шлем', description: 'ЗАЩ +8, HP +30', resources: { iron_ore: 12, upgrade_core: 2 }, goldCost: 250, requiredProfession: 'blacksmith', requiredProfessionLevel: 5 },
   { id: 'craft_weapon_t5', resultItemId: 'weapon_t5', name: 'Рунический клинок', description: 'АТК +25, КРИТ +11', resources: { iron_ore: 15, gem_shard: 5, upgrade_core: 3 }, goldCost: 400, requiredProfession: 'blacksmith', requiredProfessionLevel: 8 },
   { id: 'craft_chest_t4', resultItemId: 'chestplate_t4', name: 'Нагрудник охотника', description: 'ЗАЩ +14, HP +55', resources: { hide: 10, iron_ore: 8, upgrade_core: 2 }, goldCost: 350, requiredProfession: 'blacksmith', requiredProfessionLevel: 6 },
-  ...EPIC_SET_CRAFT_RECIPES,
-  ...LEGENDARY_SET_CRAFT_RECIPES,
   ...LUCKY_SET_CRAFT_RECIPES,
   { id: 'craft_hp_potion', resultItemId: 'hp_potion', name: 'Зелье HP', description: 'Восстанавливает 50% HP в бою.', resources: { herb: 8 }, goldCost: 50, requiredProfession: 'alchemist', requiredProfessionLevel: 1 },
 ]
@@ -287,8 +287,15 @@ export function getDynamicMythicCraftRecipes(player: Player): CraftRecipe[] {
 }
 
 export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
-  const base = player ? [...CRAFT_RECIPES, ...getDynamicMythicCraftRecipes(player)] : CRAFT_RECIPES
-  return base.filter((r) => !r.requiredClass || r.requiredClass === player?.classId)
+  const unlockedScrollIds = new Set(getUnlockedScrollRecipeIds(player?.unlockedSetScrolls))
+  const scrollRecipes = [...EPIC_SET_CRAFT_RECIPES, ...LEGENDARY_SET_CRAFT_RECIPES]
+    .filter((r) => unlockedScrollIds.has(r.id))
+  const base = player
+    ? [...CRAFT_RECIPES, ...scrollRecipes, ...getDynamicMythicCraftRecipes(player)]
+    : CRAFT_RECIPES
+  return base
+    .filter((r) => !r.requiredClass || r.requiredClass === player?.classId)
+    .map((r) => applyClassCraftModifier(r, player?.classId))
 }
 
 export function findCraftRecipe(recipeId: string, player: Player | null): CraftRecipe | undefined {

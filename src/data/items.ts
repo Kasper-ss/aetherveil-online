@@ -289,6 +289,10 @@ export const CONSUMABLES: Record<string, Item> = {
     id: 'energy_drink', name: 'Энергетик', description: 'Восстанавливает 30 энергии.',
     slot: 'consumable', rarity: 'common', stats: {}, icon: '⚡', sellPrice: 30, upgradeLevel: 1, starLevel: 0,
   },
+  fishing_bait: {
+    id: 'fishing_bait', name: 'Наживка', description: 'Расходник для рыбалки.',
+    slot: 'consumable', rarity: 'common', stats: {}, icon: '🪱', sellPrice: 5, upgradeLevel: 1, starLevel: 0,
+  },
   legendary_underwear: {
     id: 'legendary_underwear',
     name: 'Легендарные Трусы Неуязвимости',

@@ -11,6 +11,7 @@ export type StarProductId =
   | 'triple_gold_3d'
   | 'daily_bonus_50_30d'
   | 'mythic_starter_pack'
+  | 'extra_profession_slot'
 
 export interface StarShopProduct {
   id: StarProductId
@@ -83,6 +84,13 @@ export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
     descriptionRu: 'Мифический аватар + легендарный сет + 100 Gems + 10000 Gold.',
     stars: 800,
     icon: '💎',
+  },
+  {
+    id: 'extra_profession_slot',
+    nameRu: '+1 слот профессии',
+    descriptionRu: 'Дополнительный активный слот профессии (макс. 5).',
+    stars: 350,
+    icon: '📚',
   },
 ]
 

@@ -28,9 +28,15 @@ const SHOP_TYPE_RU: Record<string, string> = {
   cosmetic: 'Косметика',
   convenience: 'Удобство',
   equipment: 'Снаряжение',
+  tool: 'Инструмент',
+  scroll: 'Свиток',
 }
 
-const BASE_NPC = SHOP_ITEMS.filter((i) => i.type !== 'equipment' && !i.starsPrice)
+const BASE_NPC = SHOP_ITEMS.filter(
+  (i) => i.type !== 'equipment' && i.type !== 'tool' && i.type !== 'scroll' && !i.starsPrice,
+)
+const TOOL_NPC = SHOP_ITEMS.filter((i) => i.type === 'tool' || i.id === 'shop_fishing_bait')
+const SCROLL_NPC = SHOP_ITEMS.filter((i) => i.type === 'scroll')
 const EQUIP_NPC = SHOP_ITEMS.filter((i) => i.type === 'equipment')
 
 type RarityFilter = 'all' | ItemRarity
@@ -58,6 +64,7 @@ export function ShopPage() {
   const player = usePlayerStore((s) => s.player)
   const spendGold = usePlayerStore((s) => s.spendGold)
   const spendGems = usePlayerStore((s) => s.spendGems)
+  const updatePlayer = usePlayerStore((s) => s.updatePlayer)
   const listOnMarket = usePlayerStore((s) => s.listOnMarket)
   const listResourceOnMarket = usePlayerStore((s) => s.listResourceOnMarket)
   const removeMarketListing = usePlayerStore((s) => s.removeMarketListing)
@@ -93,6 +100,7 @@ export function ShopPage() {
   }, [loadMarket])
 
   if (!player) return null
+  const p = player
 
   async function handleBuyListing(listing: MarketListing) {
     setBuyingListingId(listing.id)
@@ -113,11 +121,25 @@ export function ShopPage() {
   }
 
   function buyNpcItem(shopItem: typeof SHOP_ITEMS[0]) {
+    if (shopItem.type === 'tool' && shopItem.toolId) {
+      if (p.ownedTools?.includes(shopItem.toolId)) { hapticError(); return }
+    }
+    if (shopItem.type === 'scroll' && shopItem.scrollId) {
+      if (p.unlockedSetScrolls?.includes(shopItem.scrollId)) { hapticError(); return }
+    }
     if (shopItem.goldPrice && !spendGold(shopItem.goldPrice)) { hapticError(); return }
     if (shopItem.gemsPrice && !spendGems(shopItem.gemsPrice)) { hapticError(); return }
-    if (shopItem.itemId) {
-      const inst = createItemInstance(shopItem.itemId)
-      if (inst) usePlayerStore.getState().addItem(inst)
+
+    if (shopItem.type === 'tool' && shopItem.toolId) {
+      updatePlayer({ ownedTools: [...(p.ownedTools ?? []), shopItem.toolId] })
+    } else if (shopItem.type === 'scroll' && shopItem.scrollId) {
+      updatePlayer({ unlockedSetScrolls: [...(p.unlockedSetScrolls ?? []), shopItem.scrollId] })
+    } else if (shopItem.itemId) {
+      const count = shopItem.bundleCount ?? 1
+      for (let i = 0; i < count; i++) {
+        const inst = createItemInstance(shopItem.itemId)
+        if (inst) usePlayerStore.getState().addItem(inst)
+      }
     }
     hapticSuccess()
     playSfx('loot')
@@ -226,6 +248,9 @@ export function ShopPage() {
 
   function renderNpcCard(item: typeof SHOP_ITEMS[0]) {
     const template = item.itemId ? ALL_ITEMS[item.itemId] : null
+    const ownedTool = item.toolId && p.ownedTools?.includes(item.toolId)
+    const ownedScroll = item.scrollId && p.unlockedSetScrolls?.includes(item.scrollId)
+    const disabled = !!(ownedTool || ownedScroll)
     return (
       <Card key={item.id}>
         <CardContent className="p-3 flex items-center gap-3">
@@ -235,6 +260,8 @@ export function ShopPage() {
             <div className="text-[10px] text-slate-400 truncate">{item.descriptionRu}</div>
             <div className="flex flex-wrap gap-1 mt-1">
               <Badge className="text-[8px]">{SHOP_TYPE_RU[item.type] ?? item.type}</Badge>
+              {ownedTool && <Badge className="text-[8px]">Куплено</Badge>}
+              {ownedScroll && <Badge className="text-[8px]">Изучено</Badge>}
               {template && (
                 <Badge variant={template.rarity} className="text-[8px]">{RARITY_LABELS_RU[template.rarity]}</Badge>
               )}
@@ -246,7 +273,12 @@ export function ShopPage() {
               <div className="text-[9px] text-aether-cyan mt-0.5">{formatItemStats(template)}</div>
             )}
           </div>
-          <Button variant={item.starsPrice ? 'gold' : 'default'} size="sm" onClick={() => buyNpcItem(item)}>
+          <Button
+            variant={item.starsPrice ? 'gold' : 'default'}
+            size="sm"
+            disabled={disabled}
+            onClick={() => buyNpcItem(item)}
+          >
             {item.goldPrice && `🪙 ${item.goldPrice}`}
             {item.gemsPrice && `💎 ${item.gemsPrice}`}
             {item.starsPrice && <><Star className="h-3 w-3" /> {item.starsPrice}</>}
@@ -279,11 +311,21 @@ export function ShopPage() {
         <TabsContent value="buy">
           <Tabs defaultValue="general">
             <TabsList className="mb-3 w-full">
-              <TabsTrigger value="general" className="flex-1">Товары</TabsTrigger>
-              <TabsTrigger value="equipment" className="flex-1">Снаряжение</TabsTrigger>
+              <TabsTrigger value="general" className="flex-1 text-[10px]">Товары</TabsTrigger>
+              <TabsTrigger value="tools" className="flex-1 text-[10px]">Инструменты</TabsTrigger>
+              <TabsTrigger value="scrolls" className="flex-1 text-[10px]">Свитки</TabsTrigger>
+              <TabsTrigger value="equipment" className="flex-1 text-[10px]">Снаряжение</TabsTrigger>
             </TabsList>
             <TabsContent value="general">
               <div className="space-y-3">{BASE_NPC.map(renderNpcCard)}</div>
+            </TabsContent>
+            <TabsContent value="tools">
+              <p className="text-[10px] text-slate-500 mb-2">Инструменты для фарма профессий.</p>
+              <div className="space-y-3">{TOOL_NPC.map(renderNpcCard)}</div>
+            </TabsContent>
+            <TabsContent value="scrolls">
+              <p className="text-[10px] text-slate-500 mb-2">Открывают рецепты эпических и легендарных сетов в Кузнице.</p>
+              <div className="space-y-3">{SCROLL_NPC.map(renderNpcCard)}</div>
             </TabsContent>
             <TabsContent value="equipment">
               <p className="text-[10px] text-slate-500 mb-2">Обычные и редкие предметы — цена выше, чем с фарма.</p>

@@ -30,6 +30,12 @@ import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
 import { AVATAR_OPTIONS, FRAME_OPTIONS } from '@/data/cosmetics'
 import { addActiveEffect, pruneActiveEffects, EFFECT_PRESETS } from '@/lib/activeEffects'
+import {
+  getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
+  isProfessionActive, professionRankRequiredForSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
+} from '@/lib/professionProgress'
+import { PROFESSION_ACTIVITIES } from '@/data/professionActivities'
+import { playerHasTool } from '@/data/tools'
 
 interface PlayerState {
   player: Player | null
@@ -66,6 +72,8 @@ interface PlayerState {
   spendResources: (resources: Partial<Record<ResourceId, number>>) => boolean
   upgradeProfessionSkill: (professionId: ProfessionId, skillIndex: number) => boolean
   setProfession: (professionId: ProfessionId) => void
+  toggleActiveProfession: (professionId: ProfessionId) => boolean
+  performProfessionGrind: (activityId: string) => boolean
   craftItem: (recipeId: string) => boolean
   upgradeItemLevel: (item: Item) => Item | null
   upgradeItemStars: (item: Item) => Item | null
@@ -592,7 +600,66 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const levels = player.professionLevels[professionId] ?? new Array(10).fill(0)
-    get().updatePlayer({ profession: professionId, professionLevels: { ...player.professionLevels, [professionId]: levels } })
+    const active = getActiveProfessions(player)
+    const nextActive = active.includes(professionId)
+      ? active
+      : [...active, professionId].slice(0, getProfessionSlotLimit(player))
+    get().updatePlayer({
+      profession: professionId,
+      activeProfessions: nextActive.length ? nextActive : [professionId],
+      professionLevels: { ...player.professionLevels, [professionId]: levels },
+    })
+  },
+
+  toggleActiveProfession: (professionId) => {
+    const { player } = get()
+    if (!player) return false
+    const limit = getProfessionSlotLimit(player)
+    const current = getActiveProfessions(player)
+    if (current.includes(professionId)) {
+      if (current.length <= 1) return false
+      const next = current.filter((id) => id !== professionId)
+      get().updatePlayer({
+        activeProfessions: next,
+        profession: next[0] ?? player.profession,
+      })
+      return true
+    }
+    if (current.length >= limit) return false
+    const next = [...current, professionId]
+    get().updatePlayer({ activeProfessions: next, profession: next[0] })
+    return true
+  },
+
+  performProfessionGrind: (activityId) => {
+    const { player } = get()
+    if (!player) return false
+    const activity = PROFESSION_ACTIVITIES.find((a) => a.id === activityId)
+    if (!activity) return false
+    if (!isProfessionActive(player, activity.professionId)) return false
+    const rank = getProfessionRank(getProfessionExp(player, activity.professionId))
+    if (activity.minRank && rank < activity.minRank) return false
+    if (activity.requiredTool && !playerHasTool(player, activity.requiredTool)) return false
+    if (activity.consumesItemId) {
+      const bait = player.inventory.find((i) => i.id === activity.consumesItemId)
+      if (!bait?.instanceId) return false
+    }
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(activity.energyCost)) return false
+
+    if (activity.consumesItemId) {
+      const bait = player.inventory.find((i) => i.id === activity.consumesItemId)
+      if (bait?.instanceId) get().removeItemByInstance(bait.instanceId)
+    }
+
+    get().addResources(activity.rewards)
+    const prevExp = getProfessionExp(player, activity.professionId)
+    get().updatePlayer({
+      professionExp: {
+        ...player.professionExp,
+        [activity.professionId]: prevExp + activity.professionXp,
+      },
+    })
+    return true
   },
 
   getProfessionSkillMissing: (professionId, skillIndex) => {
@@ -616,6 +683,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   upgradeProfessionSkill: (professionId, skillIndex) => {
     const { player } = get()
     if (!player) return false
+    if (!isProfessionActive(player, professionId)) return false
+    const rank = getProfessionRank(getProfessionExp(player, professionId))
+    if (rank < professionRankRequiredForSkill(skillIndex)) return false
     const prof = PROFESSIONS.find((p) => p.id === professionId)
     if (!prof) return false
     const skill = prof.skills[skillIndex]
@@ -639,7 +709,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const recipe = findCraftRecipe(recipeId, player)
     if (!recipe) return false
-    if (recipe.requiredProfession && player.profession !== recipe.requiredProfession) return false
+    if (recipe.requiredProfession && !isProfessionActive(player, recipe.requiredProfession)) return false
     if (recipe.requiredProfessionLevel) {
       const levels = player.professionLevels[recipe.requiredProfession!] ?? []
       if (levels.reduce((s, l) => s + l, 0) < recipe.requiredProfessionLevel) return false
@@ -1057,6 +1127,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         })
         grantSetItems('solo_leveling')
         break
+      case 'extra_profession_slot': {
+        const limit = player.professionSlotLimit ?? BASE_PROFESSION_SLOTS
+        if (limit >= MAX_PROFESSION_SLOTS) return false
+        get().updatePlayer({ professionSlotLimit: limit + 1 })
+        break
+      }
       default:
         return false
     }

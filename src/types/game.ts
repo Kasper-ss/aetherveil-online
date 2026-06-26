@@ -218,6 +218,11 @@ export interface Player {
   classId?: PlayerClass
   classSelected: boolean
   profession?: ProfessionId
+  activeProfessions?: ProfessionId[]
+  professionSlotLimit?: number
+  professionExp?: Partial<Record<ProfessionId, number>>
+  unlockedSetScrolls?: string[]
+  ownedTools?: string[]
   professionLevels: Partial<Record<ProfessionId, number[]>>
   professionMythicLevels: Partial<Record<ProfessionId, number[]>>
   resources: Partial<Record<ResourceId, number>>
@@ -361,12 +366,15 @@ export interface ShopItem {
   nameRu: string
   description: string
   descriptionRu: string
-  type: 'cosmetic' | 'consumable' | 'convenience' | 'equipment'
+  type: 'cosmetic' | 'consumable' | 'convenience' | 'equipment' | 'tool' | 'scroll'
   goldPrice?: number
   gemsPrice?: number
   starsPrice?: number
   icon: string
   itemId?: string
+  toolId?: string
+  scrollId?: string
+  bundleCount?: number
 }
 
 export interface IdleReward {
