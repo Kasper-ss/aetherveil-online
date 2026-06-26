@@ -8,6 +8,16 @@ export function calcBankInterest(balance: number, lastInterestAt: string | undef
   return Math.floor(balance * BANK_HOURLY_RATE * hours)
 }
 
+export function calcPendingInterestPercent(balance: number, pendingGold: number): number {
+  if (balance <= 0 || pendingGold <= 0) return 0
+  return Math.round((pendingGold / balance) * 1000) / 10
+}
+
+export function formatPendingInterestPercent(balance: number, pendingGold: number): string {
+  const pct = calcPendingInterestPercent(balance, pendingGold)
+  return pct > 0 ? `${pct.toFixed(1)}%` : '0%'
+}
+
 export function formatBankRate(): string {
   return `${(BANK_HOURLY_RATE * 100).toFixed(0)}% в час`
 }

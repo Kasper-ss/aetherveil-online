@@ -16,6 +16,7 @@ import {
   formatFateCardCountdown, type FateCardType,
 } from '@/lib/fateCards'
 import { formatBuffRemaining, isBuffActive } from '@/lib/playerBuffs'
+import { useLocaleStore } from '@/store/localeStore'
 
 const COLORS: FairColor[] = ['red', 'black', 'green']
 const FATE_TYPES: FateCardType[] = ['gold', 'exp']
@@ -23,6 +24,7 @@ const FATE_TYPES: FateCardType[] = ['gold', 'exp']
 export function FairPage() {
   const navigate = useNavigate()
   const t = useT()
+  const locale = useLocaleStore((s) => s.locale)
   const player = usePlayerStore((s) => s.player)
   const playFairBet = usePlayerStore((s) => s.playFairBet)
   const drawFateCard = usePlayerStore((s) => s.drawFateCard)
@@ -38,7 +40,7 @@ export function FairPage() {
   useTelegramBackButton(() => navigate('/'), true)
 
   useEffect(() => {
-    const id = setInterval(() => cdTick((n) => n + 1), 30_000)
+    const id = setInterval(() => cdTick((n) => n + 1), 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -237,8 +239,8 @@ export function FairPage() {
                 >
                   <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
                     <span className="text-4xl">{card.emoji}</span>
-                    <p className="text-sm font-bold text-white">{card.nameRu}</p>
-                    <p className="text-[10px] text-slate-400">{card.descriptionRu}</p>
+                    <p className="text-sm font-bold text-white">{locale === 'ru' ? card.nameRu : card.nameEn}</p>
+                    <p className="text-[10px] text-slate-400">{locale === 'ru' ? card.descriptionRu : card.descriptionEn}</p>
                     {active && activeUntil && (
                       <p className="text-[10px] text-aether-cyan">
                         {t('fair.fateActive')}: {formatBuffRemaining(activeUntil)}
@@ -263,9 +265,11 @@ export function FairPage() {
             <Card className="border-aether-cyan glow-cyan">
               <CardContent className="p-4 text-center">
                 <p className="text-sm text-slate-300">
-                  {t('fair.fateDrawn')}: {FATE_CARDS[lastFateCard].emoji} {FATE_CARDS[lastFateCard].nameRu}
+                  {t('fair.fateDrawn')}: {FATE_CARDS[lastFateCard].emoji}{' '}
+                  {locale === 'ru' ? FATE_CARDS[lastFateCard].nameRu : FATE_CARDS[lastFateCard].nameEn}
                 </p>
-                <p className="text-xs text-aether-cyan mt-1">{FATE_CARDS[lastFateCard].descriptionRu}</p>
+                <p className="text-xs text-aether-cyan mt-1">
+                  {locale === 'ru' ? FATE_CARDS[lastFateCard].descriptionRu : FATE_CARDS[lastFateCard].descriptionEn}</p>
               </CardContent>
             </Card>
           )}

@@ -14,6 +14,7 @@ import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
 import { groupConsumableStacks, isHpPotion, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 import { hasDeathDebuff } from '@/lib/playerStats'
+import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
@@ -141,6 +142,8 @@ export function CombatPage() {
           )}
         </div>
       </div>
+
+      {player && <CombatEffectsPanel player={player} />}
 
       {/* Combat log */}
       <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1 min-h-0">

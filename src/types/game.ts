@@ -249,6 +249,7 @@ export interface Player {
   underwearEasterEggClaimed?: boolean
   bankBalance?: number
   bankLastInterestAt?: string
+  bankPendingInterest?: number
   buffInfiniteEnergyUntil?: string
   buffDoubleExpUntil?: string
   buffTripleGoldUntil?: string

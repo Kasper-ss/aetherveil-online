@@ -29,6 +29,10 @@ import {
   canDrawFateCard, FATE_CARD_BUFF_DURATION_MS,
 } from '@/lib/fateCards'
 import { calcBankInterest } from '@/lib/bank'
+import {
+  applyBlacksmithCraftBonuses, applyBlacksmithCraftCost,
+  getBlacksmithDoubleCraftChance,
+} from '@/lib/blacksmithBonuses'
 import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getCosmeticStarProductId } from '@/data/cosmetics'
@@ -123,6 +127,7 @@ interface PlayerState {
   claimUnderwearEasterEgg: () => boolean
   dismantleAllCommonItems: () => number
   accrueBankInterest: () => void
+  collectBankInterest: () => boolean
   depositToBank: (amount: number) => boolean
   withdrawFromBank: (amount: number) => boolean
   allocateStat: (key: AllocStatKey, points?: number) => boolean
@@ -617,9 +622,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const interest = calcBankInterest(balance, player.bankLastInterestAt)
     if (interest <= 0) return
     get().updatePlayer({
-      bankBalance: balance + interest,
+      bankPendingInterest: (player.bankPendingInterest ?? 0) + interest,
       bankLastInterestAt: new Date().toISOString(),
     })
+  },
+
+  collectBankInterest: () => {
+    const { player } = get()
+    if (!player) return false
+    get().accrueBankInterest()
+    const p = get().player!
+    const pending = p.bankPendingInterest ?? 0
+    if (pending <= 0) return false
+    get().updatePlayer({
+      gold: p.gold + pending,
+      bankPendingInterest: 0,
+      monthlyStats: bumpMonthlyStat(p, 'goldEarned', pending),
+    })
+    return true
   },
 
   depositToBank: (amount) => {
@@ -643,7 +663,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const balance = p.bankBalance ?? 0
     if (balance < amount) return false
     get().updatePlayer({ bankBalance: balance - amount })
-    get().addGold(amount)
+    const p2 = get().player!
+    get().updatePlayer({ gold: p2.gold + amount })
     return true
   },
 
@@ -883,7 +904,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!recipe || !canBrewAlchemyRecipe(player, recipe)) return false
     if (!get().spendGold(recipe.goldCost)) return false
     if (!get().spendResources(recipe.resources)) {
-      get().addGold(recipe.goldCost)
+      grantGoldRaw(get, recipe.goldCost)
       return false
     }
     const inst = createItemInstance(recipe.resultItemId)
@@ -900,7 +921,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!scaled) return false
     if (!get().spendGold(scaled.goldCost)) return false
     if (!get().spendResources(scaled.resources)) {
-      get().addGold(scaled.goldCost)
+      grantGoldRaw(get, scaled.goldCost)
       return false
     }
     const inst = createItemInstance(scaled.resultFoodId)
@@ -965,7 +986,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (getMissingCosts(player, cost.gold, cost.resources).length > 0) return false
     if (!get().spendGold(cost.gold)) return false
     if (Object.keys(cost.resources).length && !get().spendResources(cost.resources)) {
-      get().addGold(cost.gold)
+      grantGoldRaw(get, cost.gold)
       return false
     }
     levels[skillIndex] = (levels[skillIndex] ?? 0) + 1
@@ -1004,10 +1025,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return true
     }
 
-    if (!get().spendGold(recipe.goldCost)) return false
-    if (!get().spendResources(recipe.resources)) return false
-    const inst = createItemInstance(recipe.resultItemId)
-    if (inst) get().addItem(inst)
+    const scaled = recipe.requiredProfession === 'blacksmith' && isProfessionActive(player, 'blacksmith')
+      ? applyBlacksmithCraftCost(player, recipe)
+      : recipe
+
+    if (!get().spendGold(scaled.goldCost)) return false
+    if (!get().spendResources(scaled.resources)) {
+      grantGoldRaw(get, scaled.goldCost)
+      return false
+    }
+
+    let inst = createItemInstance(recipe.resultItemId)
+    if (inst) {
+      inst = applyBlacksmithCraftBonuses(player, inst)
+      get().addItem(inst)
+      if (Math.random() < getBlacksmithDoubleCraftChance(player)) {
+        const duplicate = applyBlacksmithCraftBonuses(player, createItemInstance(recipe.resultItemId)!)
+        if (duplicate) get().addItem(duplicate)
+      }
+    }
     return !!inst
   },
 
@@ -1081,7 +1117,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return [{ key: 'upgrade', label: 'Нужно 10 ур. и 10★', icon: '⭐', have: 0, need: 1 }]
       }
     }
-    return getMissingCosts(player, recipe.goldCost, recipe.resources, recipe)
+    const scaled = recipe.requiredProfession === 'blacksmith' && isProfessionActive(player, 'blacksmith')
+      ? applyBlacksmithCraftCost(player, recipe)
+      : recipe
+    return getMissingCosts(
+      player,
+      scaled.goldCost,
+      scaled.resources,
+      recipe,
+    )
   },
 
   getUpgradeLevelMissing: (item) => {
@@ -1144,7 +1188,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (getMissingCosts(player, cost.gold, cost.resources).length > 0) return false
     if (!get().spendGold(cost.gold)) return false
     if (Object.keys(cost.resources).length && !get().spendResources(cost.resources)) {
-      get().addGold(cost.gold)
+      grantGoldRaw(get, cost.gold)
       return false
     }
     mythicLevels[skillIndex] = (mythicLevels[skillIndex] ?? 0) + 1
@@ -1266,7 +1310,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const cost = getSkillUpgradeCost(skillId, current)
     if (!get().spendGold(cost.gold)) return false
     if (!get().spendResources(cost.resources)) {
-      get().addGold(cost.gold)
+      grantGoldRaw(get, cost.gold)
       return false
     }
     const skillLevels = { ...player.skillLevels, [skillId]: current + 1 }
@@ -1315,8 +1359,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     stats.gamesPlayed++
     if (won) {
-      const current = get().player!
-      get().updatePlayer({ gold: current.gold + payout })
+      get().addGold(payout)
       stats.gamesWon++
       stats.goldWon += payout
     } else {
@@ -1790,10 +1833,19 @@ function calculateIdle(player: Player): IdleReward | null {
   if (minutes < 5) return null
   const capped = Math.min(minutes, 480)
   const floor = getFloorData(player.farmFloor)
-  const gold = Math.floor((floor.idleGoldPerHour / 60) * capped * getGoldMultiplier(player))
-  const exp = Math.floor((floor.idleExpPerHour / 60) * capped * getExpMultiplier(player))
+  const gold = Math.floor((floor.idleGoldPerHour / 60) * capped)
+  const exp = Math.floor((floor.idleExpPerHour / 60) * capped)
   if (gold <= 0 && exp <= 0) return null
   return { gold, exp, minutes: capped }
+}
+
+function grantGoldRaw(
+  get: () => { player: Player | null; updatePlayer: (partial: Partial<Player>) => void },
+  amount: number,
+) {
+  const { player } = get()
+  if (!player || amount <= 0) return
+  get().updatePlayer({ gold: player.gold + amount })
 }
 
 function grantRandomRareItems(count: number) {

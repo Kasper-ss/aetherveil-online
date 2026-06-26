@@ -7,7 +7,7 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { formatNumber } from '@/lib/utils'
-import { formatBankRate, formatInterestEta } from '@/lib/bank'
+import { formatBankRate, formatInterestEta, formatPendingInterestPercent } from '@/lib/bank'
 import { hapticError, hapticSuccess } from '@/lib/telegram'
 
 export function BankPage() {
@@ -17,19 +17,28 @@ export function BankPage() {
   const depositToBank = usePlayerStore((s) => s.depositToBank)
   const withdrawFromBank = usePlayerStore((s) => s.withdrawFromBank)
   const accrueBankInterest = usePlayerStore((s) => s.accrueBankInterest)
+  const collectBankInterest = usePlayerStore((s) => s.collectBankInterest)
   const [amount, setAmount] = useState('')
+  const [, tick] = useState(0)
 
   useTelegramBackButton(() => navigate('/'), true)
 
   useEffect(() => {
     accrueBankInterest()
+    const id = setInterval(() => {
+      accrueBankInterest()
+      tick((n) => n + 1)
+    }, 60_000)
+    return () => clearInterval(id)
   }, [accrueBankInterest])
 
   if (!player) return null
 
   const bankBalance = player.bankBalance ?? 0
+  const pendingInterest = player.bankPendingInterest ?? 0
   const walletGold = player.gold
   const parsed = parseInt(amount, 10)
+  const pendingPercent = formatPendingInterestPercent(bankBalance, pendingInterest)
 
   function handleDeposit() {
     if (!parsed || parsed < 1) { hapticError(); return }
@@ -45,6 +54,14 @@ export function BankPage() {
     if (!parsed || parsed < 1) { hapticError(); return }
     if (withdrawFromBank(parsed)) {
       setAmount('')
+      hapticSuccess()
+    } else {
+      hapticError()
+    }
+  }
+
+  function handleCollectInterest() {
+    if (collectBankInterest()) {
       hapticSuccess()
     } else {
       hapticError()
@@ -81,6 +98,30 @@ export function BankPage() {
             </p>
             <p className="text-[10px] text-aether-cyan mt-1">
               {formatInterestEta(bankBalance, player.bankLastInterestAt)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-aether-cyan/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">Накопленный процент за время отсутствия:</span>
+              <span className="text-aether-cyan font-bold">{pendingPercent}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">К зачислению на счёт:</span>
+              <span className="text-white font-medium">🪙 {formatNumber(pendingInterest)}</span>
+            </div>
+            <Button
+              className="w-full"
+              variant="secondary"
+              disabled={pendingInterest < 1}
+              onClick={handleCollectInterest}
+            >
+              Собрать процент
+            </Button>
+            <p className="text-[10px] text-slate-500 text-center">
+              Процент зачисляется на основной кошелёк, не на депозит в банке.
             </p>
           </CardContent>
         </Card>
