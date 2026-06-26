@@ -27,7 +27,7 @@ export const FISH_TABLE: FishEntry[] = [
 
 const JUNK_WEIGHT = 12
 
-export const FISHING_ENERGY_COST = 8
+export const FISHING_ENERGY_COST = 10
 
 export function rollFishCatch(junkReduction = 0): { fish: FishEntry | null; junk: boolean } {
   const fishWeight = FISH_TABLE.reduce((s, f) => s + f.weight, 0)

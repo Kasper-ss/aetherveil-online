@@ -12,6 +12,11 @@ export type StarProductId =
   | 'daily_bonus_50_30d'
   | 'mythic_starter_pack'
   | 'extra_profession_slot'
+  | 'cosmetic_avatar_telegram_hero'
+  | 'cosmetic_avatar_mythic_starter'
+  | 'cosmetic_frame_gold'
+  | 'cosmetic_frame_legendary'
+  | 'cosmetic_frame_mythic'
 
 export interface StarShopProduct {
   id: StarProductId

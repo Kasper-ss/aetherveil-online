@@ -8,6 +8,12 @@ export type StarProductId =
   | 'triple_gold_3d'
   | 'daily_bonus_50_30d'
   | 'mythic_starter_pack'
+  | 'extra_profession_slot'
+  | 'cosmetic_avatar_telegram_hero'
+  | 'cosmetic_avatar_mythic_starter'
+  | 'cosmetic_frame_gold'
+  | 'cosmetic_frame_legendary'
+  | 'cosmetic_frame_mythic'
 
 export interface StarProduct {
   id: StarProductId
@@ -70,6 +76,42 @@ export const STAR_PRODUCTS: Record<StarProductId, StarProduct> = {
     nameRu: 'Мифический Стартер Пак',
     descriptionRu: 'Мифический аватар + легендарный сет + 100 Gems + 10000 Gold.',
     stars: 800,
+  },
+  extra_profession_slot: {
+    id: 'extra_profession_slot',
+    nameRu: '+1 слот профессии',
+    descriptionRu: 'Дополнительный активный слот профессии (макс. 5).',
+    stars: 350,
+  },
+  cosmetic_avatar_telegram_hero: {
+    id: 'cosmetic_avatar_telegram_hero',
+    nameRu: 'Аватар «Герой Telegram»',
+    descriptionRu: 'Уникальный аватар профиля.',
+    stars: 150,
+  },
+  cosmetic_avatar_mythic_starter: {
+    id: 'cosmetic_avatar_mythic_starter',
+    nameRu: 'Аватар «Мифический»',
+    descriptionRu: 'Уникальный мифический аватар профиля.',
+    stars: 300,
+  },
+  cosmetic_frame_gold: {
+    id: 'cosmetic_frame_gold',
+    nameRu: 'Рамка «Золотая»',
+    descriptionRu: 'Золотая рамка профиля.',
+    stars: 100,
+  },
+  cosmetic_frame_legendary: {
+    id: 'cosmetic_frame_legendary',
+    nameRu: 'Рамка «Легендарная»',
+    descriptionRu: 'Легендарная рамка профиля.',
+    stars: 200,
+  },
+  cosmetic_frame_mythic: {
+    id: 'cosmetic_frame_mythic',
+    nameRu: 'Рамка «Мифическая»',
+    descriptionRu: 'Мифическая рамка профиля.',
+    stars: 400,
   },
 }
 

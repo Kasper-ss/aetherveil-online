@@ -31,7 +31,7 @@ import {
 import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
-import { AVATAR_OPTIONS, FRAME_OPTIONS } from '@/data/cosmetics'
+import { AVATAR_OPTIONS, FRAME_OPTIONS, getCosmeticStarProductId } from '@/data/cosmetics'
 import { addActiveEffect, pruneActiveEffects, EFFECT_PRESETS } from '@/lib/activeEffects'
 import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
@@ -145,6 +145,7 @@ interface PlayerState {
   consumeConsumable: (itemId: ConsumableId) => { healHp?: number; energy?: number } | null
   replaceItemInstance: (oldInstanceId: string, newItem: Item) => void
   applyCosmetic: (type: 'avatar' | 'frame', id: string) => boolean
+  purchaseCosmetic: (id: string) => Promise<boolean>
   unlockCosmetic: (id: string) => boolean
   grantEffectPreset: (preset: keyof typeof EFFECT_PRESETS, durationMs: number) => void
   repairItem: (item: Item) => boolean
@@ -1369,6 +1370,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         get().updatePlayer({ professionSlotLimit: limit + 1 })
         break
       }
+      case 'cosmetic_avatar_telegram_hero':
+        get().updatePlayer({
+          unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'telegram_hero'])],
+        })
+        break
+      case 'cosmetic_avatar_mythic_starter':
+        get().updatePlayer({
+          unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'mythic_starter'])],
+        })
+        break
+      case 'cosmetic_frame_gold':
+        get().updatePlayer({
+          unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'gold'])],
+        })
+        break
+      case 'cosmetic_frame_legendary':
+        get().updatePlayer({
+          unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'legendary'])],
+        })
+        break
+      case 'cosmetic_frame_mythic':
+        get().updatePlayer({
+          unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'mythic'])],
+        })
+        break
       default:
         return false
     }
@@ -1438,12 +1464,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id)
     if (!opt) return false
     if (opt.stars === 0) return true
-    if (player.unlockedCosmetics?.includes(id)) return true
-    const gemCost = Math.max(5, Math.floor(opt.stars / 5))
-    if (!get().spendGems(gemCost)) return false
-    const unlocked = [...(player.unlockedCosmetics ?? []), id]
-    get().updatePlayer({ unlockedCosmetics: unlocked })
-    return true
+    return player.unlockedCosmetics?.includes(id) ?? false
+  },
+
+  purchaseCosmetic: async (id) => {
+    const { player } = get()
+    if (!player) return false
+    const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id)
+    if (!opt) return false
+    if (opt.stars === 0 || player.unlockedCosmetics?.includes(id)) return true
+    const productId = getCosmeticStarProductId(id)
+    if (!productId) return false
+    const paid = await requestStarsPayment(productId)
+    if (!paid) return false
+    return get().applyStarProductReward(productId)
   },
 
   applyCosmetic: (type, id) => {
@@ -1451,9 +1485,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id && o.type === type)
     if (!opt) return false
-    if (opt.stars > 0 && !player.unlockedCosmetics?.includes(id)) {
-      if (!get().unlockCosmetic(id)) return false
-    }
+    if (opt.stars > 0 && !player.unlockedCosmetics?.includes(id)) return false
     if (type === 'avatar') {
       get().updatePlayer({ cosmeticAvatarId: id })
     } else {

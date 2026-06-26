@@ -1,3 +1,17 @@
+import type { StarProductId } from '@/data/starShop'
+
+const COSMETIC_STAR_PRODUCTS: Record<string, StarProductId> = {
+  telegram_hero: 'cosmetic_avatar_telegram_hero',
+  mythic_starter: 'cosmetic_avatar_mythic_starter',
+  gold: 'cosmetic_frame_gold',
+  legendary: 'cosmetic_frame_legendary',
+  mythic: 'cosmetic_frame_mythic',
+}
+
+export function getCosmeticStarProductId(cosmeticId: string): StarProductId | null {
+  return COSMETIC_STAR_PRODUCTS[cosmeticId] ?? null
+}
+
 export interface CosmeticOption {
   id: string
   label: string

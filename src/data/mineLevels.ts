@@ -17,7 +17,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 1,
     nameRu: 'Каменоломня',
     primaryResource: 'stone_chunk',
-    energyCost: 6,
+    energyCost: 9,
     xpPerDig: 8,
     xpToUnlock: 0,
     drops: [
@@ -32,7 +32,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 2,
     nameRu: 'Железная шахта',
     primaryResource: 'iron_ore',
-    energyCost: 8,
+    energyCost: 12,
     xpPerDig: 12,
     xpToUnlock: 120,
     drops: [
@@ -48,7 +48,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 3,
     nameRu: 'Золотой рудник',
     primaryResource: 'gold_ore',
-    energyCost: 10,
+    energyCost: 15,
     xpPerDig: 16,
     xpToUnlock: 350,
     drops: [
@@ -64,7 +64,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 4,
     nameRu: 'Алмазная жила',
     primaryResource: 'raw_diamond',
-    energyCost: 12,
+    energyCost: 18,
     xpPerDig: 22,
     xpToUnlock: 800,
     drops: [
@@ -80,7 +80,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 5,
     nameRu: 'Мифриловые глубины',
     primaryResource: 'mithril_ore',
-    energyCost: 14,
+    energyCost: 21,
     xpPerDig: 28,
     xpToUnlock: 1500,
     drops: [
@@ -96,7 +96,7 @@ export const MINE_LEVELS: MineLevel[] = [
     level: 6,
     nameRu: 'Адамантиевый разлом',
     primaryResource: 'adamantite',
-    energyCost: 18,
+    energyCost: 27,
     xpPerDig: 35,
     xpToUnlock: 2800,
     drops: [

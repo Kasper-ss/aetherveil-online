@@ -6,7 +6,7 @@ import { getMaxMana, usesMana } from '@/lib/mana'
 import { GUILD_ID } from '@/lib/multiplayer'
 import { syncPlayerSkills } from '@/data/playerSkills'
 import { TOOL_SHOP_ITEMS } from '@/data/tools'
-import { SCROLL_SHOP_ITEMS } from '@/data/setScrolls'
+import { SCROLL_SHOP_ITEMS, migrateUnlockedSetScrolls } from '@/data/setScrolls'
 import { RESOURCE_SHOP_ITEMS } from '@/data/resourceShop'
 import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
 import { defaultQuestState } from '@/lib/quests'
@@ -171,7 +171,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     activeProfessions: player.activeProfessions ?? (player.profession ? [player.profession] : []),
     professionSlotLimit: player.professionSlotLimit ?? BASE_PROFESSION_SLOTS,
     professionExp: player.professionExp ?? {},
-    unlockedSetScrolls: player.unlockedSetScrolls ?? [],
+    unlockedSetScrolls: migrateUnlockedSetScrolls(player.unlockedSetScrolls),
     ownedTools: player.ownedTools ?? [],
     mineLevel: player.mineLevel ?? 1,
     mineDigXp: player.mineDigXp ?? 0,

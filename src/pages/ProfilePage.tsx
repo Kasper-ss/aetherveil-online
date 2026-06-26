@@ -9,7 +9,9 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { xpForLevel, formatNumber } from '@/lib/utils'
 import { toggleMusic, toggleSound } from '@/lib/audio'
 import { useRef, useState } from 'react'
-import { shareInviteLink, hapticSuccess } from '@/lib/telegram'
+import { shareInviteLink, hapticSuccess, hapticError, showTelegramAlert } from '@/lib/telegram'
+import { StarsPaymentError } from '@/lib/starsPayment'
+import { formatStarsPriceLabel } from '@/data/starShop'
 import { getCombatMaxHp, hasDeathDebuff } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
@@ -25,7 +27,13 @@ export function ProfilePage() {
   const claimUnderwearEasterEgg = usePlayerStore((s) => s.claimUnderwearEasterEgg)
   const changeDisplayName = usePlayerStore((s) => s.changeDisplayName)
   const applyCosmetic = usePlayerStore((s) => s.applyCosmetic)
+  const purchaseCosmetic = usePlayerStore((s) => s.purchaseCosmetic)
   const updateNotificationSettings = usePlayerStore((s) => s.updateNotificationSettings)
+  const [buyingCosmeticId, setBuyingCosmeticId] = useState<string | null>(null)
+  const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | 'unsupported'>(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
+    return Notification.permission
+  })
   const [soundOn, setSoundOn] = useState(localStorage.getItem('aetherveil_sound') !== 'false')
   const [musicOn, setMusicOn] = useState(localStorage.getItem('aetherveil_music') !== 'false')
   const [showRename, setShowRename] = useState(false)
@@ -77,6 +85,53 @@ export function ProfilePage() {
     if (changeDisplayName(newName)) {
       setShowRename(false)
       setNewName('')
+    }
+  }
+
+  async function handleCosmetic(type: 'avatar' | 'frame', id: string) {
+    const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id && o.type === type)
+    if (!opt) return
+    const locked = opt.stars > 0 && !player!.unlockedCosmetics?.includes(id)
+    if (locked) {
+      setBuyingCosmeticId(id)
+      try {
+        const ok = await purchaseCosmetic(id)
+        if (!ok) {
+          hapticError()
+          return
+        }
+        if (applyCosmetic(type, id)) hapticSuccess()
+        else hapticError()
+      } catch (error) {
+        hapticError()
+        const message = error instanceof StarsPaymentError
+          ? error.message
+          : 'Не удалось выполнить оплату'
+        showTelegramAlert(message)
+      } finally {
+        setBuyingCosmeticId(null)
+      }
+      return
+    }
+    if (applyCosmetic(type, id)) hapticSuccess()
+  }
+
+  async function handleRequestPushPermission() {
+    if (notifyPermission === 'unsupported') {
+      showTelegramAlert('Браузерные push-уведомления недоступны в этой среде. Используются уведомления Telegram.')
+      return
+    }
+    const granted = await requestBrowserNotificationPermission()
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifyPermission(Notification.permission)
+    }
+    if (granted) {
+      hapticSuccess()
+      showTelegramAlert('Push-уведомления разрешены!')
+    } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'denied') {
+      showTelegramAlert('Уведомления заблокированы. Разрешите их в настройках браузера или Telegram.')
+    } else {
+      showTelegramAlert('Разрешение не получено. Попробуйте ещё раз или проверьте настройки.')
     }
   }
 
@@ -195,16 +250,19 @@ export function ProfilePage() {
             {AVATAR_OPTIONS.map((opt) => {
               const active = (player.cosmeticAvatarId ?? 'default') === opt.id
               const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
+              const buying = buyingCosmeticId === opt.id
               return (
                 <button
                   key={opt.id}
                   type="button"
-                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'}`}
-                  onClick={() => { if (applyCosmetic('avatar', opt.id)) hapticSuccess() }}
+                  disabled={buying}
+                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'} ${locked ? 'opacity-80' : ''}`}
+                  onClick={() => void handleCosmetic('avatar', opt.id)}
                 >
                   <div className="text-2xl">{opt.preview}</div>
                   <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
-                  {locked && <div className="text-[8px] text-aether-gold">{opt.stars}⭐</div>}
+                  {locked && <div className="text-[8px] text-aether-gold">{formatStarsPriceLabel(opt.stars)}</div>}
+                  {buying && <div className="text-[8px] text-slate-500">Оплата...</div>}
                 </button>
               )
             })}
@@ -214,21 +272,24 @@ export function ProfilePage() {
             {FRAME_OPTIONS.map((opt) => {
               const active = (player.profileFrameId ?? 'none') === opt.id
               const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
+              const buying = buyingCosmeticId === opt.id
               return (
                 <button
                   key={opt.id}
                   type="button"
-                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'}`}
-                  onClick={() => { if (applyCosmetic('frame', opt.id)) hapticSuccess() }}
+                  disabled={buying}
+                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'} ${locked ? 'opacity-80' : ''}`}
+                  onClick={() => void handleCosmetic('frame', opt.id)}
                 >
                   <div className="text-lg">{opt.preview}</div>
                   <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
-                  {locked && <div className="text-[8px] text-aether-gold">{opt.stars}⭐</div>}
+                  {locked && <div className="text-[8px] text-aether-gold">{formatStarsPriceLabel(opt.stars)}</div>}
+                  {buying && <div className="text-[8px] text-slate-500">Оплата...</div>}
                 </button>
               )
             })}
           </div>
-          <p className="text-[10px] text-slate-500">Платные варианты разблокируются за кристаллы при выборе</p>
+          <p className="text-[10px] text-slate-500">Платные варианты покупаются за Telegram Stars</p>
         </CardContent>
       </Card>
 
@@ -258,9 +319,15 @@ export function ProfilePage() {
             variant="outline"
             size="sm"
             className="w-full text-xs"
-            onClick={() => void requestBrowserNotificationPermission()}
+            onClick={() => void handleRequestPushPermission()}
           >
-            Разрешить push-уведомления браузера
+            {notifyPermission === 'granted'
+              ? 'Push-уведомления разрешены ✓'
+              : notifyPermission === 'denied'
+                ? 'Push заблокированы (настройки)'
+                : notifyPermission === 'unsupported'
+                  ? 'Push недоступны (только Telegram)'
+                  : 'Разрешить push-уведомления браузера'}
           </Button>
         </CardContent>
       </Card>

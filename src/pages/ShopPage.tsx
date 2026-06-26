@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowLeft, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { usePlayerStore } from '@/store/playerStore'
 import { SHOP_ITEMS } from '@/data/gameData'
 import { RESOURCES } from '@/data/classes'
-import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, SET_DATA } from '@/data/items'
+import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, type EquipSlot } from '@/data/items'
+import { SET_SCROLL_PRODUCTS, getScrollSetFilters } from '@/data/setScrolls'
+import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError, hapticImpact, showTelegramAlert } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
@@ -20,7 +22,7 @@ import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { getActiveBuffs, formatBuffRemaining } from '@/lib/playerBuffs'
 import type { StarProductId } from '@/data/starShop'
-import type { Item, ItemRarity, ResourceId, MarketListing } from '@/types/game'
+import type { Item, ResourceId, MarketListing } from '@/types/game'
 import { fetchServerMarket } from '@/lib/multiplayerSync'
 import { getNpcSellGold, NPC_SELL_RATE_LABEL } from '@/data/resourceShop'
 import { playerHasTool } from '@/data/tools'
@@ -44,24 +46,7 @@ const RESOURCE_NPC = SHOP_ITEMS.filter((i) => i.type === 'resource' || i.id === 
 const SCROLL_NPC = SHOP_ITEMS.filter((i) => i.type === 'scroll')
 const EQUIP_NPC = SHOP_ITEMS.filter((i) => i.type === 'equipment')
 
-type RarityFilter = 'all' | ItemRarity
-type PriceSort = 'default' | 'asc' | 'desc'
-type SetFilter = 'all' | 'none' | string
-
-const RARITY_FILTERS: { id: RarityFilter; label: string }[] = [
-  { id: 'all', label: 'Все' },
-  { id: 'common', label: 'Обычный' },
-  { id: 'rare', label: 'Редкий' },
-  { id: 'epic', label: 'Эпический' },
-  { id: 'legendary', label: 'Легендарный' },
-  { id: 'mythic', label: 'Мифический' },
-]
-
-const SET_FILTERS: { id: SetFilter; label: string }[] = [
-  { id: 'all', label: 'Все сеты' },
-  { id: 'none', label: 'Без сета' },
-  ...SET_DATA.map((s) => ({ id: s.id, label: s.name })),
-]
+type ScrollRarityFilter = 'all' | 'epic' | 'legendary'
 
 export function ShopPage() {
   const navigate = useNavigate()
@@ -86,9 +71,8 @@ export function ShopPage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedResource, setSelectedResource] = useState<ResourceId | null>(null)
   const [resourceAmount, setResourceAmount] = useState('1')
-  const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all')
-  const [priceSort, setPriceSort] = useState<PriceSort>('default')
-  const [setFilter, setSetFilter] = useState<SetFilter>('all')
+  const [scrollRarityFilter, setScrollRarityFilter] = useState<ScrollRarityFilter>('all')
+  const [scrollSetFilter, setScrollSetFilter] = useState<string>('all')
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -244,40 +228,25 @@ export function ShopPage() {
     (id) => (player.resources[id] ?? 0) > 0
   )
 
-  const filteredEquipment = useMemo(() => {
-    let items = [...EQUIP_NPC]
-
-    if (rarityFilter !== 'all') {
-      items = items.filter((shopItem) => {
-        const template = shopItem.itemId ? ALL_ITEMS[shopItem.itemId] : null
-        return template?.rarity === rarityFilter
-      })
+  const filteredScrolls = useMemo(() => {
+    let items = [...SET_SCROLL_PRODUCTS]
+    if (scrollRarityFilter !== 'all') {
+      items = items.filter((s) => s.rarity === scrollRarityFilter)
     }
-
-    if (setFilter !== 'all') {
-      items = items.filter((shopItem) => {
-        const template = shopItem.itemId ? ALL_ITEMS[shopItem.itemId] : null
-        if (setFilter === 'none') return !template?.setId
-        return template?.setId === setFilter
-      })
+    if (scrollSetFilter !== 'all') {
+      items = items.filter((s) => s.setId === scrollSetFilter)
     }
-
-    if (priceSort === 'asc') {
-      items.sort((a, b) => (a.goldPrice ?? 0) - (b.goldPrice ?? 0))
-    } else if (priceSort === 'desc') {
-      items.sort((a, b) => (b.goldPrice ?? 0) - (a.goldPrice ?? 0))
-    }
-
     return items
-  }, [rarityFilter, priceSort, setFilter])
+  }, [scrollRarityFilter, scrollSetFilter])
 
-  function cyclePriceSort() {
-    setPriceSort((prev) => {
-      if (prev === 'default') return 'asc'
-      if (prev === 'asc') return 'desc'
-      return 'default'
-    })
-  }
+  const scrollSetFilters = useMemo(() => getScrollSetFilters(), [])
+
+  const filteredScrollShop = useMemo(() => {
+    const order = new Map(filteredScrolls.map((s, i) => [s.scrollId, i]))
+    return SCROLL_NPC
+      .filter((i) => i.scrollId && order.has(i.scrollId))
+      .sort((a, b) => (order.get(a.scrollId!) ?? 0) - (order.get(b.scrollId!) ?? 0))
+  }, [filteredScrolls])
 
   function renderNpcCard(item: typeof SHOP_ITEMS[0]) {
     const template = item.itemId ? ALL_ITEMS[item.itemId] : null
@@ -287,6 +256,9 @@ export function ShopPage() {
       || (item.toolId === 'fishing_rod' && playerHasTool(p, 'fishing_rod'))
     )
     const ownedScroll = item.scrollId && p.unlockedSetScrolls?.includes(item.scrollId)
+    const scrollMeta = item.scrollId
+      ? SET_SCROLL_PRODUCTS.find((s) => s.scrollId === item.scrollId)
+      : null
     const disabled = !!(ownedTool || ownedScroll)
     const bundleLabel = item.resourceBundle
       ? Object.entries(item.resourceBundle)
@@ -297,7 +269,11 @@ export function ShopPage() {
     return (
       <Card key={item.id}>
         <CardContent className="p-3 flex items-center gap-3">
-          <div className="text-3xl">{item.icon}</div>
+          {template && item.type === 'equipment' ? (
+            <EquipmentSlotIcon slot={template.slot as EquipSlot} rarity={template.rarity} size="sm" />
+          ) : (
+            <div className="text-3xl">{item.icon}</div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-white">{item.nameRu}</div>
             <div className="text-[10px] text-slate-400 truncate">{item.descriptionRu}</div>
@@ -305,6 +281,12 @@ export function ShopPage() {
               <Badge className="text-[8px]">{SHOP_TYPE_RU[item.type] ?? item.type}</Badge>
               {ownedTool && <Badge className="text-[8px]">Куплено</Badge>}
               {ownedScroll && <Badge className="text-[8px]">Изучено</Badge>}
+              {scrollMeta && (
+                <>
+                  <Badge variant={scrollMeta.rarity} className="text-[8px]">{RARITY_LABELS_RU[scrollMeta.rarity]}</Badge>
+                  <Badge className="text-[8px] border border-aether-border">{scrollMeta.setName}</Badge>
+                </>
+              )}
               {template && (
                 <Badge variant={template.rarity} className="text-[8px]">{RARITY_LABELS_RU[template.rarity]}</Badge>
               )}
@@ -375,60 +357,59 @@ export function ShopPage() {
               <div className="space-y-3">{RESOURCE_NPC.map(renderNpcCard)}</div>
             </TabsContent>
             <TabsContent value="scrolls">
-              <p className="text-[10px] text-slate-500 mb-2">Открывают рецепты эпических и легендарных сетов в Кузнице.</p>
-              <div className="space-y-3">{SCROLL_NPC.map(renderNpcCard)}</div>
-            </TabsContent>
-            <TabsContent value="equipment">
-              <p className="text-[10px] text-slate-500 mb-2">Обычные и редкие предметы — цена выше, чем с фарма.</p>
-
+              <p className="text-[10px] text-slate-500 mb-2">Свитки на отдельные части сетов — рецепт появится в Кузнице.</p>
               <div className="space-y-2 mb-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-slate-500 shrink-0">Редкость:</span>
-                  <Button
-                    variant={priceSort === 'default' ? 'secondary' : 'default'}
-                    size="sm"
-                    className="h-7 text-[10px] shrink-0"
-                    onClick={cyclePriceSort}
-                  >
-                    {priceSort === 'default' && <><ArrowUpDown className="h-3 w-3 mr-1" />Цена</>}
-                    {priceSort === 'asc' && <><ArrowUp className="h-3 w-3 mr-1" />Дешевле</>}
-                    {priceSort === 'desc' && <><ArrowDown className="h-3 w-3 mr-1" />Дороже</>}
-                  </Button>
-                </div>
                 <div className="flex gap-1 overflow-x-auto pb-1">
-                  {RARITY_FILTERS.map((f) => (
+                  {([
+                    ['all', 'Все'] as const,
+                    ['epic', 'Эпик'] as const,
+                    ['legendary', 'Легенда'] as const,
+                  ]).map(([id, label]) => (
                     <Button
-                      key={f.id}
-                      variant={rarityFilter === f.id ? 'default' : 'secondary'}
+                      key={id}
+                      variant={scrollRarityFilter === id ? 'default' : 'secondary'}
                       size="sm"
                       className="h-7 text-[10px] shrink-0"
-                      onClick={() => setRarityFilter(f.id)}
+                      onClick={() => setScrollRarityFilter(id)}
                     >
-                      {f.label}
+                      {label}
                     </Button>
                   ))}
                 </div>
                 <div className="flex gap-1 overflow-x-auto pb-1">
-                  {SET_FILTERS.map((f) => (
+                  <Button
+                    variant={scrollSetFilter === 'all' ? 'default' : 'secondary'}
+                    size="sm"
+                    className="h-7 text-[10px] shrink-0"
+                    onClick={() => setScrollSetFilter('all')}
+                  >
+                    Все сеты
+                  </Button>
+                  {scrollSetFilters.map((s) => (
                     <Button
-                      key={f.id}
-                      variant={setFilter === f.id ? 'default' : 'secondary'}
+                      key={s.id}
+                      variant={scrollSetFilter === s.id ? 'default' : 'secondary'}
                       size="sm"
                       className="h-7 text-[10px] shrink-0"
-                      onClick={() => setSetFilter(f.id)}
+                      onClick={() => setScrollSetFilter(s.id)}
                     >
-                      {f.label}
+                      {s.name}
                     </Button>
                   ))}
                 </div>
               </div>
-
               <div className="space-y-3 max-h-[55vh] overflow-y-auto">
-                {filteredEquipment.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-8">Нет предметов по выбранным фильтрам</p>
+                {filteredScrollShop.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-8">Нет свитков по фильтру</p>
                 ) : (
-                  filteredEquipment.map(renderNpcCard)
+                  filteredScrollShop.map(renderNpcCard)
                 )}
+              </div>
+            </TabsContent>
+            <TabsContent value="equipment">
+              <p className="text-[10px] text-slate-500 mb-2">Обычные и редкие предметы — цена выше, чем с фарма.</p>
+              <div className="space-y-3 max-h-[55vh] overflow-y-auto">
+                {EQUIP_NPC.map(renderNpcCard)}
               </div>
             </TabsContent>
           </Tabs>
