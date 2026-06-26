@@ -12,7 +12,7 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
-import { groupConsumableStacks } from '@/lib/consumables'
+import { groupConsumableStacks, isHpPotion, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 import { hasDeathDebuff } from '@/lib/playerStats'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 
@@ -66,8 +66,11 @@ export function CombatPage() {
   const enemyHpPct = (combat.enemyHp / combat.enemyMaxHp) * 100
 
   const skills = player?.skills ?? []
-  const potionStacks = player ? groupConsumableStacks(player.inventory) : []
-  const hpPotions = potionStacks.find((s) => s.itemId === 'hp_potion')?.count ?? 0
+  const potionStacks = player ? groupConsumableStacks(player.inventory).filter((s) => isHpPotion(s.itemId)) : []
+  const hpPotionOrder: ConsumableId[] = ['hp_potion_legendary', 'hp_potion_epic', 'hp_potion_rare', 'hp_potion']
+  const sortedHpPotions = [...potionStacks].sort(
+    (a, b) => hpPotionOrder.indexOf(a.itemId) - hpPotionOrder.indexOf(b.itemId),
+  )
 
   function handleFlee() {
     hapticImpact('light')
@@ -161,17 +164,21 @@ export function CombatPage() {
               </Button>
             )}
           </div>
-          {hpPotions > 0 && !combat.isPvp && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              disabled={combat.playerHp >= combat.playerMaxHp}
-              onClick={() => { hapticImpact('light'); useConsumableInCombat('hp_potion') }}
-            >
-              🧪 Зелье HP ×{hpPotions} (+50% HP)
-            </Button>
-          )}
+          {sortedHpPotions.length > 0 && !combat.isPvp && sortedHpPotions.map((stack) => {
+            const pct = Math.round((CONSUMABLE_EFFECTS[stack.itemId]?.healPercent ?? 0.5) * 100)
+            return (
+              <Button
+                key={stack.itemId}
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                disabled={combat.playerHp >= combat.playerMaxHp}
+                onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
+              >
+                {stack.icon} {stack.name} ×{stack.count} (+{pct}% HP)
+              </Button>
+            )
+          })}
           <div className="grid grid-cols-2 gap-2">
             {skills.map((sid) => {
               const skill = SKILLS[sid]

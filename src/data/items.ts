@@ -285,9 +285,25 @@ export const CONSUMABLES: Record<string, Item> = {
     id: 'hp_potion', name: 'Зелье HP', description: 'Восстанавливает 50% HP в бою.',
     slot: 'consumable', rarity: 'common', stats: {}, icon: '🧪', sellPrice: 25, upgradeLevel: 1, starLevel: 0,
   },
+  hp_potion_rare: {
+    id: 'hp_potion_rare', name: 'Сильное зелье HP', description: 'Восстанавливает 65% HP в бою.',
+    slot: 'consumable', rarity: 'rare', stats: {}, icon: '🧪', sellPrice: 55, upgradeLevel: 1, starLevel: 0,
+  },
+  hp_potion_epic: {
+    id: 'hp_potion_epic', name: 'Эпическое зелье HP', description: 'Восстанавливает 80% HP в бою.',
+    slot: 'consumable', rarity: 'epic', stats: {}, icon: '🧪', sellPrice: 120, upgradeLevel: 1, starLevel: 0,
+  },
+  hp_potion_legendary: {
+    id: 'hp_potion_legendary', name: 'Легендарное зелье жизни', description: 'Полностью восстанавливает HP в бою.',
+    slot: 'consumable', rarity: 'legendary', stats: {}, icon: '🧪', sellPrice: 250, upgradeLevel: 1, starLevel: 0,
+  },
   energy_drink: {
     id: 'energy_drink', name: 'Энергетик', description: 'Восстанавливает 30 энергии.',
     slot: 'consumable', rarity: 'common', stats: {}, icon: '⚡', sellPrice: 30, upgradeLevel: 1, starLevel: 0,
+  },
+  energy_drink_rare: {
+    id: 'energy_drink_rare', name: 'Мощный энергетик', description: 'Восстанавливает 50 энергии.',
+    slot: 'consumable', rarity: 'rare', stats: {}, icon: '⚡', sellPrice: 60, upgradeLevel: 1, starLevel: 0,
   },
   fishing_bait: {
     id: 'fishing_bait', name: 'Наживка', description: 'Расходник для рыбалки.',

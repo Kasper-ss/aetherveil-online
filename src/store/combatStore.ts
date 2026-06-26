@@ -8,7 +8,7 @@ import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
 import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
-import { CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
+import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion } from '@/lib/consumables'
 
 interface CombatStore {
   combat: CombatState | null
@@ -282,12 +282,13 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const player = playerStore.player
     if (!player) return false
 
-    if (itemId === 'hp_potion') {
+    if (isHpPotion(itemId)) {
       if (combat.playerHp >= combat.playerMaxHp) return false
-      const consumed = playerStore.consumeConsumable(itemId)
+      const consumed = playerStore.consumeConsumable(itemId as ConsumableId)
       if (!consumed?.healHp) return false
       const heal = Math.min(consumed.healHp, combat.playerMaxHp - combat.playerHp)
-      const logs = [...combat.combatLog, logEntry(`🧪 Зелье HP: +${heal} HP`, 'heal')]
+      const pct = Math.round((CONSUMABLE_EFFECTS[itemId as ConsumableId]?.healPercent ?? 0.5) * 100)
+      const logs = [...combat.combatLog, logEntry(`🧪 Зелье HP (+${pct}%): +${heal} HP`, 'heal')]
       set({
         combat: {
           ...combat,

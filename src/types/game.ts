@@ -19,6 +19,7 @@ export type ResourceId =
   | 'aether_dust' | 'star_shard' | 'upgrade_core'
   | 'stone_chunk' | 'gold_ore' | 'raw_diamond' | 'mithril_ore' | 'adamantite'
   | 'sulfur' | 'rare_spice' | 'abyssal_pearl'
+  | 'herb_mint' | 'herb_lotus' | 'herb_phoenix' | 'herb_void'
   | 'fish_minnow' | 'fish_bream' | 'fish_carp' | 'fish_perch' | 'fish_trout'
   | 'fish_salmon' | 'fish_pike' | 'fish_tuna' | 'fish_cod' | 'fish_eel'
   | 'fish_crab' | 'fish_lobster' | 'fish_squid' | 'fish_swordfish' | 'fish_aether_koi'
@@ -231,6 +232,8 @@ export interface Player {
   ownedTools?: string[]
   mineLevel?: number
   mineDigXp?: number
+  fieldLevel?: number
+  fieldGatherXp?: number
   fishCaughtTotal?: number
   professionLevels: Partial<Record<ProfessionId, number[]>>
   professionMythicLevels: Partial<Record<ProfessionId, number[]>>

@@ -24,6 +24,7 @@ import { PlayerViewPage } from '@/pages/PlayerViewPage'
 import { MinePage } from '@/pages/MinePage'
 import { FishingPage } from '@/pages/FishingPage'
 import { KitchenPage } from '@/pages/KitchenPage'
+import { HerbFieldPage } from '@/pages/HerbFieldPage'
 import { QuestsPage } from '@/pages/QuestsPage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
@@ -66,6 +67,7 @@ function AppRoutes() {
           <Route path="/mine" element={<MinePage />} />
           <Route path="/fishing" element={<FishingPage />} />
           <Route path="/kitchen" element={<KitchenPage />} />
+          <Route path="/field" element={<HerbFieldPage />} />
           <Route path="/quests" element={<QuestsPage />} />
         </Routes>
       </div>

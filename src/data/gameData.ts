@@ -175,6 +175,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     ownedTools: player.ownedTools ?? [],
     mineLevel: player.mineLevel ?? 1,
     mineDigXp: player.mineDigXp ?? 0,
+    fieldLevel: player.fieldLevel ?? 1,
+    fieldGatherXp: player.fieldGatherXp ?? 0,
     fishCaughtTotal: player.fishCaughtTotal ?? 0,
     questState: player.questState ?? defaultQuestState(player),
     monthlyStats: player.monthlyStats ?? defaultMonthlyStats(player),

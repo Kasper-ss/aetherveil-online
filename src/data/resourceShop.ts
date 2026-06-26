@@ -86,6 +86,10 @@ export const RESOURCE_SHOP_ITEMS: ShopItem[] = [
 export const NPC_RESOURCE_SELL_GOLD: Partial<Record<ResourceId, number>> = {
   iron_ore: 7,
   herb: 4,
+  herb_mint: 3,
+  herb_lotus: 12,
+  herb_phoenix: 28,
+  herb_void: 55,
   hide: 8,
   meat: 5,
   gem_shard: 18,

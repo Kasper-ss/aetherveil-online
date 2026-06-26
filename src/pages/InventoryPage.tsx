@@ -11,8 +11,9 @@ import { SKILLS } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
 import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
-import { groupConsumableStacks } from '@/lib/consumables'
+import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { ResourceCatalog } from '@/components/ui/ResourceCatalog'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, EquipSlot } from '@/types/game'
 
@@ -50,7 +51,7 @@ export function InventoryPage() {
     if (item.slot !== 'consumable') equipItem(item)
   }
 
-  function handleUseConsumable(itemId: 'hp_potion' | 'energy_drink') {
+  function handleUseConsumable(itemId: ConsumableId) {
     if (consumeConsumable(itemId)) hapticSuccess()
   }
 
@@ -81,6 +82,7 @@ export function InventoryPage() {
         <TabsList>
           <TabsTrigger value="equipment">Экипировка</TabsTrigger>
           <TabsTrigger value="items">Предметы</TabsTrigger>
+          <TabsTrigger value="resources">Ресурсы</TabsTrigger>
           <TabsTrigger value="skills">Навыки</TabsTrigger>
         </TabsList>
 
@@ -181,6 +183,10 @@ export function InventoryPage() {
               </p>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="resources" className="mt-3">
+          <ResourceCatalog resources={player.resources} />
         </TabsContent>
 
         <TabsContent value="skills">

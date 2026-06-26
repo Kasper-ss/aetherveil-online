@@ -7,6 +7,10 @@ import { applyClassCraftModifier } from '@/lib/classCraft'
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
   herb: { id: 'herb', name: 'Healing Herb', nameRu: 'Целебная трава', icon: '🌿' },
+  herb_mint: { id: 'herb_mint', name: 'Mint Herb', nameRu: 'Мятная трава', icon: '🍃' },
+  herb_lotus: { id: 'herb_lotus', name: 'Swamp Lotus', nameRu: 'Лотос болотный', icon: '🪷' },
+  herb_phoenix: { id: 'herb_phoenix', name: 'Phoenix Thorn', nameRu: 'Фениксовый шип', icon: '🌺' },
+  herb_void: { id: 'herb_void', name: 'Void Herb', nameRu: 'Трава Пустоты', icon: '🌑' },
   hide: { id: 'hide', name: 'Monster Hide', nameRu: 'Шкура монстра', icon: '🦴' },
   meat: { id: 'meat', name: 'Monster Meat', nameRu: 'Мясо монстра', icon: '🥩' },
   gem_shard: { id: 'gem_shard', name: 'Gem Shard', nameRu: 'Осколок кристалла', icon: '💠' },
@@ -200,7 +204,6 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   { id: 'craft_weapon_t5', resultItemId: 'weapon_t5', name: 'Рунический клинок', description: 'АТК +25, КРИТ +11', resources: { iron_ore: 15, gem_shard: 5, upgrade_core: 3 }, goldCost: 400, requiredProfession: 'blacksmith', requiredProfessionLevel: 8 },
   { id: 'craft_chest_t4', resultItemId: 'chestplate_t4', name: 'Нагрудник охотника', description: 'ЗАЩ +14, HP +55', resources: { hide: 10, iron_ore: 8, upgrade_core: 2 }, goldCost: 350, requiredProfession: 'blacksmith', requiredProfessionLevel: 6 },
   ...LUCKY_SET_CRAFT_RECIPES,
-  { id: 'craft_hp_potion', resultItemId: 'hp_potion', name: 'Зелье HP', description: 'Восстанавливает 50% HP в бою.', resources: { herb: 8 }, goldCost: 50, requiredProfession: 'alchemist', requiredProfessionLevel: 1 },
 ]
 
 export function getUpgradeLevelCost(item: import('@/types/game').Item): { gold: number; resources: Partial<Record<ResourceId, number>> } {

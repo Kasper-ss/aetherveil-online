@@ -48,6 +48,10 @@ import { playerHasTool, getMineDoubleBonus, getFishingJunkReduction, getHerbGath
 import {
   getMineLevelData, getUnlockedMineLevel, rollMineRewards,
 } from '@/data/mineLevels'
+import {
+  getHerbFieldLevelData, getUnlockedHerbFieldLevel, rollHerbGather,
+} from '@/data/herbField'
+import { findAlchemyRecipe, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
 import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
@@ -101,6 +105,8 @@ interface PlayerState {
   performProfessionGrind: (activityId: string) => boolean
   performMineDig: (targetLevel?: number) => { ok: boolean; isVein?: boolean; isDouble?: boolean }
   performFishing: () => { ok: boolean; fishName?: string; junk?: boolean }
+  performHerbGather: (targetLevel?: number) => { ok: boolean; isBonus?: boolean }
+  brewPotion: (recipeId: string) => boolean
   cookFood: (recipeId: string) => boolean
   eatFood: (itemId: string) => boolean
   craftItem: (recipeId: string) => boolean
@@ -824,7 +830,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (fish) {
       get().addResources({ [fish.id]: 1 })
-      const profXp = 8 + (fish.rarity === 'legendary' ? 20 : fish.rarity === 'epic' ? 12 : fish.rarity === 'rare' ? 6 : 3)
+      const profXp = 4 + (fish.rarity === 'legendary' ? 10 : fish.rarity === 'epic' ? 6 : fish.rarity === 'rare' ? 3 : 2)
       get().updatePlayer({
         fishCaughtTotal: (player.fishCaughtTotal ?? 0) + 1,
         professionExp: {
@@ -837,6 +843,52 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return { ok: true, fishName: fish.nameRu }
     }
     return { ok: false }
+  },
+
+  performHerbGather: (targetLevel) => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'alchemist')) return { ok: false }
+    const hasTool = playerHasTool(player, 'pickaxe') || player.ownedTools?.includes('herbal_sickle')
+    if (!hasTool) return { ok: false }
+
+    const unlocked = getUnlockedHerbFieldLevel(player.fieldGatherXp ?? 0)
+    const level = Math.min(targetLevel ?? player.fieldLevel ?? 1, unlocked)
+    const field = getHerbFieldLevelData(level)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(field.energyCost)) return { ok: false }
+
+    const { resources, isBonus } = rollHerbGather(field)
+    const bonus = getHerbGatherBonus(player)
+    if (bonus > 0) {
+      const primary = field.primaryHerb
+      resources[primary] = (resources[primary] ?? 0) + bonus
+    }
+    get().addResources(resources)
+    const newXp = (player.fieldGatherXp ?? 0) + field.xpPerGather
+    get().updatePlayer({
+      fieldGatherXp: newXp,
+      fieldLevel: level,
+      professionExp: {
+        ...player.professionExp,
+        alchemist: getProfessionExp(player, 'alchemist') + field.xpPerGather,
+      },
+    })
+    return { ok: true, isBonus }
+  },
+
+  brewPotion: (recipeId) => {
+    const { player } = get()
+    if (!player) return false
+    const recipe = findAlchemyRecipe(recipeId)
+    if (!recipe || !canBrewAlchemyRecipe(player, recipe)) return false
+    if (!get().spendGold(recipe.goldCost)) return false
+    if (!get().spendResources(recipe.resources)) {
+      get().addGold(recipe.goldCost)
+      return false
+    }
+    const inst = createItemInstance(recipe.resultItemId)
+    if (inst) get().addItem(inst)
+    return !!inst
   },
 
   cookFood: (recipeId) => {
