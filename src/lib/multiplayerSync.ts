@@ -12,6 +12,7 @@ function mapListing(raw: MarketListing): MarketListing {
 export interface SyncResult {
   pendingGold: number
   soldListingIds: string[]
+  incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
 }
 
 export async function syncPlayerToServer(player: Player): Promise<SyncResult | null> {
@@ -36,11 +37,16 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
         publicProfile: buildPublicProfile(player),
       }),
     })
-    const data = await res.json() as { pendingGold?: number; soldListingIds?: string[] }
+    const data = await res.json() as {
+      pendingGold?: number
+      soldListingIds?: string[]
+      incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
+    }
     if (!res.ok) return null
     return {
       pendingGold: data.pendingGold ?? 0,
       soldListingIds: data.soldListingIds ?? [],
+      incomingGifts: data.incomingGifts ?? [],
     }
   } catch (error) {
     console.warn('[multiplayer] sync failed', error)

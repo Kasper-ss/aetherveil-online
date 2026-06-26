@@ -259,6 +259,8 @@ export interface Player {
   friendIds?: number[]
   activeEffects?: ActiveEffect[]
   fairStats?: FairGameStats
+  questState?: QuestState
+  guildJoinedAt?: string
 }
 
 export interface FairGameStats {
@@ -267,6 +269,38 @@ export interface FairGameStats {
   gamesLost: number
   goldWon: number
   goldLost: number
+}
+
+export type QuestEvent =
+  | 'kill_mob' | 'win_combat' | 'fish' | 'mine' | 'cook' | 'pvp_win' | 'advance_floor'
+
+export interface QuestDef {
+  id: string
+  scope: 'daily' | 'weekly' | 'guild'
+  nameRu: string
+  descriptionRu: string
+  event: QuestEvent
+  target: number
+  rewards: { gold?: number; gems?: number; resources?: Partial<Record<ResourceId, number>> }
+}
+
+export interface QuestState {
+  dailyDate: string
+  dailyProgress: Record<string, number>
+  dailyClaimed: string[]
+  weeklyKey: string
+  weeklyProgress: Record<string, number>
+  weeklyClaimed: string[]
+  guildClaimed: string[]
+  weeklyFloorBaseline?: number
+}
+
+export interface GuildGiftPayload {
+  id: string
+  fromId: number
+  fromName: string
+  item: Item
+  sentAt: string
 }
 
 export interface GuildChatMessage {

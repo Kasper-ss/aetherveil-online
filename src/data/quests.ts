@@ -1,0 +1,118 @@
+import type { QuestDef } from '@/types/game'
+
+export const DAILY_QUESTS: QuestDef[] = [
+  {
+    id: 'daily_kills_5',
+    scope: 'daily',
+    nameRu: 'Охотник дня',
+    descriptionRu: 'Убить 5 мобов на этажах',
+    event: 'kill_mob',
+    target: 5,
+    rewards: { gold: 200, gems: 2 },
+  },
+  {
+    id: 'daily_wins_3',
+    scope: 'daily',
+    nameRu: 'Победитель',
+    descriptionRu: 'Выиграть 3 боя',
+    event: 'win_combat',
+    target: 3,
+    rewards: { gold: 250 },
+  },
+  {
+    id: 'daily_fish_2',
+    scope: 'daily',
+    nameRu: 'Рыбак',
+    descriptionRu: 'Поймать 2 рыбы',
+    event: 'fish',
+    target: 2,
+    rewards: { gold: 150, resources: { meat: 3 } },
+  },
+  {
+    id: 'daily_mine_3',
+    scope: 'daily',
+    nameRu: 'Шахтёр',
+    descriptionRu: '3 раза копать в шахте',
+    event: 'mine',
+    target: 3,
+    rewards: { gold: 180, resources: { iron_ore: 5 } },
+  },
+  {
+    id: 'daily_cook_1',
+    scope: 'daily',
+    nameRu: 'Повар',
+    descriptionRu: 'Приготовить 1 блюдо',
+    event: 'cook',
+    target: 1,
+    rewards: { gold: 120, gems: 1 },
+  },
+]
+
+export const WEEKLY_QUESTS: QuestDef[] = [
+  {
+    id: 'weekly_kills_40',
+    scope: 'weekly',
+    nameRu: 'Истребитель',
+    descriptionRu: 'Убить 40 мобов за неделю',
+    event: 'kill_mob',
+    target: 40,
+    rewards: { gold: 1500, gems: 15 },
+  },
+  {
+    id: 'weekly_fish_12',
+    scope: 'weekly',
+    nameRu: 'Морской волк',
+    descriptionRu: 'Поймать 12 рыб',
+    event: 'fish',
+    target: 12,
+    rewards: { gold: 1000, gems: 10 },
+  },
+  {
+    id: 'weekly_pvp_3',
+    scope: 'weekly',
+    nameRu: 'Дуэлянт',
+    descriptionRu: '3 победы на арене',
+    event: 'pvp_win',
+    target: 3,
+    rewards: { gold: 800, gems: 12 },
+  },
+  {
+    id: 'weekly_floor_1',
+    scope: 'weekly',
+    nameRu: 'Покоритель',
+    descriptionRu: 'Подняться на 1 новый этаж',
+    event: 'advance_floor',
+    target: 1,
+    rewards: { gold: 2000, gems: 20 },
+  },
+]
+
+export const GUILD_QUESTS: QuestDef[] = [
+  {
+    id: 'guild_kills_80',
+    scope: 'guild',
+    nameRu: 'Совместная охота',
+    descriptionRu: 'Гильдия убивает 80 мобов',
+    event: 'kill_mob',
+    target: 80,
+    rewards: { gold: 500, gems: 5 },
+  },
+  {
+    id: 'guild_fish_20',
+    scope: 'guild',
+    nameRu: 'Рыбный день',
+    descriptionRu: 'Участники ловят 20 рыб',
+    event: 'fish',
+    target: 20,
+    rewards: { gold: 400, gems: 4 },
+  },
+  {
+    id: 'guild_mine_30',
+    scope: 'guild',
+    nameRu: 'Общая шахта',
+    descriptionRu: '30 добыч в шахте',
+    event: 'mine',
+    target: 30,
+    rewards: { gold: 450, resources: { upgrade_core: 3 } },
+  },
+]

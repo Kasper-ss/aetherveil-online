@@ -1,13 +1,33 @@
-import type { Player, Stats, GuildMember, GuildChatMessage } from '@/types/game'
+import type { Player, Stats, GuildMember, GuildChatMessage, QuestEvent } from '@/types/game'
 import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { storageGet, storageSet } from '@/lib/utils'
+import { GUILD_QUESTS } from '@/data/quests'
 
 export const GUILD_MAX_MEMBERS = 10
 export const GUILD_ID = 'guild_tower_1'
 const ONLINE_KEY = 'aetherveil_online'
 const CHAT_KEY = 'aetherveil_guild_chat'
+const ROSTER_KEY = 'aetherveil_guild_roster'
+const INVITES_KEY = 'aetherveil_guild_invites'
+const GUILD_QUEST_KEY = 'aetherveil_guild_quest_progress'
 const ONLINE_TTL_MS = 90_000
+
+export interface GuildRosterEntry {
+  telegramId: number
+  displayName: string
+  username: string
+  role: 'leader' | 'officer' | 'member'
+  joinedAt: string
+}
+
+export interface GuildInvite {
+  guildId: string
+  guildName: string
+  fromId: number
+  fromName: string
+  createdAt: string
+}
 
 export interface OnlinePlayerSnapshot {
   telegramId: number
@@ -94,30 +114,163 @@ export function findArenaOpponent(selfId: number): OnlinePlayerSnapshot | null {
   return null
 }
 
-export function getGuildMembers(selfId: number): GuildMember[] {
+export function getGuildRoster(): GuildRosterEntry[] {
+  return storageGet<GuildRosterEntry[]>(ROSTER_KEY, [])
+}
+
+function saveGuildRoster(roster: GuildRosterEntry[]) {
+  storageSet(ROSTER_KEY, roster.slice(0, GUILD_MAX_MEMBERS))
+}
+
+function ensureRosterLeader(telegramId: number, displayName: string, username: string) {
+  const roster = getGuildRoster()
+  if (roster.length === 0) {
+    saveGuildRoster([{
+      telegramId,
+      displayName,
+      username,
+      role: 'leader',
+      joinedAt: new Date().toISOString(),
+    }])
+    return
+  }
+  if (!roster.some((m) => m.telegramId === telegramId)) {
+    const settings = getGuildSettings()
+    if (settings.leaderId === telegramId && roster.length < GUILD_MAX_MEMBERS) {
+      saveGuildRoster([...roster, {
+        telegramId,
+        displayName,
+        username,
+        role: 'leader',
+        joinedAt: new Date().toISOString(),
+      }])
+    }
+  }
+}
+
+export function isInGuildRoster(telegramId: number): boolean {
+  return getGuildRoster().some((m) => m.telegramId === telegramId)
+}
+
+export function inviteToGuildById(
+  inviterId: number,
+  targetId: number,
+  inviterName: string,
+): boolean {
+  if (!isGuildLeader(inviterId)) return false
+  const id = Math.floor(targetId)
+  if (!id || id === inviterId) return false
+  const roster = getGuildRoster()
+  if (roster.length >= GUILD_MAX_MEMBERS) return false
+  if (roster.some((m) => m.telegramId === id)) return false
+
+  const invites = storageGet<Record<string, GuildInvite[]>>(INVITES_KEY, {})
+  const key = String(id)
+  const list = invites[key] ?? []
+  if (list.some((i) => i.guildId === GUILD_ID)) return false
+  const guild = getGuildInfo()
+  list.push({
+    guildId: GUILD_ID,
+    guildName: guild.name,
+    fromId: inviterId,
+    fromName: inviterName,
+    createdAt: new Date().toISOString(),
+  })
+  invites[key] = list
+  storageSet(INVITES_KEY, invites)
+  return true
+}
+
+export function getGuildInvitesFor(targetId: number): GuildInvite[] {
+  const invites = storageGet<Record<string, GuildInvite[]>>(INVITES_KEY, {})
+  return invites[String(targetId)] ?? []
+}
+
+export function declineGuildInvite(targetId: number, guildId: string): void {
+  const invites = storageGet<Record<string, GuildInvite[]>>(INVITES_KEY, {})
+  const key = String(targetId)
+  invites[key] = (invites[key] ?? []).filter((i) => i.guildId !== guildId)
+  storageSet(INVITES_KEY, invites)
+}
+
+export function acceptGuildInvite(
+  targetId: number,
+  displayName: string,
+  username: string,
+  guildId: string,
+): boolean {
+  const invites = getGuildInvitesFor(targetId)
+  const invite = invites.find((i) => i.guildId === guildId)
+  if (!invite) return false
+  const roster = getGuildRoster()
+  if (roster.length >= GUILD_MAX_MEMBERS) return false
+  if (roster.some((m) => m.telegramId === targetId)) return false
+
+  saveGuildRoster([...roster, {
+    telegramId: targetId,
+    displayName,
+    username,
+    role: 'member',
+    joinedAt: new Date().toISOString(),
+  }])
+  declineGuildInvite(targetId, guildId)
+  return true
+}
+
+export function addGuildQuestProgress(event: QuestEvent, amount = 1): void {
+  const progress = storageGet<Record<string, number>>(GUILD_QUEST_KEY, {})
+  for (const q of GUILD_QUESTS) {
+    if (q.event === event) {
+      progress[q.id] = (progress[q.id] ?? 0) + amount
+    }
+  }
+  storageSet(GUILD_QUEST_KEY, progress)
+}
+
+export function getGuildQuestProgress(): Record<string, number> {
+  return storageGet<Record<string, number>>(GUILD_QUEST_KEY, {})
+}
+
+export function getGuildMembers(selfId: number, selfName?: string, selfUsername?: string): GuildMember[] {
   ensureGuildLeader(selfId)
+  if (selfName) ensureRosterLeader(selfId, selfName, selfUsername ?? `user_${selfId}`)
+
   const leaderId = getGuildSettings().leaderId
+  const roster = getGuildRoster()
   const online = getOnlinePlayers()
-  const self = online.find((p) => p.telegramId === selfId)
-  const all = self ? [...online] : online
-  if (self && !all.find((p) => p.telegramId === selfId)) {
-    const registry = readOnline()
-    const me = registry[String(selfId)]
-    if (me) all.unshift(me)
+  const onlineMap = new Map(online.map((p) => [p.telegramId, p]))
+  const now = Date.now()
+
+  const memberIds = new Set<number>()
+  const members: GuildMember[] = []
+
+  for (const entry of roster) {
+    memberIds.add(entry.telegramId)
+    const live = onlineMap.get(entry.telegramId)
+    members.push({
+      telegramId: entry.telegramId,
+      username: live?.username ?? entry.username,
+      displayName: live?.displayName ?? entry.displayName,
+      level: live?.level ?? 1,
+      floor: live?.highestFloor ?? 1,
+      role: entry.telegramId === leaderId ? 'leader' : entry.role,
+      online: live ? now - new Date(live.lastSeen).getTime() < ONLINE_TTL_MS : false,
+    })
   }
 
-  const members: GuildMember[] = all
-    .filter((p) => p.guildId === GUILD_ID)
-    .slice(0, GUILD_MAX_MEMBERS)
-    .map((p) => ({
+  for (const p of online) {
+    if (p.guildId !== GUILD_ID || memberIds.has(p.telegramId)) continue
+    if (members.length >= GUILD_MAX_MEMBERS) break
+    members.push({
       telegramId: p.telegramId,
       username: p.username,
       displayName: p.displayName,
       level: p.level,
       floor: p.highestFloor,
-      role: p.telegramId === leaderId ? 'leader' as const : 'member' as const,
-      online: Date.now() - new Date(p.lastSeen).getTime() < ONLINE_TTL_MS,
-    }))
+      role: p.telegramId === leaderId ? 'leader' : 'member',
+      online: now - new Date(p.lastSeen).getTime() < ONLINE_TTL_MS,
+    })
+  }
 
   return members
 }

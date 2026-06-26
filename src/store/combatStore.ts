@@ -351,6 +351,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           usePlayerStore.getState().addExp(exp)
           usePlayerStore.getState().addGold(gold)
           usePlayerStore.getState().updatePlayer({ pvpWins: p.pvpWins + 1 })
+          usePlayerStore.getState().trackQuestEvent('pvp_win', 1)
         }
       } else {
         exp = combat.enemy.expReward

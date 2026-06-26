@@ -1,8 +1,8 @@
 import { create } from 'zustand'
-import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey } from '@/types/game'
+import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent } from '@/types/game'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
 import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { getTelegramUser } from '@/lib/telegram'
+import { getTelegramUser, getInitData } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
@@ -34,6 +34,12 @@ import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
   isProfessionActive, professionRankRequiredForSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
 } from '@/lib/professionProgress'
+import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress } from '@/lib/quests'
+import { DAILY_QUESTS, WEEKLY_QUESTS, GUILD_QUESTS } from '@/data/quests'
+import {
+  addGuildQuestProgress, getGuildQuestProgress, inviteToGuildById,
+  acceptGuildInvite as acceptGuildInviteMp, declineGuildInvite, getGuildInvitesFor, isInGuildRoster,
+} from '@/lib/multiplayer'
 import { PROFESSION_ACTIVITIES } from '@/data/professionActivities'
 import { playerHasTool } from '@/data/tools'
 import {
@@ -132,9 +138,28 @@ interface PlayerState {
   applyCombatDurabilityWear: (victory: boolean, isBoss: boolean) => void
   getRarityUpgradeMissing: (item: Item) => MissingCost[]
   getRepairAllCost: () => number
+  trackQuestEvent: (event: QuestEvent, amount?: number) => void
+  claimQuestReward: (questId: string, scope: 'daily' | 'weekly' | 'guild') => boolean
+  invitePlayerToGuild: (targetId: number) => boolean
+  acceptGuildInvite: (guildId: string) => boolean
+  declineGuildInvite: (guildId: string) => void
+  getPendingGuildInvites: () => import('@/lib/multiplayer').GuildInvite[]
+  sendGuildGift: (toId: number, item: Item) => Promise<boolean>
 }
 
 const SAVE_KEY = 'player'
+
+function applyQuestTracking(
+  get: () => PlayerState,
+  event: QuestEvent,
+  amount = 1,
+) {
+  const { player } = get()
+  if (!player) return
+  const state = bumpQuestEvent(normalizeQuestState(player), event, amount, player.highestFloor)
+  addGuildQuestProgress(event, amount)
+  get().updatePlayer({ questState: state })
+}
 
 function syncEnergyFields(player: Player): Partial<Player> {
   return { maxEnergy: getMaxEnergy(player) }
@@ -306,17 +331,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const kills = { ...player.floorMobKills }
     kills[floor] = (kills[floor] ?? 0) + 1
     get().updatePlayer({ floorMobKills: kills })
+    applyQuestTracking(get, 'kill_mob', 1)
   },
 
   advanceFloor: () => {
     const { player } = get()
     if (!player) return
+    const prevHighest = player.highestFloor
     const next = Math.min(MAX_FLOOR, player.currentFloor + 1)
     get().updatePlayer({
       currentFloor: next,
       highestFloor: Math.max(player.highestFloor, next),
       farmFloor: next,
     })
+    if (next > prevHighest) applyQuestTracking(get, 'advance_floor', 1)
   },
 
   applyCombatResult: (result) => {
@@ -325,6 +353,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().addGold(result.gold)
     result.loot.forEach((item) => get().addItem(item))
     if (result.resources) get().addResources(result.resources)
+    applyQuestTracking(get, 'win_combat', 1)
   },
 
   applyDeathPenalty: (killerName?: string) => {
@@ -693,6 +722,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         blacksmith: getProfessionExp(player, 'blacksmith') + mine.xpPerDig,
       },
     })
+    applyQuestTracking(get, 'mine', 1)
     return { ok: true, isDouble, isVein }
   },
 
@@ -722,6 +752,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           hunter: getProfessionExp(player, 'hunter') + profXp,
         },
       })
+      applyQuestTracking(get, 'fish', 1)
       return { ok: true, fishName: fish.nameRu }
     }
     return { ok: false }
@@ -740,7 +771,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return false
     }
     const inst = createItemInstance(scaled.resultFoodId)
-    if (inst) get().addItem(inst)
+    if (inst) {
+      get().addItem(inst)
+      applyQuestTracking(get, 'cook', 1)
+    }
     return !!inst
   },
 
@@ -1004,12 +1038,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!result) return
 
     const soldSet = new Set(result.soldListingIds)
-    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0
+    const hasGifts = (result.incomingGifts?.length ?? 0) > 0
+    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts
     if (!needsUpdate) return
+
+    const inventory = [...player.inventory]
+    for (const gift of result.incomingGifts ?? []) {
+      inventory.push(ensureItemDurability(gift.item))
+    }
 
     const updated = {
       ...player,
       gold: player.gold + result.pendingGold,
+      inventory,
       marketListings: soldSet.size > 0
         ? player.marketListings.filter((l) => !soldSet.has(l.id))
         : player.marketListings,
@@ -1434,6 +1475,90 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const upgraded = ensureItemDurability(applyRarityUpgrade(item)!)
     get().replaceItemInstance(item.instanceId, upgraded)
     return upgraded
+  },
+
+  trackQuestEvent: (event, amount = 1) => {
+    applyQuestTracking(get, event, amount)
+  },
+
+  claimQuestReward: (questId, scope) => {
+    const { player } = get()
+    if (!player) return false
+    const state = normalizeQuestState(player)
+    const pool = scope === 'daily' ? DAILY_QUESTS : scope === 'weekly' ? WEEKLY_QUESTS : GUILD_QUESTS
+    const quest = pool.find((q) => q.id === questId)
+    if (!quest || isQuestClaimed(state, questId, scope)) return false
+
+    const progress = scope === 'guild'
+      ? (getGuildQuestProgress()[questId] ?? 0)
+      : getQuestProgress(state, questId, scope)
+    if (progress < quest.target) return false
+
+    if (quest.rewards.gold) get().addGold(quest.rewards.gold)
+    if (quest.rewards.resources) get().addResources(quest.rewards.resources)
+
+    const claimedKey = scope === 'daily' ? 'dailyClaimed' : scope === 'weekly' ? 'weeklyClaimed' : 'guildClaimed'
+    const partial: Partial<Player> = {
+      questState: { ...state, [claimedKey]: [...state[claimedKey], questId] },
+    }
+    if (quest.rewards.gems) partial.gems = player.gems + quest.rewards.gems
+    get().updatePlayer(partial)
+    return true
+  },
+
+  invitePlayerToGuild: (targetId) => {
+    const { player } = get()
+    if (!player) return false
+    return inviteToGuildById(player.telegramId, targetId, player.displayName)
+  },
+
+  acceptGuildInvite: (guildId) => {
+    const { player } = get()
+    if (!player) return false
+    const ok = acceptGuildInviteMp(player.telegramId, player.displayName, player.username, guildId)
+    if (ok) {
+      get().updatePlayer({ guildId, guildJoinedAt: new Date().toISOString() })
+    }
+    return ok
+  },
+
+  declineGuildInvite: (guildId) => {
+    const { player } = get()
+    if (!player) return
+    declineGuildInvite(player.telegramId, guildId)
+  },
+
+  getPendingGuildInvites: () => {
+    const { player } = get()
+    if (!player) return []
+    return getGuildInvitesFor(player.telegramId)
+  },
+
+  sendGuildGift: async (toId, item) => {
+    const { player } = get()
+    if (!player || !item.instanceId || item.slot === 'consumable') return false
+    if (!isInGuildRoster(toId) || toId === player.telegramId) return false
+    if (!player.inventory.some((i) => i.instanceId === item.instanceId)) return false
+
+    const initData = getInitData()
+    if (!initData) return false
+
+    get().removeItemByInstance(item.instanceId)
+    try {
+      const res = await fetch('/api/multiplayer/guild-gift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, toId, item: ensureItemDurability(item) }),
+      })
+      if (!res.ok) {
+        get().addItem(item)
+        return false
+      }
+      return true
+    } catch {
+      get().addItem(item)
+      return false
+    }
   },
 }))
 

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { syncPublicPlayer } from '../../server/playerRegistry.js'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
+import { claimGuildGifts } from '../../server/guildGifts.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -49,7 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       publicProfile: body.publicProfile,
     })
 
-    return res.status(200).json({ ok: true, ...result })
+    const incomingGifts = claimGuildGifts(user.id)
+
+    return res.status(200).json({ ok: true, ...result, incomingGifts })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })

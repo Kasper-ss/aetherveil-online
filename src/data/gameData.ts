@@ -8,6 +8,7 @@ import { syncPlayerSkills } from '@/data/playerSkills'
 import { TOOL_SHOP_ITEMS } from '@/data/tools'
 import { SCROLL_SHOP_ITEMS } from '@/data/setScrolls'
 import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
+import { defaultQuestState } from '@/lib/quests'
 
 export { ALL_ITEMS as ITEMS, rollEquipmentDrop, getMobsRequiredForFloor } from '@/data/items'
 export { FLOORS, getFloorData, MAX_FLOOR } from '@/data/floors'
@@ -166,6 +167,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     mineLevel: player.mineLevel ?? 1,
     mineDigXp: player.mineDigXp ?? 0,
     fishCaughtTotal: player.fishCaughtTotal ?? 0,
+    questState: player.questState ?? defaultQuestState(player),
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
   if (usesMana(migrated)) {
