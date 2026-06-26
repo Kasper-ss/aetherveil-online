@@ -235,11 +235,12 @@ export function ProfilePage() {
       <Card className="mx-4 mt-3">
         <CardContent className="p-4 space-y-3">
           <p className="text-sm font-medium text-white">Уведомления о восстановлении</p>
-          <p className="text-[10px] text-slate-500">Сообщение, когда HP, энергия или мана полностью восстановлены.</p>
+          <p className="text-[10px] text-slate-500">Сообщение, когда HP, энергия, мана восстановлены или питомец принёс дар.</p>
           {([
             ['hpFull', '❤️ HP'] as const,
             ['energyFull', '⚡ Энергия'] as const,
             ['manaFull', '🔮 Мана'] as const,
+            ['petReward', '🐾 Дар питомца'] as const,
           ]).map(([key, label]) => (
             <div key={key} className="flex items-center justify-between">
               <span className="text-xs text-slate-300">{label}</span>

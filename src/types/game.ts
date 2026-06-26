@@ -264,6 +264,7 @@ export interface Player {
   monthlyStats?: MonthlyStats
   monthlyRewardsClaimed?: string[]
   notificationSettings?: NotificationSettings
+  petLastRewardAt?: string
 }
 
 export interface MonthlyStats {
@@ -278,6 +279,7 @@ export interface NotificationSettings {
   hpFull: boolean
   energyFull: boolean
   manaFull: boolean
+  petReward?: boolean
 }
 
 export interface MonthlyLeaderboardEntry {

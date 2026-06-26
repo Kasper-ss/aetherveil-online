@@ -15,7 +15,7 @@ export function useTelegramInit() {
 
     async function init() {
       const { loadPlayer } = usePlayerStore.getState()
-      const { setLoading, setShowTutorial, setShowIdleReward } = useUIStore.getState()
+      const { setLoading, setShowTutorial, setShowIdleReward, setShowPetReward } = useUIStore.getState()
 
       try {
         setLoading(true, 'Подключение к Aetherveil...')
@@ -36,6 +36,8 @@ export function useTelegramInit() {
         }
         if (usePlayerStore.getState().idleReward) {
           setShowIdleReward(true)
+        } else if (usePlayerStore.getState().petReward) {
+          setShowPetReward(true)
         }
 
         startBgm()

@@ -49,7 +49,11 @@ import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
-import { maybeNotifyVitalFull, getNotificationSettings } from '@/lib/vitalNotifications'
+import { maybeNotifyVitalFull, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
+import {
+  buildPetReward, getPetRewardCycles, PET_REWARD_INTERVAL_MS, type PetReward,
+} from '@/lib/petRewards'
+import { useUIStore } from '@/store/uiStore'
 import type { NotificationSettings } from '@/types/game'
 
 interface PlayerState {
@@ -57,6 +61,7 @@ interface PlayerState {
   isLoading: boolean
   isAuthenticated: boolean
   idleReward: IdleReward | null
+  petReward: PetReward | null
 
   loadPlayer: () => Promise<void>
   savePlayer: () => Promise<void>
@@ -77,6 +82,8 @@ interface PlayerState {
   applyCombatResult: (result: CombatResult) => void
   applyDeathPenalty: (killerName?: string) => void
   claimIdleRewards: () => void
+  checkPetRewards: (opts?: { showModal?: boolean }) => void
+  claimPetReward: () => void
   claimDailyReward: () => { success: boolean; reward?: typeof DAILY_REWARDS[0] }
   getDailyRewardPreview: () => typeof DAILY_REWARDS[0]
   canClaimDaily: () => boolean
@@ -185,6 +192,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isLoading: true,
   isAuthenticated: false,
   idleReward: null,
+  petReward: null,
 
   loadPlayer: async () => {
     set({ isLoading: true })
@@ -195,8 +203,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (!player) player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
       player = migratePlayer(player)
       const idle = calculateIdle(player)
-      set({ player, isLoading: false, isAuthenticated: true, idleReward: idle })
+      set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
+      get().checkPetRewards({ showModal: !idle })
       void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
     } catch (error) {
@@ -205,7 +214,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
       )
       storageSet(SAVE_KEY, player)
-      set({ player, isLoading: false, isAuthenticated: true, idleReward: null })
+      set({ player, isLoading: false, isAuthenticated: true, idleReward: null, petReward: null })
       registerOnlinePlayer(player)
     }
   },
@@ -321,7 +330,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (equipped[slot]) get().addItem(equipped[slot]!)
     equipped[slot] = item
     get().removeItemByInstance(item.instanceId!)
-    get().updatePlayer({ equipped })
+    const patch: Partial<Player> = { equipped }
+    if (slot === 'pet' && !player.petLastRewardAt) {
+      patch.petLastRewardAt = new Date().toISOString()
+    }
+    get().updatePlayer(patch)
   },
 
   unequipItem: (slot) => {
@@ -389,6 +402,43 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().addGold(idle.gold)
     get().addExp(idle.exp)
     set({ idleReward: null })
+    get().checkPetRewards({ showModal: true })
+  },
+
+  checkPetRewards: (opts) => {
+    const { player, petReward } = get()
+    if (!player?.equipped.pet || petReward) return
+    const cycles = getPetRewardCycles(player)
+    if (cycles < 1) return
+    const reward = buildPetReward(player.equipped.pet, cycles)
+    set({ petReward: reward })
+    if (getNotificationSettings(player).petReward !== false) {
+      maybeNotifyPetReward(reward)
+    }
+    if (opts?.showModal) {
+      useUIStore.getState().setShowPetReward(true)
+    }
+  },
+
+  claimPetReward: () => {
+    const { player, petReward } = get()
+    if (!player || !petReward) return
+    get().addGold(petReward.gold)
+    if (Object.keys(petReward.resources).length) {
+      get().addResources(petReward.resources)
+    }
+    for (const entry of petReward.items) {
+      for (let i = 0; i < entry.count; i++) {
+        const inst = createItemInstance(entry.itemId)
+        if (inst) get().addItem(inst)
+      }
+    }
+    const last = new Date(player.petLastRewardAt ?? player.lastOnlineAt).getTime()
+    get().updatePlayer({
+      petLastRewardAt: new Date(last + petReward.cycles * PET_REWARD_INTERVAL_MS).toISOString(),
+    })
+    set({ petReward: null })
+    get().checkPetRewards({ showModal: true })
   },
 
   canClaimDaily: () => {
@@ -475,6 +525,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().tryRegenHp()
     get().tryRegenMana()
     get().accrueBankInterest()
+    get().checkPetRewards({ showModal: true })
   },
 
   tryRegenMana: () => {

@@ -4,6 +4,7 @@ import { TutorialModal } from '@/pages/TutorialModal'
 import { DailyRewardModal } from '@/pages/DailyRewardModal'
 import { StatDistributionModal } from '@/pages/StatDistributionModal'
 import { IdleRewardModal } from '@/pages/IdleRewardModal'
+import { PetRewardModal } from '@/pages/PetRewardModal'
 import { ClassSelectModal } from '@/pages/ClassSelectModal'
 import { HomePage } from '@/pages/HomePage'
 import { TowerPage } from '@/pages/TowerPage'
@@ -41,6 +42,7 @@ function AppRoutes() {
       <DailyRewardModal />
       <StatDistributionModal />
       <IdleRewardModal />
+      <PetRewardModal />
 
       <SessionGuard />
 

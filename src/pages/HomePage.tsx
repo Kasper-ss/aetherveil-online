@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,16 +21,27 @@ import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { ManaTimer } from '@/components/ui/ManaTimer'
 import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
+import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRewards'
 
 export function HomePage() {
   const navigate = useNavigate()
   const t = useT()
   const setShowDaily = useUIStore((s) => s.setShowDailyReward)
   const setShowStats = useUIStore((s) => s.setShowStatDistribution)
+  const setShowPetReward = useUIStore((s) => s.setShowPetReward)
+  const petReward = usePlayerStore((s) => s.petReward)
   const [showInvite, setShowInvite] = useState(false)
   const player = usePlayerStore((s) => s.player)
   const playerLoading = usePlayerStore((s) => s.isLoading)
   const stats = usePlayerStats()
+  const pet = player?.equipped.pet ?? null
+  const [, petTick] = useState(0)
+
+  useEffect(() => {
+    if (!pet) return
+    const id = setInterval(() => petTick((n) => n + 1), 30_000)
+    return () => clearInterval(id)
+  }, [pet])
 
   if (playerLoading || !player) {
     return (
@@ -190,6 +201,30 @@ export function HomePage() {
           <Progress value={(mobsKilled / mobsRequired) * 100} />
         </CardContent>
       </Card>
+
+      {pet && (
+        <Card className="mx-4 mt-3">
+          <CardContent className="p-3 flex items-center justify-between gap-2">
+            <span className="text-xs text-slate-300 truncate">
+              {pet.icon} {pet.name}
+            </span>
+            {petReward ? (
+              <Button
+                size="sm"
+                variant="gold"
+                className="h-7 text-[10px] shrink-0"
+                onClick={() => { hapticImpact('light'); setShowPetReward(true) }}
+              >
+                Забрать дар!
+              </Button>
+            ) : (
+              <span className="text-[10px] text-slate-500 shrink-0">
+                Дар через {formatPetRewardCountdown(getPetRewardTimeRemaining(player) ?? 0)}
+              </span>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex gap-2 px-4 mt-3">
         <Button variant="gold" size="sm" className="flex-1" onClick={handleDaily}>

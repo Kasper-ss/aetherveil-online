@@ -2,11 +2,13 @@ import type { Player, NotificationSettings } from '@/types/game'
 import { getCombatMaxHp, getMaxEnergy, getPlayerCurrentHp } from '@/lib/playerStats'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { showTelegramAlert } from '@/lib/telegram'
+import type { PetReward } from '@/lib/petRewards'
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   hpFull: true,
   energyFull: true,
   manaFull: true,
+  petReward: true,
 }
 
 const MESSAGES = {
@@ -43,6 +45,20 @@ export function maybeNotifyVitalFull(
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
       new Notification('Aetherveil Online', { body: message, tag: `vital_${kind}` })
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function maybeNotifyPetReward(reward: PetReward): void {
+  const cyclesLabel = reward.cycles > 1 ? ` (${reward.cycles}× за оффлайн)` : ''
+  const message = `${reward.petIcon} ${reward.petName} принёс дар!${cyclesLabel}`
+  showTelegramAlert(message)
+
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('Aetherveil Online', { body: message, tag: 'pet_reward' })
     } catch {
       /* ignore */
     }
