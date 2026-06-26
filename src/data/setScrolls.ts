@@ -20,9 +20,9 @@ const SLOT_ORDER: EquipSlot[] = [
   'helmet', 'chestplate', 'leggings', 'boots', 'weapon', 'necklace', 'ring',
 ]
 
-const EPIC_PIECE_GOLD = 2_000
+const EPIC_PIECE_GOLD = 100_000
 const EPIC_PIECE_GEMS = 15
-const LEGENDARY_PIECE_GOLD = 5_500
+const LEGENDARY_PIECE_GOLD = 400_000
 const LEGENDARY_PIECE_GEMS = 35
 
 /** Old full-set scroll IDs → per-piece scroll IDs (save migration). */

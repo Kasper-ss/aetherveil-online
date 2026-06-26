@@ -232,7 +232,11 @@ export function ForgePage() {
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start gap-3">
-                      <span className="text-3xl">{result?.icon}</span>
+                      {result ? (
+                        <EquipmentSlotIcon slot={result.slot as EquipSlot} rarity={result.rarity} size="sm" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-md border border-aether-border bg-aether-bg shrink-0" />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white">{recipe.name}</div>
                         <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">{recipe.description}</p>
