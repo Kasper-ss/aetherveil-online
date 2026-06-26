@@ -15,8 +15,19 @@ export type EnemyPattern = 'aggressive' | 'defensive' | 'berserker' | 'boss'
 export type PlayerClass = 'warrior' | 'archer' | 'mage' | 'summoner' | 'assassin' | 'knight'
 export type ProfessionId = 'blacksmith' | 'alchemist' | 'hunter' | 'jeweler' | 'sorcerer'
 export type ResourceId =
-  | 'iron_ore' | 'herb' | 'hide' | 'gem_shard' | 'mana_crystal'
+  | 'iron_ore' | 'herb' | 'hide' | 'meat' | 'gem_shard' | 'mana_crystal'
   | 'aether_dust' | 'star_shard' | 'upgrade_core'
+
+export type EffectStat = 'atk' | 'def' | 'hp' | 'crit' | 'speed' | 'all'
+
+export interface ActiveEffect {
+  id: string
+  label: string
+  type: 'buff' | 'debuff'
+  stat: EffectStat
+  mult: number
+  until: string
+}
 
 export interface Resource {
   id: ResourceId
@@ -154,6 +165,7 @@ export interface FloorEnemy {
   goldReward: [number, number]
   lootTable: string[]
   isBoss?: boolean
+  isEpic?: boolean
 }
 
 export interface FloorData {
@@ -226,6 +238,7 @@ export interface Player {
   deathDebuffUntil?: string
   lastKilledBy?: string
   friendIds?: number[]
+  activeEffects?: ActiveEffect[]
   fairStats?: FairGameStats
 }
 
@@ -264,6 +277,7 @@ export interface CombatState {
   turn: number
   isPvp?: boolean
   pvpOpponentId?: number
+  isEpic?: boolean
 }
 
 export interface CombatResult {
@@ -278,6 +292,7 @@ export interface CombatResult {
   mobKilled?: boolean
   killedBy?: string
   fled?: boolean
+  isEpic?: boolean
 }
 
 export interface GuildMember {

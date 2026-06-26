@@ -23,6 +23,7 @@ import { calcBankInterest } from '@/lib/bank'
 import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
 import { AVATAR_OPTIONS, FRAME_OPTIONS } from '@/data/cosmetics'
+import { addActiveEffect, pruneActiveEffects, EFFECT_PRESETS } from '@/lib/activeEffects'
 
 interface PlayerState {
   player: Player | null
@@ -99,6 +100,7 @@ interface PlayerState {
   replaceItemInstance: (oldInstanceId: string, newItem: Item) => void
   applyCosmetic: (type: 'avatar' | 'frame', id: string) => boolean
   unlockCosmetic: (id: string) => boolean
+  grantEffectPreset: (preset: keyof typeof EFFECT_PRESETS, durationMs: number) => void
 }
 
 const SAVE_KEY = 'player'
@@ -155,13 +157,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   updatePlayer: (partial) => {
     const { player } = get()
     if (!player) return
-    const updated = { ...player, ...partial }
-    const maxHp = getCombatMaxHp(updated)
-    if (updated.currentHp != null) {
-      updated.currentHp = Math.min(maxHp, Math.max(0, updated.currentHp))
+    const merged = { ...player, ...partial }
+    merged.activeEffects = pruneActiveEffects(merged.activeEffects)
+    const maxHp = getCombatMaxHp(merged)
+    if (merged.currentHp != null) {
+      merged.currentHp = Math.min(maxHp, Math.max(0, merged.currentHp))
     }
-    set({ player: updated })
-    registerOnlinePlayer(updated)
+    set({ player: merged })
+    registerOnlinePlayer(merged)
     get().savePlayer()
   },
 
@@ -1032,7 +1035,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         if (!result.healHp) return null
       } else {
         result.energy = effect.energy
-        get().updatePlayer({ energy: Math.min(maxE, player.energy + effect.energy) })
+        get().updatePlayer({
+          energy: Math.min(maxE, player.energy + effect.energy),
+          activeEffects: addActiveEffect(player.activeEffects, { ...EFFECT_PRESETS.potion_might, durationMs: 10 * 60_000 }),
+        })
       }
     }
 
@@ -1086,6 +1092,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().updatePlayer({ profileFrameId: id === 'none' ? undefined : id })
     }
     return true
+  },
+
+  grantEffectPreset: (preset, durationMs) => {
+    const { player } = get()
+    if (!player) return
+    const p = EFFECT_PRESETS[preset]
+    get().updatePlayer({
+      activeEffects: addActiveEffect(player.activeEffects, { ...p, durationMs }),
+    })
   },
 }))
 

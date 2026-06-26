@@ -70,6 +70,28 @@ export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['patt
   }
 }
 
+/** Epic variant — stronger mob, better loot */
+export function makeEpicEnemy(base: FloorEnemy): FloorEnemy {
+  return {
+    ...base,
+    id: `${base.id}_epic`,
+    name: `★ ${base.name}`,
+    isEpic: true,
+    stats: {
+      hp: Math.floor(base.stats.hp * 1.85),
+      atk: Math.floor(base.stats.atk * 1.5),
+      def: Math.floor(base.stats.def * 1.35),
+      crit: Math.min(30, base.stats.crit + 5),
+      speed: Math.min(25, base.stats.speed + 3),
+    },
+    expReward: Math.floor(base.expReward * 1.4),
+    goldReward: [
+      Math.floor(base.goldReward[0] * 1.5),
+      Math.floor(base.goldReward[1] * 1.5),
+    ],
+  }
+}
+
 function mobName(floor: number, index: number): string {
   const base = MOB_NAMES[(floor * 3 + index) % MOB_NAMES.length]
   if (floor <= 5) return base

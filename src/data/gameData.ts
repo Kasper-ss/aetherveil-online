@@ -41,36 +41,48 @@ export const DAILY_REWARDS: DailyReward[] = [
   { day: 7, gold: 1000, gems: 15, itemId: 'weapon_t2' },
 ]
 
-export function generateCombatResources(floor: number, isBoss: boolean): Partial<Record<ResourceId, number>> {
-  const mult = isBoss ? 3 : 1
-  const res: Partial<Record<ResourceId, number>> = {
-    iron_ore: Math.max(1, Math.floor((2 + floor) * mult * 0.5)),
-    herb: Math.max(1, Math.floor((1 + floor * 0.5) * mult)),
-    hide: Math.max(1, Math.floor((1 + floor * 0.6) * mult)),
-    upgrade_core: isBoss ? 1 + Math.floor(floor / 2) : Math.random() > 0.7 ? 1 : 0,
+export function generateCombatResources(
+  floor: number,
+  isBoss: boolean,
+  isEpic = false,
+): Partial<Record<ResourceId, number>> {
+  const mult = isBoss ? 3 : isEpic ? 2 : 1
+  const meat = Math.max(1, Math.floor((2 + floor * 0.8) * mult + Math.random() * 2))
+  const hide = Math.max(1, Math.floor((1 + floor * 0.5) * mult))
+
+  const res: Partial<Record<ResourceId, number>> = { meat, hide }
+
+  const dustChance = isBoss ? 0.5 : isEpic ? 0.18 : 0.05
+  if (Math.random() < dustChance) {
+    res.aether_dust = isBoss ? 2 + Math.floor(Math.random() * 2) : 1
   }
-  if (floor >= 2) res.gem_shard = Math.max(1, Math.floor(mult * (1 + Math.random() * 2)))
-  if (floor >= 3) res.mana_crystal = Math.max(1, Math.floor(mult * Math.random() * 2))
+
   if (isBoss) {
-    res.aether_dust = 2 + Math.floor(Math.random() * 3)
-    res.star_shard = 1 + Math.floor(Math.random() * 2)
-  } else if (Math.random() > 0.85) {
-    res.star_shard = 1
+    res.upgrade_core = 1 + Math.floor(floor / 3)
+    if (Math.random() > 0.5) res.star_shard = 1
   }
-  return Object.fromEntries(Object.entries(res).filter(([, v]) => v > 0)) as Partial<Record<ResourceId, number>>
+
+  return res
 }
 
-export function generateVictoryLoot(floor: number, isBoss: boolean, lootMult = 1): Item[] {
+export function generateVictoryLoot(floor: number, isBoss: boolean, lootMult = 1, isEpic = false): Item[] {
   const loot: Item[] = []
-  const drop = rollEquipmentDrop(floor, isBoss, lootMult)
+  const epicMult = isEpic ? 1.5 : 1
+  const effectiveMult = lootMult * epicMult
+
+  if (!isBoss && !isEpic && Math.random() > 0.1) return loot
+
+  const drop = rollEquipmentDrop(floor, isBoss || isEpic, effectiveMult)
   if (drop) loot.push(drop)
-  if (isBoss && Math.random() > 0.4) {
-    const bonus = rollEquipmentDrop(floor, true, lootMult)
+
+  if (isBoss && Math.random() > 0.35) {
+    const bonus = rollEquipmentDrop(floor, true, effectiveMult)
     if (bonus) loot.push(bonus)
-  } else if (Math.random() > 0.55) {
-    const bonus = rollEquipmentDrop(floor, false, lootMult)
+  } else if ((isEpic || isBoss) && Math.random() > 0.5) {
+    const bonus = rollEquipmentDrop(floor, isBoss, effectiveMult)
     if (bonus) loot.push(bonus)
   }
+
   return loot
 }
 
@@ -121,7 +133,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     currentHp: player.currentHp,
     maxEnergy: getMaxEnergy({ ...player, allocatedStats: { ...EMPTY_ALLOCATED, ...player.allocatedStats } }),
     resources: {
-      iron_ore: 5, herb: 3, hide: 2, upgrade_core: 1,
+      iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1,
       ...player.resources,
     },
     marketListings: player.marketListings ?? [],
@@ -139,6 +151,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     profileFrameId: player.profileFrameId,
     unlockedCosmetics: player.unlockedCosmetics ?? [],
     friendIds: player.friendIds ?? [],
+    activeEffects: player.activeEffects ?? [],
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
 }
@@ -163,7 +176,7 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     lastOnlineAt: new Date().toISOString(),
     totalPlayTime: 0, pvpWins: 0, pvpLosses: 0,
     classSelected: false, professionLevels: {}, professionMythicLevels: {},
-    resources: { iron_ore: 5, herb: 3, hide: 2, upgrade_core: 1 },
+    resources: { iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1 },
     marketListings: [],
     expEasterEggClaimed: false,
     underwearEasterEggClaimed: false,

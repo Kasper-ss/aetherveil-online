@@ -1,18 +1,25 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FloorEventModal, getEventExpAmount, getEventGoldAmount } from '@/components/FloorEventModal'
 import { usePlayerStore, getMobsRequiredForFloor } from '@/store/playerStore'
 import { useCombatStore } from '@/store/combatStore'
 import { getFloorData } from '@/data/gameData'
+import { makeEpicEnemy } from '@/data/floors'
+import { pickFloorEvent, rollExploreType, type FloorEventChoice } from '@/data/floorEvents'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { getPlayerCurrentHp } from '@/lib/playerStats'
-import { hapticImpact, hapticError } from '@/lib/telegram'
+import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
+import { hapticImpact, hapticError, hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import { randomInt } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
+import type { FloorEnemy } from '@/types/game'
 
 export function TowerPage() {
   const navigate = useNavigate()
@@ -20,7 +27,16 @@ export function TowerPage() {
   const player = usePlayerStore((s) => s.player)
   const spendEnergy = usePlayerStore((s) => s.spendEnergy)
   const setFarmFloor = usePlayerStore((s) => s.setFarmFloor)
+  const addGold = usePlayerStore((s) => s.addGold)
+  const addExp = usePlayerStore((s) => s.addExp)
+  const addResources = usePlayerStore((s) => s.addResources)
+  const spendGold = usePlayerStore((s) => s.spendGold)
+  const grantEffectPreset = usePlayerStore((s) => s.grantEffectPreset)
   const startCombat = useCombatStore((s) => s.startCombat)
+
+  const [activeEvent, setActiveEvent] = useState<ReturnType<typeof pickFloorEvent>>(null)
+  const [eventResult, setEventResult] = useState<string | null>(null)
+  const [pendingCombat, setPendingCombat] = useState<{ enemy: FloorEnemy; floor: number } | null>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -33,15 +49,78 @@ export function TowerPage() {
   const mobsKilled = player.floorMobKills[farmFloor] ?? 0
   const mobPct = (mobsKilled / mobsRequired) * 100
   const canBoss = mobsKilled >= mobsRequired
+  const activeEffects = getActiveEffects(player)
+
+  function beginCombat(enemy: FloorEnemy, floorNum: number, isBoss = false) {
+    startCombat(enemy, floorNum, isBoss)
+    navigate('/combat')
+  }
 
   function startExplore() {
     if (getPlayerCurrentHp(player!) < 1) { hapticError(); return }
     if (!spendEnergy(5)) return
     hapticImpact('medium')
     playSfx('click')
-    const enemy = floor.enemies[randomInt(0, floor.enemies.length - 1)]
-    startCombat(enemy, farmFloor)
-    navigate('/combat')
+
+    const exploreType = rollExploreType()
+    const baseEnemy = floor.enemies[randomInt(0, floor.enemies.length - 1)]
+
+    if (exploreType === 'event') {
+      const ev = pickFloorEvent(farmFloor)
+      if (ev) {
+        setActiveEvent(ev)
+        return
+      }
+    }
+
+    const enemy = exploreType === 'epic' ? makeEpicEnemy(baseEnemy) : baseEnemy
+    beginCombat(enemy, farmFloor)
+  }
+
+  function resolveEventChoice(choice: FloorEventChoice) {
+    const outcome = choice.outcome
+    setActiveEvent(null)
+    hapticSuccess()
+
+    switch (outcome.type) {
+      case 'gold': {
+        const amount = getEventGoldAmount(outcome, farmFloor)
+        if (amount >= 0) addGold(amount)
+        else spendGold(-amount)
+        setEventResult(amount >= 0 ? `${outcome.message} (+${amount} 🪙)` : `${outcome.message} (${amount} 🪙)`)
+        break
+      }
+      case 'exp': {
+        const amount = getEventExpAmount(outcome, farmFloor)
+        addExp(amount)
+        setEventResult(`${outcome.message} (+${amount} EXP)`)
+        break
+      }
+      case 'resources':
+        addResources(outcome.resources)
+        setEventResult(outcome.message)
+        break
+      case 'buff':
+        grantEffectPreset(outcome.preset, outcome.durationMs)
+        setEventResult(outcome.message)
+        break
+      case 'debuff':
+        grantEffectPreset(outcome.preset, outcome.durationMs)
+        setEventResult(outcome.message)
+        break
+      case 'combat': {
+        const base = floor.enemies[randomInt(0, floor.enemies.length - 1)]
+        const enemy = outcome.pattern
+          ? { ...base, pattern: outcome.pattern }
+          : base
+        setPendingCombat({ enemy, floor: farmFloor })
+        setEventResult(outcome.message)
+        break
+      }
+      case 'nothing':
+        setEventResult(outcome.message)
+        break
+    }
   }
 
   function startBoss() {
@@ -50,8 +129,7 @@ export function TowerPage() {
     if (!spendEnergy(25)) return
     hapticImpact('heavy')
     playSfx('skill')
-    startCombat(floor.boss, farmFloor, true)
-    navigate('/combat')
+    beginCombat(floor.boss, farmFloor, true)
   }
 
   return (
@@ -66,7 +144,17 @@ export function TowerPage() {
         </div>
       </div>
 
-      {/* Floor selector for replay */}
+      {activeEffects.length > 0 && (
+        <div className="mx-4 mt-3 p-2 rounded-lg bg-aether-purple/10 border border-aether-purple/30">
+          <p className="text-[10px] text-aether-purple font-medium mb-1">Активные эффекты:</p>
+          {activeEffects.map((e) => (
+            <p key={e.id} className="text-[10px] text-slate-400">
+              {e.type === 'buff' ? '↑' : '↓'} {e.label} · {formatEffectRemaining(e.until)}
+            </p>
+          ))}
+        </div>
+      )}
+
       {player.highestFloor > 1 && (
         <div className="px-4 pt-3">
           <p className="text-xs text-slate-400 mb-2">Выбор этажа для фарма:</p>
@@ -122,6 +210,9 @@ export function TowerPage() {
               </div>
             ))}
           </div>
+          <p className="text-[10px] text-slate-600 mt-2">
+            Шанс события ~22% · эпического моба ~12%
+          </p>
         </CardContent>
       </Card>
 
@@ -140,6 +231,38 @@ export function TowerPage() {
           Этаж {farmFloor}: нужно {mobsRequired} убийств. HP сохраняется между боями и восстанавливается со временем.
         </p>
       </div>
+
+      {activeEvent && (
+        <FloorEventModal
+          event={activeEvent}
+          floor={farmFloor}
+          onChoice={resolveEventChoice}
+          onClose={() => setActiveEvent(null)}
+        />
+      )}
+
+      <Dialog open={!!eventResult} onOpenChange={() => { setEventResult(null); setPendingCombat(null) }}>
+        <DialogContent className="text-center">
+          <DialogHeader>
+            <DialogTitle>Событие этажа</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-300">{eventResult}</p>
+          {pendingCombat ? (
+            <Button
+              className="w-full mt-2"
+              onClick={() => {
+                beginCombat(pendingCombat.enemy, pendingCombat.floor)
+                setEventResult(null)
+                setPendingCombat(null)
+              }}
+            >
+              В бой!
+            </Button>
+          ) : (
+            <Button className="w-full mt-2" onClick={() => setEventResult(null)}>Понятно</Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

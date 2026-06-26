@@ -94,7 +94,7 @@ export function CombatPage() {
           <div>
             <h2 className="text-sm font-bold text-red-400">{combat.enemy.name}</h2>
             <p className="text-[10px] text-slate-500">
-              {combat.isBoss ? `👑 ${t('combat.boss')}` : `Ход ${combat.turn}`}
+              {combat.isBoss ? `👑 ${t('combat.boss')}` : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
               {combat.combo > 1 && <span className="text-aether-gold ml-2">{combat.combo}x комбо</span>}
             </p>
           </div>

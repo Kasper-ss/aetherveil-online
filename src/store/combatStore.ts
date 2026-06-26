@@ -55,8 +55,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       combo: 0,
       skillCooldowns: {},
       isBoss: isBoss ?? !!enemy.isBoss,
+      isEpic: !!enemy.isEpic,
       floor,
-      combatLog: [logEntry(`⚔️ Бой начался: ${enemy.name}!`, 'system')],
+      combatLog: [
+        logEntry(
+          enemy.isEpic ? `⚡ Эпический противник: ${enemy.name}!` : `⚔️ Бой начался: ${enemy.name}!`,
+          'system',
+        ),
+      ],
       turn: 1,
     }
 
@@ -339,8 +345,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         gold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
         const pvePlayer = usePlayerStore.getState().player
         const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult))
-        resources = generateCombatResources(combat.floor, combat.isBoss)
+        const isEpic = !!combat.enemy.isEpic
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, isEpic))
+        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic)
       }
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player
@@ -354,6 +361,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       lootClaimed: combat.isPvp ? true : false,
       mobKilled: victory && !combat.isBoss && !combat.isPvp,
       killedBy: !victory ? combat.enemy.name : undefined,
+      isEpic: combat.isEpic,
     }
 
     if (!victory && !combat.isPvp) {

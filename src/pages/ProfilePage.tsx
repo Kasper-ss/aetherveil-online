@@ -11,6 +11,7 @@ import { toggleMusic, toggleSound } from '@/lib/audio'
 import { useRef, useState } from 'react'
 import { shareInviteLink, hapticSuccess } from '@/lib/telegram'
 import { getCombatMaxHp, hasDeathDebuff } from '@/lib/playerStats'
+import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
 
@@ -93,6 +94,11 @@ export function ProfilePage() {
         {hasDeathDebuff(player) && (
           <p className="text-[10px] text-red-400 mt-1">Дебафф смерти: −30% к статам (30 мин)</p>
         )}
+        {getActiveEffects(player).map((e) => (
+          <p key={e.id} className="text-[10px] text-aether-purple">
+            {e.type === 'buff' ? '↑' : '↓'} {e.label} · {formatEffectRemaining(e.until)}
+          </p>
+        ))}
         <p className="text-[10px] text-slate-500 mt-1 font-mono">ID: {player.telegramId}</p>
         <Button variant="outline" size="sm" className="mt-2" onClick={() => { setNewName(player.displayName); setShowRename(true) }}>
           Сменить ник

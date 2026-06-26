@@ -5,7 +5,8 @@ import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
   herb: { id: 'herb', name: 'Healing Herb', nameRu: 'Целебная трава', icon: '🌿' },
-  hide: { id: 'hide', name: 'Monster Hide', nameRu: 'Шкура монстра', icon: '🥩' },
+  hide: { id: 'hide', name: 'Monster Hide', nameRu: 'Шкура монстра', icon: '🦴' },
+  meat: { id: 'meat', name: 'Monster Meat', nameRu: 'Мясо монстра', icon: '🥩' },
   gem_shard: { id: 'gem_shard', name: 'Gem Shard', nameRu: 'Осколок кристалла', icon: '💠' },
   mana_crystal: { id: 'mana_crystal', name: 'Mana Crystal', nameRu: 'Кристалл маны', icon: '🔮' },
   aether_dust: { id: 'aether_dust', name: 'Aether Dust', nameRu: 'Пыль Эфира', icon: '✨' },
