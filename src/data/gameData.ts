@@ -163,6 +163,9 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     professionExp: player.professionExp ?? {},
     unlockedSetScrolls: player.unlockedSetScrolls ?? [],
     ownedTools: player.ownedTools ?? [],
+    mineLevel: player.mineLevel ?? 1,
+    mineDigXp: player.mineDigXp ?? 0,
+    fishCaughtTotal: player.fishCaughtTotal ?? 0,
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }
   if (usesMana(migrated)) {

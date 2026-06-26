@@ -20,6 +20,9 @@ import { BankPage } from '@/pages/BankPage'
 import { FairPage } from '@/pages/FairPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { PlayerViewPage } from '@/pages/PlayerViewPage'
+import { MinePage } from '@/pages/MinePage'
+import { FishingPage } from '@/pages/FishingPage'
+import { KitchenPage } from '@/pages/KitchenPage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
@@ -57,6 +60,9 @@ function AppRoutes() {
           <Route path="/bank" element={<BankPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/fair" element={<FairPage />} />
+          <Route path="/mine" element={<MinePage />} />
+          <Route path="/fishing" element={<FishingPage />} />
+          <Route path="/kitchen" element={<KitchenPage />} />
         </Routes>
       </div>
     </>

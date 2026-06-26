@@ -36,6 +36,11 @@ import {
 } from '@/lib/professionProgress'
 import { PROFESSION_ACTIVITIES } from '@/data/professionActivities'
 import { playerHasTool } from '@/data/tools'
+import {
+  getMineLevelData, getUnlockedMineLevel, rollMineRewards,
+} from '@/data/mineLevels'
+import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
+import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 
 interface PlayerState {
   player: Player | null
@@ -74,6 +79,10 @@ interface PlayerState {
   setProfession: (professionId: ProfessionId) => void
   toggleActiveProfession: (professionId: ProfessionId) => boolean
   performProfessionGrind: (activityId: string) => boolean
+  performMineDig: (targetLevel?: number) => { ok: boolean; isVein?: boolean; isDouble?: boolean }
+  performFishing: () => { ok: boolean; fishName?: string; junk?: boolean }
+  cookFood: (recipeId: string) => boolean
+  eatFood: (itemId: string) => boolean
   craftItem: (recipeId: string) => boolean
   upgradeItemLevel: (item: Item) => Item | null
   upgradeItemStars: (item: Item) => Item | null
@@ -659,6 +668,99 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         [activity.professionId]: prevExp + activity.professionXp,
       },
     })
+    return true
+  },
+
+  performMineDig: (targetLevel) => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'blacksmith')) return { ok: false }
+    if (!playerHasTool(player, 'pickaxe')) return { ok: false }
+
+    const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
+    const level = Math.min(targetLevel ?? player.mineLevel ?? 1, unlocked)
+    const mine = getMineLevelData(level)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(mine.energyCost)) return { ok: false }
+
+    const { resources, isDouble, isVein } = rollMineRewards(mine)
+    get().addResources(resources)
+    const newXp = (player.mineDigXp ?? 0) + mine.xpPerDig
+    get().updatePlayer({
+      mineDigXp: newXp,
+      mineLevel: level,
+      professionExp: {
+        ...player.professionExp,
+        blacksmith: getProfessionExp(player, 'blacksmith') + mine.xpPerDig,
+      },
+    })
+    return { ok: true, isDouble, isVein }
+  },
+
+  performFishing: () => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!playerHasTool(player, 'fishing_rod')) return { ok: false }
+    const bait = player.inventory.find((i) => i.id === 'fishing_bait')
+    if (!bait?.instanceId) return { ok: false }
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(FISHING_ENERGY_COST)) return { ok: false }
+
+    get().removeItemByInstance(bait.instanceId)
+    const { fish, junk } = rollFishCatch()
+
+    if (junk) {
+      get().addResources({ fishing_junk: 1 })
+      return { ok: true, junk: true }
+    }
+
+    if (fish) {
+      get().addResources({ [fish.id]: 1 })
+      const profXp = 8 + (fish.rarity === 'legendary' ? 20 : fish.rarity === 'epic' ? 12 : fish.rarity === 'rare' ? 6 : 3)
+      get().updatePlayer({
+        fishCaughtTotal: (player.fishCaughtTotal ?? 0) + 1,
+        professionExp: {
+          ...player.professionExp,
+          hunter: getProfessionExp(player, 'hunter') + profXp,
+        },
+      })
+      return { ok: true, fishName: fish.nameRu }
+    }
+    return { ok: false }
+  },
+
+  cookFood: (recipeId) => {
+    const { player } = get()
+    if (!player) return false
+    const recipe = findKitchenRecipe(recipeId)
+    if (!recipe) return false
+    const scaled = getKitchenRecipesForPlayer(player.classId).find((r) => r.id === recipeId)
+    if (!scaled) return false
+    if (!get().spendGold(scaled.goldCost)) return false
+    if (!get().spendResources(scaled.resources)) {
+      get().addGold(scaled.goldCost)
+      return false
+    }
+    const inst = createItemInstance(scaled.resultFoodId)
+    if (inst) get().addItem(inst)
+    return !!inst
+  },
+
+  eatFood: (itemId) => {
+    const { player } = get()
+    if (!player) return false
+    const buff = FOOD_BUFF_MAP[itemId]
+    if (!buff) return false
+    const item = player.inventory.find((i) => i.id === itemId)
+    if (!item?.instanceId) return false
+    get().removeItemByInstance(item.instanceId)
+    const effects = addActiveEffect(player.activeEffects, {
+      id: `food_${itemId}`,
+      label: buff.label,
+      type: 'buff',
+      stat: buff.stat,
+      mult: buff.mult,
+      durationMs: buff.durationMs,
+    })
+    get().updatePlayer({ activeEffects: effects })
     return true
   },
 

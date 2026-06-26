@@ -293,6 +293,30 @@ export const CONSUMABLES: Record<string, Item> = {
     id: 'fishing_bait', name: 'Наживка', description: 'Расходник для рыбалки.',
     slot: 'consumable', rarity: 'common', stats: {}, icon: '🪱', sellPrice: 5, upgradeLevel: 1, starLevel: 0,
   },
+  food_roast_meat: {
+    id: 'food_roast_meat', name: 'Жареное мясо', description: 'Еда: +10% ATK на 20 мин.',
+    slot: 'consumable', rarity: 'common', stats: {}, icon: '🍖', sellPrice: 30, upgradeLevel: 1, starLevel: 0,
+  },
+  food_herb_soup: {
+    id: 'food_herb_soup', name: 'Травяной суп', description: 'Еда: +15% HP на 25 мин.',
+    slot: 'consumable', rarity: 'common', stats: {}, icon: '🍲', sellPrice: 35, upgradeLevel: 1, starLevel: 0,
+  },
+  food_fish_grill: {
+    id: 'food_fish_grill', name: 'Рыбный гриль', description: 'Еда: +12% скорость на 20 мин.',
+    slot: 'consumable', rarity: 'rare', stats: {}, icon: '🐟', sellPrice: 55, upgradeLevel: 1, starLevel: 0,
+  },
+  food_sea_feast: {
+    id: 'food_sea_feast', name: 'Морской пир', description: 'Еда: +15% CRIT на 30 мин.',
+    slot: 'consumable', rarity: 'epic', stats: {}, icon: '🦞', sellPrice: 90, upgradeLevel: 1, starLevel: 0,
+  },
+  food_mana_brew: {
+    id: 'food_mana_brew', name: 'Мана-отвар', description: 'Еда: +12% ко всем статам на 25 мин.',
+    slot: 'consumable', rarity: 'rare', stats: {}, icon: '🧪', sellPrice: 70, upgradeLevel: 1, starLevel: 0,
+  },
+  food_aether_sushi: {
+    id: 'food_aether_sushi', name: 'Эфирное суши', description: 'Еда: +18% ко всем статам на 40 мин.',
+    slot: 'consumable', rarity: 'legendary', stats: {}, icon: '✨', sellPrice: 200, upgradeLevel: 1, starLevel: 0,
+  },
   legendary_underwear: {
     id: 'legendary_underwear',
     name: 'Легендарные Трусы Неуязвимости',

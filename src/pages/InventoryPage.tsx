@@ -12,7 +12,8 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
 import { groupConsumableStacks } from '@/lib/consumables'
-import { hapticSuccess } from '@/lib/telegram'
+import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, EquipSlot } from '@/types/game'
 
 const EQUIP_ORDER: EquipSlot[] = [
@@ -25,6 +26,7 @@ export function InventoryPage() {
   const equipItem = usePlayerStore((s) => s.equipItem)
   const unequipItem = usePlayerStore((s) => s.unequipItem)
   const consumeConsumable = usePlayerStore((s) => s.consumeConsumable)
+  const eatFood = usePlayerStore((s) => s.eatFood)
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -32,6 +34,16 @@ export function InventoryPage() {
 
   const setBonuses = getActiveSetBonuses(player)
   const consumableStacks = groupConsumableStacks(player.inventory)
+  const foodStacks = Object.entries(
+    player.inventory
+      .filter((i) => FOOD_BUFF_MAP[i.id])
+      .reduce<Record<string, { name: string; icon: string; count: number }>>((acc, item) => {
+        const cur = acc[item.id]
+        if (cur) cur.count++
+        else acc[item.id] = { name: item.name, icon: item.icon, count: 1 }
+        return acc
+      }, {}),
+  )
   const gearItems = player.inventory.filter((i) => i.slot !== 'consumable')
 
   function handleEquip(item: Item) {
@@ -40,6 +52,11 @@ export function InventoryPage() {
 
   function handleUseConsumable(itemId: 'hp_potion' | 'energy_drink') {
     if (consumeConsumable(itemId)) hapticSuccess()
+  }
+
+  function handleEatFood(itemId: string) {
+    if (eatFood(itemId)) hapticSuccess()
+    else hapticError()
   }
 
   return (
@@ -95,6 +112,26 @@ export function InventoryPage() {
         </TabsContent>
 
         <TabsContent value="items">
+          {foodStacks.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs text-slate-400 font-medium">Еда (баффы)</p>
+              {foodStacks.map(([itemId, stack]) => (
+                <Card key={itemId}>
+                  <CardContent className="p-2 flex items-center gap-2">
+                    <span className="text-lg">{stack.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-white">{stack.name}</div>
+                      <div className="text-[10px] text-slate-500">×{stack.count}</div>
+                    </div>
+                    <Button size="sm" className="h-7 text-xs" onClick={() => handleEatFood(itemId)}>
+                      Съесть
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {consumableStacks.length > 0 && (
             <div className="mb-4 space-y-2">
               <p className="text-xs text-slate-400 font-medium">Расходники</p>

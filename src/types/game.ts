@@ -17,6 +17,12 @@ export type ProfessionId = 'blacksmith' | 'alchemist' | 'hunter' | 'jeweler' | '
 export type ResourceId =
   | 'iron_ore' | 'herb' | 'hide' | 'meat' | 'gem_shard' | 'mana_crystal'
   | 'aether_dust' | 'star_shard' | 'upgrade_core'
+  | 'stone_chunk' | 'gold_ore' | 'raw_diamond' | 'mithril_ore' | 'adamantite'
+  | 'sulfur' | 'rare_spice' | 'abyssal_pearl'
+  | 'fish_minnow' | 'fish_bream' | 'fish_carp' | 'fish_perch' | 'fish_trout'
+  | 'fish_salmon' | 'fish_pike' | 'fish_tuna' | 'fish_cod' | 'fish_eel'
+  | 'fish_crab' | 'fish_lobster' | 'fish_squid' | 'fish_swordfish' | 'fish_aether_koi'
+  | 'fishing_junk'
 
 export type EffectStat = 'atk' | 'def' | 'hp' | 'crit' | 'speed' | 'all'
 
@@ -223,6 +229,9 @@ export interface Player {
   professionExp?: Partial<Record<ProfessionId, number>>
   unlockedSetScrolls?: string[]
   ownedTools?: string[]
+  mineLevel?: number
+  mineDigXp?: number
+  fishCaughtTotal?: number
   professionLevels: Partial<Record<ProfessionId, number[]>>
   professionMythicLevels: Partial<Record<ProfessionId, number[]>>
   resources: Partial<Record<ResourceId, number>>
