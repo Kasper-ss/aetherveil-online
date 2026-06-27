@@ -14,6 +14,7 @@ import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
 import { groupConsumableStacks, isHpPotion, isEnergyDrink, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { hasDeathDebuff } from '@/lib/playerStats'
 import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
@@ -232,7 +233,10 @@ export function CombatPage() {
                   className="text-xs"
                   onClick={() => { hapticImpact('light'); eatFoodInCombat(itemId) }}
                 >
-                  {stack.icon} {stack.buffLabel} ×{stack.count}
+                    {stack.icon} {stack.buffLabel} ×{stack.count}
+                    <span className="block text-[9px] text-slate-500 font-normal mt-0.5">
+                      {formatFoodBuffDescription(itemId)}
+                    </span>
                 </Button>
               ))}
             </div>

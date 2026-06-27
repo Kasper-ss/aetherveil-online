@@ -12,6 +12,7 @@ import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
 import { defaultQuestState } from '@/lib/quests'
 import { defaultMonthlyStats, monthKey } from '@/lib/monthlyStats'
 import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/vitalNotifications'
+import { SAVE_VERSION } from '@/lib/playerMigration'
 
 export { ALL_ITEMS as ITEMS, rollEquipmentDrop, getMobsRequiredForFloor } from '@/data/items'
 export { FLOORS, getFloorData, MAX_FLOOR } from '@/data/floors'
@@ -189,6 +190,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
       : [],
     notificationSettings: player.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS,
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
+    saveVersion: SAVE_VERSION,
   }
   if (usesMana(migrated)) {
     migrated.maxMana = getMaxMana(migrated)

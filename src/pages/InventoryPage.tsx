@@ -13,6 +13,7 @@ import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
 import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { ResourceCatalog } from '@/components/ui/ResourceCatalog'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, EquipSlot } from '@/types/game'
@@ -38,10 +39,15 @@ export function InventoryPage() {
   const foodStacks = Object.entries(
     player.inventory
       .filter((i) => FOOD_BUFF_MAP[i.id])
-      .reduce<Record<string, { name: string; icon: string; count: number }>>((acc, item) => {
+      .reduce<Record<string, { name: string; icon: string; count: number; buffDesc: string }>>((acc, item) => {
         const cur = acc[item.id]
         if (cur) cur.count++
-        else acc[item.id] = { name: item.name, icon: item.icon, count: 1 }
+        else acc[item.id] = {
+          name: item.name,
+          icon: item.icon,
+          count: 1,
+          buffDesc: formatFoodBuffDescription(item.id),
+        }
         return acc
       }, {}),
   )
@@ -123,6 +129,7 @@ export function InventoryPage() {
                     <span className="text-lg">{stack.icon}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-white">{stack.name}</div>
+                      <div className="text-[10px] text-aether-cyan leading-tight">{stack.buffDesc}</div>
                       <div className="text-[10px] text-slate-500">×{stack.count}</div>
                     </div>
                     <Button size="sm" className="h-7 text-xs" onClick={() => handleEatFood(itemId)}>

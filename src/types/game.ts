@@ -272,6 +272,7 @@ export interface Player {
   monthlyRewardsClaimed?: string[]
   notificationSettings?: NotificationSettings
   petLastRewardAt?: string
+  saveVersion?: number
 }
 
 export interface MonthlyStats {
@@ -374,6 +375,7 @@ export interface CombatState {
   floor: number
   combatLog: CombatLogEntry[]
   turn: number
+  enemyCombat?: import('@/lib/enemyCombat').EnemyCombatState
   isPvp?: boolean
   pvpOpponentId?: number
   isEpic?: boolean

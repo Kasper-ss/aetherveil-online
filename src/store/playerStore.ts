@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent } from '@/types/game'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
+import { pickNewerPlayer } from '@/lib/playerMigration'
 import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
@@ -214,9 +215,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ isLoading: true })
     const user = getTelegramUser()
     try {
-      let player = await loadPlayerFromSupabase(user.id)
-      if (!player) player = storageGet<Player | null>(SAVE_KEY, null)
-      if (!player) player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
+      const remote = await loadPlayerFromSupabase(user.id)
+      const local = storageGet<Player | null>(SAVE_KEY, null)
+      let player = pickNewerPlayer(remote, local)
+      if (!player) {
+        player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
+      }
       player = migratePlayer(player)
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
@@ -225,12 +229,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
     } catch (error) {
-      console.error('[Aetherveil] loadPlayer failed, resetting save', error)
-      const player = migratePlayer(
-        createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
-      )
+      console.error('[Aetherveil] loadPlayer failed, using local fallback', error)
+      const local = storageGet<Player | null>(SAVE_KEY, null)
+      let player = local
+      if (!player) {
+        player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
+      }
+      player = migratePlayer(player)
       storageSet(SAVE_KEY, player)
-      set({ player, isLoading: false, isAuthenticated: true, idleReward: null, petReward: null })
+      const idle = calculateIdle(player)
+      set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
+      get().tryRegenVitals()
       registerOnlinePlayer(player)
     }
   },

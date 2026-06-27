@@ -9,7 +9,10 @@ import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/pla
 import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
 import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion, isEnergyDrink } from '@/lib/consumables'
-import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
+import { formatFoodCombatLog } from '@/lib/foodBuffs'
+import {
+  absorbEnemyShield, createEnemyCombatState, executeEnemyAttack, formatEnemyAbilityHint,
+} from '@/lib/enemyCombat'
 
 interface CombatStore {
   combat: CombatState | null
@@ -35,6 +38,58 @@ function logEntry(text: string, type: CombatLogEntry['type']): CombatLogEntry {
   return { text, type }
 }
 
+function applyDamageToEnemy(combat: CombatState, rawDmg: number): {
+  enemyHp: number
+  enemyCombat: CombatState['enemyCombat']
+  logs: CombatLogEntry[]
+} {
+  const shielded = absorbEnemyShield(combat.enemyCombat, rawDmg)
+  const logs: CombatLogEntry[] = []
+  if (shielded.absorbed > 0) {
+    logs.push(logEntry(`🛡️ Щит поглотил ${shielded.absorbed} урона`, 'system'))
+  }
+  return {
+    enemyHp: combat.enemyHp - shielded.damage,
+    enemyCombat: shielded.state,
+    logs,
+  }
+}
+
+function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffectiveStats>): {
+  playerHp: number
+  enemyHp: number
+  enemyCombat: CombatState['enemyCombat']
+  logs: CombatLogEntry[]
+} {
+  if (combat.isPvp) {
+    const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk - stats.def * 0.35))
+    const dodge = Math.random() < stats.speed * 0.008 + stats.stealth * 0.012
+    if (dodge) {
+      return {
+        playerHp: combat.playerHp,
+        enemyHp: combat.enemyHp,
+        enemyCombat: combat.enemyCombat,
+        logs: [logEntry(`💨 Вы уклонились от атаки ${combat.enemy.name}!`, 'system')],
+      }
+    }
+    return {
+      playerHp: combat.playerHp - enemyDmg,
+      enemyHp: combat.enemyHp,
+      enemyCombat: combat.enemyCombat,
+      logs: [logEntry(`🔴 ${combat.enemy.name} нанёс вам ${enemyDmg} урона`, 'enemy')],
+    }
+  }
+
+  const result = executeEnemyAttack(combat, stats)
+  const enemyHp = Math.min(combat.enemyMaxHp, combat.enemyHp + result.enemyHeal)
+  return {
+    playerHp: combat.playerHp - result.playerDmg,
+    enemyHp,
+    enemyCombat: result.enemyCombat,
+    logs: result.logs,
+  }
+}
+
 export const useCombatStore = create<CombatStore>((set, get) => ({
   combat: null,
   isActive: false,
@@ -49,6 +104,17 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const maxHp = getCombatMaxHp(player)
     const startHp = Math.max(1, getPlayerCurrentHp(player))
 
+    const startLogs: CombatLogEntry[] = [
+      logEntry(
+        enemy.isEpic ? `⚡ Эпический противник: ${enemy.name}!` : `⚔️ Бой начался: ${enemy.name}!`,
+        'system',
+      ),
+    ]
+    const abilityHint = formatEnemyAbilityHint(enemy, floor)
+    if (abilityHint) {
+      startLogs.push(logEntry(`⚠️ Способности: ${abilityHint}`, 'system'))
+    }
+
     const combat: CombatState = {
       enemy,
       playerHp: startHp,
@@ -60,12 +126,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isBoss: isBoss ?? !!enemy.isBoss,
       isEpic: !!enemy.isEpic,
       floor,
-      combatLog: [
-        logEntry(
-          enemy.isEpic ? `⚡ Эпический противник: ${enemy.name}!` : `⚔️ Бой начался: ${enemy.name}!`,
-          'system',
-        ),
-      ],
+      enemyCombat: createEnemyCombatState(),
+      combatLog: startLogs,
       turn: 1,
     }
 
@@ -128,9 +190,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const baseDmg = stats.atk * comboBonus
     const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * 0.4)
     const finalDmg = Math.max(1, rawDmg)
-    const newEnemyHp = combat.enemyHp - finalDmg
+    const hit = applyDamageToEnemy(combat, finalDmg)
+    const newEnemyHp = hit.enemyHp
     const newCombo = combat.combo + 1
-    const logs = [...combat.combatLog]
+    const logs = [...combat.combatLog, ...hit.logs]
 
     if (isCrit) {
       logs.push(logEntry(`💥 КРИТ! Вы нанесли ${finalDmg} урона ${combat.enemy.name}`, 'crit'))
@@ -140,38 +203,39 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (newEnemyHp <= 0) {
       logs.push(logEntry(`✅ ${combat.enemy.name} повержен!`, 'system'))
-      set({ combat: { ...combat, enemyHp: 0, combo: newCombo, combatLog: logs } })
+      set({ combat: { ...combat, enemyHp: 0, combo: newCombo, enemyCombat: hit.enemyCombat, combatLog: logs } })
       get().endCombat(true)
       return
     }
 
-    // Enemy counter-attack (slower, more deliberate)
-    const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk - stats.def * 0.35))
-    const pattern = combat.enemy.pattern
-    const dmgMult = pattern === 'berserker' ? 1.25 : pattern === 'defensive' ? 0.65 : 1
-    const dodge = Math.random() < stats.speed * 0.008 + stats.stealth * 0.012
-    let playerDmg = 0
-    if (dodge) {
-      logs.push(logEntry(`💨 Вы уклонились от атаки ${combat.enemy.name}!`, 'system'))
-    } else {
-      playerDmg = Math.floor(enemyDmg * dmgMult)
-      logs.push(logEntry(`🔴 ${combat.enemy.name} нанёс вам ${playerDmg} урона`, 'enemy'))
-    }
-    const newPlayerHp = combat.playerHp - playerDmg
+    const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: hit.enemyCombat }
+    const enemyTurn = resolveEnemyTurn(afterHit, stats)
+    logs.push(...enemyTurn.logs)
+    const newPlayerHp = enemyTurn.playerHp
 
     if (newPlayerHp <= 0) {
       logs.push(logEntry('💀 Вы пали в бою...', 'system'))
-      set({ combat: { ...combat, enemyHp: newEnemyHp, playerHp: 0, combo: newCombo, combatLog: logs } })
+      set({
+        combat: {
+          ...afterHit,
+          enemyHp: enemyTurn.enemyHp,
+          playerHp: 0,
+          combo: newCombo,
+          enemyCombat: enemyTurn.enemyCombat,
+          combatLog: logs,
+        },
+      })
       get().endCombat(false)
       return
     }
 
     set({
       combat: {
-        ...combat,
-        enemyHp: newEnemyHp,
+        ...afterHit,
+        enemyHp: enemyTurn.enemyHp,
         playerHp: newPlayerHp,
         combo: newCombo,
+        enemyCombat: enemyTurn.enemyCombat,
         combatLog: logs.slice(-30),
         turn: combat.turn + 1,
       },
@@ -223,7 +287,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const isCrit = Math.random() * 100 < stats.crit + 10
     let damage = Math.floor(stats.atk * scaled.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
     const finalDmg = Math.max(1, damage)
-    const newEnemyHp = combat.enemyHp - finalDmg
+    const hit = applyDamageToEnemy(combat, finalDmg)
+    logs.push(...hit.logs)
+    const newEnemyHp = hit.enemyHp
     let playerHpAfter = combat.playerHp
 
     if (scaled.healPercent > 0 && skill.damageMultiplier > 0) {
@@ -242,6 +308,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       set({
         combat: {
           ...combat, enemyHp: 0, playerHp: playerHpAfter, combo: combat.combo + 3,
+          enemyCombat: hit.enemyCombat,
           skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
           combatLog: logs,
         },
@@ -250,22 +317,34 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       return
     }
 
-    // Enemy counter after skill
-    const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk * 0.8 - stats.def * 0.3))
-    logs.push(logEntry(`🔴 ${combat.enemy.name} контратакует: ${enemyDmg} урона`, 'enemy'))
-    const newPlayerHp = playerHpAfter - enemyDmg
+    const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: hit.enemyCombat, playerHp: playerHpAfter }
+    const enemyTurn = resolveEnemyTurn(afterHit, stats)
+    logs.push(...enemyTurn.logs)
 
-    if (newPlayerHp <= 0) {
+    if (enemyTurn.playerHp <= 0) {
+      logs.push(logEntry('💀 Вы пали в бою...', 'system'))
+      set({
+        combat: {
+          ...afterHit,
+          enemyHp: enemyTurn.enemyHp,
+          playerHp: 0,
+          combo: combat.combo + 3,
+          enemyCombat: enemyTurn.enemyCombat,
+          skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+          combatLog: logs,
+        },
+      })
       get().endCombat(false)
       return
     }
 
     set({
       combat: {
-        ...combat,
-        enemyHp: newEnemyHp,
-        playerHp: newPlayerHp,
+        ...afterHit,
+        enemyHp: enemyTurn.enemyHp,
+        playerHp: enemyTurn.playerHp,
         combo: combat.combo + 3,
+        enemyCombat: enemyTurn.enemyCombat,
         skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
         combatLog: logs.slice(-30),
         turn: combat.turn + 1,
@@ -316,17 +395,13 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const { combat, isActive } = get()
     if (!combat || !isActive || combat.isPvp) return false
 
-    const buff = FOOD_BUFF_MAP[itemId]
-    if (!buff) return false
-
     const playerStore = usePlayerStore.getState()
     if (!playerStore.eatFood(itemId)) return false
 
     const player = playerStore.player!
     const newMaxHp = getCombatMaxHp(player)
     const hpGain = Math.max(0, newMaxHp - combat.playerMaxHp)
-    const pct = Math.round((buff.mult - 1) * 100)
-    const logs = [...combat.combatLog, logEntry(`🍖 ${buff.label}: +${pct}% на ${Math.round(buff.durationMs / 60_000)}м`, 'heal')]
+    const logs = [...combat.combatLog, logEntry(formatFoodCombatLog(itemId, hpGain), 'heal')]
 
     set({
       combat: {
