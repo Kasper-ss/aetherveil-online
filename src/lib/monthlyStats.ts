@@ -54,3 +54,14 @@ export const MONTHLY_RANK_REWARDS: Record<1 | 2 | 3, { gold: number; gems: numbe
   2: { gold: 3000, gems: 15 },
   3: { gold: 1500, gems: 8 },
 }
+
+export const MONTHLY_RANK_BONUSES: Record<1 | 2 | 3, string> = {
+  1: 'Титул «Чемпион месяца» и значок в профиле',
+  2: 'Значок «Серебряный призёр» в профиле',
+  3: 'Значок «Бронзовый призёр» в профиле',
+}
+
+export function formatMonthlyReward(rank: 1 | 2 | 3): string {
+  const r = MONTHLY_RANK_REWARDS[rank]
+  return `${r.gold.toLocaleString('ru-RU')} 🪙 + ${r.gems} 💎`
+}

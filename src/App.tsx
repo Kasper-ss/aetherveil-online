@@ -23,6 +23,9 @@ import { SkillsPage } from '@/pages/SkillsPage'
 import { PlayerViewPage } from '@/pages/PlayerViewPage'
 import { MinePage } from '@/pages/MinePage'
 import { FishingPage } from '@/pages/FishingPage'
+import { HuntPage } from '@/pages/HuntPage'
+import { GemSitePage } from '@/pages/GemSitePage'
+import { AetherPage } from '@/pages/AetherPage'
 import { KitchenPage } from '@/pages/KitchenPage'
 import { HerbFieldPage } from '@/pages/HerbFieldPage'
 import { QuestsPage } from '@/pages/QuestsPage'
@@ -66,6 +69,9 @@ function AppRoutes() {
           <Route path="/fair" element={<FairPage />} />
           <Route path="/mine" element={<MinePage />} />
           <Route path="/fishing" element={<FishingPage />} />
+          <Route path="/hunt" element={<HuntPage />} />
+          <Route path="/gems" element={<GemSitePage />} />
+          <Route path="/aether" element={<AetherPage />} />
           <Route path="/kitchen" element={<KitchenPage />} />
           <Route path="/field" element={<HerbFieldPage />} />
           <Route path="/quests" element={<QuestsPage />} />

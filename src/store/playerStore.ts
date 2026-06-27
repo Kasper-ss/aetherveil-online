@@ -56,8 +56,19 @@ import {
 import {
   getHerbFieldLevelData, getUnlockedHerbFieldLevel, rollHerbGather,
 } from '@/data/herbField'
+import {
+  getHuntLevelData, getUnlockedHuntLevel, rollHuntRewards,
+} from '@/data/huntLevels'
+import {
+  getGemSiteLevelData, getUnlockedGemSiteLevel, rollGemSiteRewards,
+} from '@/data/gemSiteLevels'
+import {
+  getAetherRiftLevelData, getUnlockedAetherRiftLevel, rollAetherRiftRewards,
+} from '@/data/aetherRiftLevels'
+import {
+  getFishingSpotData, getUnlockedFishingSpot, rollSpotFishCatch,
+} from '@/data/fishingSpots'
 import { findAlchemyRecipe, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
-import { rollFishCatch, FISHING_ENERGY_COST } from '@/data/fishing'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
@@ -109,8 +120,11 @@ interface PlayerState {
   toggleActiveProfession: (professionId: ProfessionId) => boolean
   performProfessionGrind: (activityId: string) => boolean
   performMineDig: (targetLevel?: number) => { ok: boolean; isVein?: boolean; isDouble?: boolean }
-  performFishing: () => { ok: boolean; fishName?: string; junk?: boolean }
+  performFishing: (targetSpot?: number) => { ok: boolean; fishName?: string; junk?: boolean; isTrophy?: boolean }
   performHerbGather: (targetLevel?: number) => { ok: boolean; isBonus?: boolean }
+  performHunt: (targetLevel?: number) => { ok: boolean; isDouble?: boolean; isSpecial?: boolean }
+  performGemDig: (targetLevel?: number) => { ok: boolean; isDouble?: boolean; isSpecial?: boolean }
+  performAetherGather: (targetLevel?: number) => { ok: boolean; isDouble?: boolean; isSpecial?: boolean }
   brewPotion: (recipeId: string) => boolean
   cookFood: (recipeId: string) => boolean
   eatFood: (itemId: string) => boolean
@@ -842,27 +856,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return { ok: true, isDouble, isVein }
   },
 
-  performFishing: () => {
+  performFishing: (targetSpot) => {
     const { player } = get()
     if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'hunter')) return { ok: false }
     if (!playerHasTool(player, 'fishing_rod')) return { ok: false }
     const bait = player.inventory.find((i) => i.id === 'fishing_bait')
     if (!bait?.instanceId) return { ok: false }
-    if (!hasInfiniteEnergy(player) && !get().spendEnergy(FISHING_ENERGY_COST)) return { ok: false }
+
+    const unlocked = getUnlockedFishingSpot(player.fishingSpotXp ?? 0)
+    const spotLevel = Math.min(targetSpot ?? player.fishingSpotLevel ?? 1, unlocked)
+    const spot = getFishingSpotData(spotLevel)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(spot.energyCost)) return { ok: false }
 
     get().removeItemByInstance(bait.instanceId)
-    const { fish, junk } = rollFishCatch(getFishingJunkReduction(player))
+    const { fish, junk, isTrophy } = rollSpotFishCatch(spot, getFishingJunkReduction(player))
 
     if (junk) {
       get().addResources({ fishing_junk: 1 })
+      const newXp = (player.fishingSpotXp ?? 0) + spot.xpPerCast
+      get().updatePlayer({
+        fishingSpotXp: newXp,
+        fishingSpotLevel: spotLevel,
+      })
       return { ok: true, junk: true }
     }
 
     if (fish) {
       get().addResources({ [fish.id]: 1 })
-      const profXp = 4 + (fish.rarity === 'legendary' ? 10 : fish.rarity === 'epic' ? 6 : fish.rarity === 'rare' ? 3 : 2)
+      const profXp = spot.xpPerCast + (fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0)
+      const newXp = (player.fishingSpotXp ?? 0) + spot.xpPerCast
       get().updatePlayer({
         fishCaughtTotal: (player.fishCaughtTotal ?? 0) + 1,
+        fishingSpotXp: newXp,
+        fishingSpotLevel: spotLevel,
         professionExp: {
           ...player.professionExp,
           hunter: getProfessionExp(player, 'hunter') + profXp,
@@ -870,9 +897,82 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         monthlyStats: bumpMonthlyStat(player, 'fishCaught', 1),
       })
       applyQuestTracking(get, 'fish', 1)
-      return { ok: true, fishName: fish.nameRu }
+      return { ok: true, fishName: fish.nameRu, isTrophy }
     }
     return { ok: false }
+  },
+
+  performHunt: (targetLevel) => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'hunter')) return { ok: false }
+
+    const unlocked = getUnlockedHuntLevel(player.huntXp ?? 0)
+    const level = Math.min(targetLevel ?? player.huntLevel ?? 1, unlocked)
+    const hunt = getHuntLevelData(level)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(hunt.energyCost)) return { ok: false }
+
+    const { resources, isDouble, isSpecial } = rollHuntRewards(hunt)
+    get().addResources(resources)
+    const newXp = (player.huntXp ?? 0) + hunt.xpPerAction
+    get().updatePlayer({
+      huntXp: newXp,
+      huntLevel: level,
+      professionExp: {
+        ...player.professionExp,
+        hunter: getProfessionExp(player, 'hunter') + hunt.xpPerAction,
+      },
+    })
+    return { ok: true, isDouble, isSpecial }
+  },
+
+  performGemDig: (targetLevel) => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'jeweler')) return { ok: false }
+    if (!playerHasTool(player, 'pickaxe')) return { ok: false }
+
+    const unlocked = getUnlockedGemSiteLevel(player.gemSiteXp ?? 0)
+    const level = Math.min(targetLevel ?? player.gemSiteLevel ?? 1, unlocked)
+    const site = getGemSiteLevelData(level)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(site.energyCost)) return { ok: false }
+
+    const { resources, isDouble, isSpecial } = rollGemSiteRewards(site)
+    get().addResources(resources)
+    const newXp = (player.gemSiteXp ?? 0) + site.xpPerAction
+    get().updatePlayer({
+      gemSiteXp: newXp,
+      gemSiteLevel: level,
+      professionExp: {
+        ...player.professionExp,
+        jeweler: getProfessionExp(player, 'jeweler') + site.xpPerAction,
+      },
+    })
+    return { ok: true, isDouble, isSpecial }
+  },
+
+  performAetherGather: (targetLevel) => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!isProfessionActive(player, 'sorcerer')) return { ok: false }
+
+    const unlocked = getUnlockedAetherRiftLevel(player.aetherRiftXp ?? 0)
+    const level = Math.min(targetLevel ?? player.aetherRiftLevel ?? 1, unlocked)
+    const rift = getAetherRiftLevelData(level)
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(rift.energyCost)) return { ok: false }
+
+    const { resources, isDouble, isSpecial } = rollAetherRiftRewards(rift)
+    get().addResources(resources)
+    const newXp = (player.aetherRiftXp ?? 0) + rift.xpPerAction
+    get().updatePlayer({
+      aetherRiftXp: newXp,
+      aetherRiftLevel: level,
+      professionExp: {
+        ...player.professionExp,
+        sorcerer: getProfessionExp(player, 'sorcerer') + rift.xpPerAction,
+      },
+    })
+    return { ok: true, isDouble, isSpecial }
   },
 
   performHerbGather: (targetLevel) => {

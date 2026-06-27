@@ -234,6 +234,14 @@ export interface Player {
   mineDigXp?: number
   fieldLevel?: number
   fieldGatherXp?: number
+  huntLevel?: number
+  huntXp?: number
+  gemSiteLevel?: number
+  gemSiteXp?: number
+  aetherRiftLevel?: number
+  aetherRiftXp?: number
+  fishingSpotLevel?: number
+  fishingSpotXp?: number
   fishCaughtTotal?: number
   professionLevels: Partial<Record<ProfessionId, number[]>>
   professionMythicLevels: Partial<Record<ProfessionId, number[]>>
