@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -11,7 +10,7 @@ import { useT } from '@/hooks/useT'
 import { getLeaderboardEntries } from '@/lib/leaderboard'
 import { buildGlobalLeaderboardView } from '@/lib/leaderboardDisplay'
 import { fetchMonthlyLeaderboard } from '@/lib/multiplayerSync'
-import { MONTHLY_RANK_REWARDS, MONTHLY_RANK_BONUSES, formatMonthlyReward } from '@/lib/monthlyStats'
+import { MonthlyLeaderboardPanel } from '@/components/ui/MonthlyLeaderboardPanel'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { LeaderboardEntry, MonthlyLeaderboardResponse } from '@/types/game'
 
@@ -148,91 +147,14 @@ export function LeaderboardPage() {
     }
     const claimed = player!.monthlyRewardsClaimed ?? []
     return (
-      <div className="space-y-4">
-        <Card className="border-aether-gold/40">
-          <CardContent className="p-3 space-y-2">
-            <p className="text-xs font-semibold text-aether-gold text-center">Награды за Топ-3 в конце месяца</p>
-            <p className="text-[10px] text-slate-500 text-center">Одинаковые во всех категориях · можно забрать после подведения итогов</p>
-            {([1, 2, 3] as const).map((rank) => (
-              <div key={rank} className="flex items-start gap-2 text-xs">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${rankStyle(rank)}`}>
-                  {rank}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white font-medium">{formatMonthlyReward(rank)}</div>
-                  <div className="text-[10px] text-slate-400">{MONTHLY_RANK_BONUSES[rank]}</div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <p className="text-[10px] text-slate-500 text-center">
-          Месячный рейтинг · {monthlyBoard.monthKey} · Текущий Топ-3 по категориям
-        </p>
-        {monthlyBoard.categories.map((cat) => {
-          const selfRow = cat.entries.find((e) => e.telegramId === selfId)
-          return (
-            <Card key={cat.categoryId}>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{cat.icon}</span>
-                  <span className="text-sm font-medium text-white">{cat.nameRu}</span>
-                  {selfRow && (
-                    <Badge className="ml-auto text-[9px]">Вы: #{selfRow.rank}</Badge>
-                  )}
-                </div>
-                {cat.entries.length === 0 ? (
-                  <p className="text-xs text-slate-500">Пока нет участников — места Топ-3 свободны</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {[1, 2, 3].map((rank) => {
-                      const entry = cat.entries.find((e) => e.rank === rank)
-                      const claimKey = `${cat.categoryId}_${rank}`
-                      const reward = MONTHLY_RANK_REWARDS[rank as 1 | 2 | 3]
-                      const canClaim = entry?.telegramId === selfId
-                        && rank <= 3
-                        && !claimed.includes(claimKey)
-                      if (!entry) {
-                        return (
-                          <div key={rank} className="flex items-center gap-2 text-xs opacity-50">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${rankStyle(rank)}`}>
-                              {rank}
-                            </span>
-                            <span className="flex-1 text-slate-500">— свободно —</span>
-                            <span className="text-[9px] text-slate-600">{formatMonthlyReward(rank as 1 | 2 | 3)}</span>
-                          </div>
-                        )
-                      }
-                      return (
-                        <div key={entry.telegramId} className="flex items-center gap-2 text-xs">
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${rankStyle(entry.rank)}`}>
-                            {entry.rank}
-                          </span>
-                          <span className="flex-1 text-white truncate">{entry.displayName}</span>
-                          <span className="text-aether-gold">{entry.value}</span>
-                          {canClaim && reward && (
-                            <Button
-                              size="sm"
-                              className="h-6 text-[9px] px-2"
-                              onClick={() => handleClaimMonthly(cat.categoryId, entry.rank)}
-                            >
-                              {reward.gold}🪙+{reward.gems}💎
-                            </Button>
-                          )}
-                          {entry.telegramId === selfId && claimed.includes(claimKey) && (
-                            <span className="text-[9px] text-slate-500">✓</span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      <MonthlyLeaderboardPanel
+        monthKey={monthlyBoard.monthKey}
+        categories={monthlyBoard.categories}
+        player={player!}
+        claimed={claimed}
+        onClaim={handleClaimMonthly}
+        onOpenPlayer={(id) => navigate(`/player/${id}`)}
+      />
     )
   }
 

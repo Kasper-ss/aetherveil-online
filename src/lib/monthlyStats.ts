@@ -55,6 +55,8 @@ export const MONTHLY_RANK_REWARDS: Record<1 | 2 | 3, { gold: number; gems: numbe
   3: { gold: 1500, gems: 8 },
 }
 
+export const MONTHLY_LIVE_TOP_COUNT = 5
+
 export const MONTHLY_RANK_BONUSES: Record<1 | 2 | 3, string> = {
   1: 'Титул «Чемпион месяца» и значок в профиле',
   2: 'Значок «Серебряный призёр» в профиле',
@@ -64,4 +66,37 @@ export const MONTHLY_RANK_BONUSES: Record<1 | 2 | 3, string> = {
 export function formatMonthlyReward(rank: 1 | 2 | 3): string {
   const r = MONTHLY_RANK_REWARDS[rank]
   return `${r.gold.toLocaleString('ru-RU')} 🪙 + ${r.gems} 💎`
+}
+
+export function getMonthlyRewardRank(rank: number): 1 | 2 | 3 | null {
+  if (rank === 1 || rank === 2 || rank === 3) return rank
+  return null
+}
+
+export function formatMonthlyRewardLine(rank: number): string {
+  const rewardRank = getMonthlyRewardRank(rank)
+  if (!rewardRank) return 'Без награды'
+  return formatMonthlyReward(rewardRank)
+}
+
+export function formatMonthlyRewardBonus(rank: number): string | null {
+  const rewardRank = getMonthlyRewardRank(rank)
+  if (!rewardRank) return null
+  return MONTHLY_RANK_BONUSES[rewardRank]
+}
+
+export function getPlayerMonthlyCategoryValue(player: Player, categoryId: string): number {
+  const cat = MONTHLY_CATEGORIES.find((c) => c.id === categoryId)
+  if (!cat) return 0
+  return normalizeMonthlyStats(player)[cat.field]
+}
+
+export function formatMonthlyCategoryValue(categoryId: string, value: number): string {
+  if (categoryId === 'gold_earned') return value.toLocaleString('ru-RU')
+  return String(value)
+}
+
+export function getGapToBeat(targetValue: number, selfValue: number): number | null {
+  if (selfValue > targetValue) return null
+  return targetValue - selfValue + 1
 }
