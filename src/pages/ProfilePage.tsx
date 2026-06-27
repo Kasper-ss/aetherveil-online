@@ -3,7 +3,9 @@ import { ArrowLeft, Volume2, VolumeX, Music } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AchievementsPanel } from '@/components/ui/AchievementsPanel'
 import { usePlayerStore, usePlayerStats } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { xpForLevel, formatNumber } from '@/lib/utils'
@@ -18,6 +20,9 @@ import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '
 import { getClassData } from '@/data/classes'
 import { getNotificationSettings, requestBrowserNotificationPermission } from '@/lib/vitalNotifications'
 import { normalizeMonthlyStats } from '@/lib/monthlyStats'
+import { getTitleLabel, getTitleColorClass } from '@/data/achievementTitles'
+import { ACHIEVEMENTS, countClaimedAchievements, canClaimAchievement } from '@/data/achievements'
+import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -53,6 +58,12 @@ export function ProfilePage() {
   const className = player.classId ? getClassData(player.classId).nameRu : '—'
   const notify = getNotificationSettings(player)
   const monthly = normalizeMonthlyStats(player)
+  const titleLabel = getTitleLabel(player.profileTitleId)
+  const titleColor = getTitleColorClass(player.profileTitleId)
+  const achClaimed = countClaimedAchievements(player)
+  const achReady = ACHIEVEMENTS.filter((a) => canClaimAchievement(player, a.id)).length
+  const achBonuses = getAchievementMultipliers(player)
+  const hasAchBonuses = achBonuses.exp > 1 || achBonuses.gold > 1 || achBonuses.loot > 1 || achBonuses.allStats > 1
 
   function handleExpClick() {
     if (player!.expEasterEggClaimed) return
@@ -144,13 +155,31 @@ export function ProfilePage() {
         <h1 className="text-lg font-bold">Профиль</h1>
       </div>
 
+      <Tabs defaultValue="profile" className="flex-1">
+        <TabsList className="w-full mx-4 mt-2" style={{ width: 'calc(100% - 2rem)' }}>
+          <TabsTrigger value="profile" className="flex-1 text-xs">Профиль</TabsTrigger>
+          <TabsTrigger value="achievements" className="flex-1 text-xs relative">
+            Достижения
+            {achReady > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-aether-gold text-[8px] text-aether-bg flex items-center justify-center font-bold">
+                {achReady}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile" className="mt-0">
       <div className="p-4 text-center">
         <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-aether-cyan to-aether-purple flex items-center justify-center text-4xl ${frameClass} mb-3`}>
           {avatarEmoji}
         </div>
         <h2 className="text-xl font-bold text-white">{player.displayName}</h2>
+        {titleLabel && (
+          <p className={`text-xs font-medium mt-0.5 ${titleColor}`}>{titleLabel}</p>
+        )}
         <p className="text-sm text-slate-400">@{player.username}</p>
         <p className="text-xs text-aether-cyan mt-1">Ур. {player.level} · {className} · Этаж {player.highestFloor}</p>
+        <p className="text-[10px] text-slate-500 mt-0.5">Достижения: {achClaimed}/{ACHIEVEMENTS.length}</p>
         {hasDeathDebuff(player) && (
           <p className="text-[10px] text-red-400 mt-1">Дебафф смерти: −30% к статам (30 мин)</p>
         )}
@@ -211,6 +240,11 @@ export function ProfilePage() {
           {player.statPoints > 0 && (
             <p className="text-xs text-center text-aether-gold">
               Свободных очков характеристик: {player.statPoints}
+            </p>
+          )}
+          {hasAchBonuses && (
+            <p className="text-[10px] text-center text-fuchsia-400">
+              Бонусы достижений: EXP +{Math.round((achBonuses.exp - 1) * 100)}% · Gold +{Math.round((achBonuses.gold - 1) * 100)}% · Лут +{Math.round((achBonuses.loot - 1) * 100)}% · Статы +{Math.round((achBonuses.allStats - 1) * 100)}%
             </p>
           )}
         </CardContent>
@@ -358,6 +392,12 @@ export function ProfilePage() {
           Музыка
         </Button>
       </div>
+        </TabsContent>
+
+        <TabsContent value="achievements" className="mt-0">
+          <AchievementsPanel />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showUnderwearEgg} onOpenChange={setShowUnderwearEgg}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

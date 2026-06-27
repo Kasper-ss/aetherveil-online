@@ -25,6 +25,7 @@ export function buildPublicProfile(player: Player): PublicPlayerProfile {
     equipped,
     cosmeticAvatarId: player.cosmeticAvatarId,
     profileFrameId: player.profileFrameId,
+    profileTitleId: player.profileTitleId,
     pvpWins: player.pvpWins,
     pvpLosses: player.pvpLosses,
     guildId: player.guildId,

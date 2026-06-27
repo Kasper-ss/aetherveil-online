@@ -72,6 +72,8 @@ import { findAlchemyRecipe, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
+import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
+import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
 import { maybeNotifyVitalFull, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
 import {
   buildPetReward, getPetRewardCycles, PET_REWARD_INTERVAL_MS, type PetReward,
@@ -140,6 +142,8 @@ interface PlayerState {
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
   claimUnderwearEasterEgg: () => boolean
+  claimAchievement: (achievementId: string) => boolean
+  setProfileTitle: (titleId: string | null) => boolean
   dismantleAllCommonItems: () => number
   accrueBankInterest: () => void
   collectBankInterest: () => boolean
@@ -634,6 +638,51 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!item) return false
     get().updatePlayer({ underwearEasterEggClaimed: true })
     get().addItem(item)
+    return true
+  },
+
+  claimAchievement: (achievementId) => {
+    const { player } = get()
+    if (!player || !canClaimAchievement(player, achievementId)) return false
+    const def = ACHIEVEMENT_BY_ID[achievementId]
+    if (!def) return false
+
+    const reward = def.reward
+    const bonuses = { ...EMPTY_ACHIEVEMENT_BONUSES, ...player.achievementBonuses }
+    if (reward.buff) {
+      bonuses.expPct += reward.buff.expPct ?? 0
+      bonuses.goldPct += reward.buff.goldPct ?? 0
+      bonuses.lootPct += reward.buff.lootPct ?? 0
+      bonuses.allStatsPct += reward.buff.allStatsPct ?? 0
+    }
+
+    const unlockedTitles = [...(player.unlockedTitles ?? [])]
+    if (reward.titleId && !unlockedTitles.includes(reward.titleId)) {
+      unlockedTitles.push(reward.titleId)
+    }
+
+    get().updatePlayer({
+      achievementsClaimed: [...(player.achievementsClaimed ?? []), achievementId],
+      achievementBonuses: bonuses,
+      unlockedTitles,
+      gold: player.gold + (reward.gold ?? 0),
+      gems: player.gems + (reward.gems ?? 0),
+      statPoints: player.statPoints + (reward.statPoints ?? 0),
+    })
+
+    if (reward.resources) get().addResources(reward.resources)
+    if (reward.itemId) {
+      const item = createItemInstance(reward.itemId)
+      if (item) get().addItem(item)
+    }
+    return true
+  },
+
+  setProfileTitle: (titleId) => {
+    const { player } = get()
+    if (!player) return false
+    if (titleId && !(player.unlockedTitles ?? []).includes(titleId)) return false
+    get().updatePlayer({ profileTitleId: titleId ?? undefined })
     return true
   },
 

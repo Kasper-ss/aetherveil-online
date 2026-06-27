@@ -1,5 +1,6 @@
 import type { Player } from '@/types/game'
 import { getLuckyMultipliers } from '@/lib/luckyBonuses'
+import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { FATE_EXP_MULTIPLIER, FATE_GOLD_MULTIPLIER } from '@/lib/fateCards'
 
 export function isBuffActive(until?: string): boolean {
@@ -22,17 +23,19 @@ export function hasInfiniteEnergy(player: Player): boolean {
 export function getExpMultiplier(player: Player): number {
   const buff = isBuffActive(player.buffDoubleExpUntil) ? 2 : 1
   const fate = isBuffActive(player.buffFateExpUntil) ? FATE_EXP_MULTIPLIER : 1
-  return buff * fate * getLuckyMultipliers(player).exp
+  const ach = getAchievementMultipliers(player).exp
+  return buff * fate * getLuckyMultipliers(player).exp * ach
 }
 
 export function getGoldMultiplier(player: Player): number {
   const buff = isBuffActive(player.buffTripleGoldUntil) ? 3 : 1
   const fate = isBuffActive(player.buffFateGoldUntil) ? FATE_GOLD_MULTIPLIER : 1
-  return buff * fate * getLuckyMultipliers(player).gold
+  const ach = getAchievementMultipliers(player).gold
+  return buff * fate * getLuckyMultipliers(player).gold * ach
 }
 
 export function getLootMultiplier(player: Player): number {
-  return getLuckyMultipliers(player).loot
+  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot
 }
 
 export function getDailyBonusExtra(player: Player): { gold: number; gems: number } {

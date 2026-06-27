@@ -1,7 +1,7 @@
 import type { Player } from '@/types/game'
 
 /** Bump when migration logic changes — never wipe player data on version mismatch */
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 export function pickNewerPlayer(a: Player | null, b: Player | null): Player | null {
   if (!a) return b

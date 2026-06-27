@@ -2,6 +2,7 @@ import type { Player, AllocStatKey, AllocatedStats, Stats } from '@/types/game'
 import { getEffectiveItemStats } from '@/data/items'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
+import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -110,12 +111,14 @@ export function getEffectiveStats(player: Player): EffectiveStats {
   const effectMult = (stat: import('@/types/game').EffectStat) =>
     getEffectMultForStat(player, stat) * getEffectMultForStat(player, 'all')
 
+  const achMult = getAchievementMultipliers(player).allStats
+
   return applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk')),
-    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def')),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp')),
-    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit')),
-    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed')),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk') * achMult),
+    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def') * achMult),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp') * achMult),
+    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult),
+    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult),
     stealth: alloc.stealth,
     endurance: alloc.endurance,
   })

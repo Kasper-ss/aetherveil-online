@@ -196,6 +196,10 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     monthlyRewardsClaimed: player.monthlyStats?.monthKey === monthKey()
       ? (player.monthlyRewardsClaimed ?? [])
       : [],
+    achievementsClaimed: player.achievementsClaimed ?? [],
+    unlockedTitles: player.unlockedTitles ?? [],
+    profileTitleId: player.profileTitleId,
+    achievementBonuses: player.achievementBonuses ?? { expPct: 0, goldPct: 0, lootPct: 0, allStatsPct: 0 },
     notificationSettings: player.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS,
     fairStats: player.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
     saveVersion: SAVE_VERSION,

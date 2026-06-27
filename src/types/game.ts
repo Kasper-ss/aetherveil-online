@@ -278,6 +278,10 @@ export interface Player {
   guildJoinedAt?: string
   monthlyStats?: MonthlyStats
   monthlyRewardsClaimed?: string[]
+  achievementsClaimed?: string[]
+  unlockedTitles?: string[]
+  profileTitleId?: string
+  achievementBonuses?: import('@/lib/achievementBonuses').AchievementBonuses
   notificationSettings?: NotificationSettings
   petLastRewardAt?: string
   saveVersion?: number
@@ -454,6 +458,7 @@ export interface PublicPlayerProfile {
   equipped: Array<{ slot: string; name: string; rarity: ItemRarity }>
   cosmeticAvatarId?: string
   profileFrameId?: string
+  profileTitleId?: string
   pvpWins: number
   pvpLosses: number
   guildId?: string

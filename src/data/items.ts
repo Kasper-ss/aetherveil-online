@@ -345,6 +345,18 @@ export const CONSUMABLES: Record<string, Item> = {
     upgradeLevel: 1,
     starLevel: 0,
   },
+  keeper_medallion: {
+    id: 'keeper_medallion',
+    name: 'Медальон Древних Традиций',
+    description: 'Награда хранителя за обнаружение священной реликвии башни.',
+    slot: 'necklace',
+    rarity: 'legendary',
+    stats: { atk: 15, def: 10, hp: 50, crit: 5 },
+    icon: '🏅',
+    sellPrice: 0,
+    upgradeLevel: 1,
+    starLevel: 0,
+  },
 }
 
 export const ALL_ITEMS: Record<string, Item> = { ...generated, ...CONSUMABLES }

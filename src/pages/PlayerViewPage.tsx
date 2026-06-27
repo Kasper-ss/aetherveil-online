@@ -10,6 +10,7 @@ import { fetchPlayerProfile } from '@/lib/multiplayerSync'
 import { buildPublicProfile } from '@/lib/publicProfile'
 import { getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
+import { getTitleLabel, getTitleColorClass } from '@/data/achievementTitles'
 import { RARITY_LABELS_RU } from '@/data/items'
 import type { PublicPlayerProfile } from '@/types/game'
 
@@ -76,6 +77,11 @@ export function PlayerViewPage() {
               {getAvatarPreview(profile.cosmeticAvatarId)}
             </div>
             <h2 className="text-lg font-bold text-white mt-2">{profile.displayName}</h2>
+            {getTitleLabel(profile.profileTitleId) && (
+              <p className={`text-xs font-medium ${getTitleColorClass(profile.profileTitleId)}`}>
+                {getTitleLabel(profile.profileTitleId)}
+              </p>
+            )}
             <p className="text-sm text-slate-400">@{profile.username}</p>
             <p className="text-xs text-aether-cyan mt-1">
               Ур. {profile.level} · {className} · Этаж {profile.highestFloor}
