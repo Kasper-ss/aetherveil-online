@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { Copy, Share2, UserPlus } from 'lucide-react'
+import { Copy, Share2, UserPlus, Gift, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { usePlayerStore } from '@/store/playerStore'
 import { shareInviteLink, hapticError, hapticSuccess } from '@/lib/telegram'
 import { useT } from '@/hooks/useT'
+import {
+  REFERRAL_SIGNUP_GEMS,
+  REFERRAL_SIGNUP_GOLD,
+  countActiveReferrals,
+  formatReferralGold,
+} from '@/data/referrals'
 
 interface InviteFriendDialogProps {
   open: boolean
@@ -21,6 +29,21 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
 
   if (!player) return null
   const p = player
+  const invites = p.referralInvites ?? []
+  const earnings = p.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 }
+  const activeCount = countActiveReferrals(invites)
+  const totalEarned = earnings.signupGold + earnings.milestoneGold
+
+  async function copyReferralCode() {
+    try {
+      await navigator.clipboard.writeText(p.referralCode)
+      hapticSuccess()
+      setMessage(t('friends.codeCopied'))
+      setTimeout(() => setMessage(null), 2000)
+    } catch {
+      hapticError()
+    }
+  }
 
   async function copyPlayerId() {
     try {
@@ -70,17 +93,36 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('friends.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
+          <Card>
+            <CardContent className="p-3 space-y-2">
+              <p className="text-xs font-medium text-white flex items-center gap-1">
+                <Gift className="h-3.5 w-3.5 text-aether-gold" />
+                {t('friends.referralRewardsTitle')}
+              </p>
+              <ul className="text-[11px] text-slate-300 space-y-1">
+                <li>
+                  {t('friends.referralSignupReward')}{' '}
+                  <span className="text-aether-gold">
+                    {formatReferralGold(REFERRAL_SIGNUP_GOLD)} 🪙 + {REFERRAL_SIGNUP_GEMS} 💎
+                  </span>
+                  {' '}+ редкий предмет
+                </li>
+                <li>{t('friends.referralMilestoneReward')}</li>
+              </ul>
+            </CardContent>
+          </Card>
+
           <div className="rounded-lg bg-aether-bg border border-aether-border p-3">
-            <p className="text-xs text-slate-400 mb-1">{t('friends.yourId')}</p>
+            <p className="text-xs text-slate-400 mb-1">{t('friends.referralCode')}</p>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-mono text-aether-cyan flex-1">{p.telegramId}</span>
-              <Button variant="outline" size="sm" onClick={() => void copyPlayerId()}>
+              <span className="text-sm font-mono text-aether-gold flex-1">{p.referralCode}</span>
+              <Button variant="outline" size="sm" onClick={() => void copyReferralCode()}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
@@ -90,6 +132,55 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
             <Share2 className="h-4 w-4" />
             {t('friends.inviteToGame')}
           </Button>
+
+          {(activeCount > 0 || totalEarned > 0) && (
+            <Card>
+              <CardContent className="p-3 space-y-1 text-xs">
+                <p className="text-slate-400 flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {t('friends.referralStats')}: {activeCount}
+                </p>
+                {totalEarned > 0 && (
+                  <p className="text-aether-cyan">
+                    {t('friends.referralEarned')}: {formatReferralGold(totalEarned)} 🪙
+                    {earnings.gems > 0 && ` + ${earnings.gems} 💎`}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {invites.length > 0 && (
+            <div className="rounded-lg bg-aether-bg border border-aether-border p-3">
+              <p className="text-xs text-slate-400 mb-2">{t('friends.referralList')} ({invites.length})</p>
+              <div className="space-y-2 max-h-36 overflow-y-auto">
+                {invites.map((inv) => (
+                  <div key={inv.refereeId} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="text-white truncate">{inv.displayName}</p>
+                      <p className="text-slate-500">
+                        {formatReferralGold(inv.lifetimeGoldEarned)} 🪙
+                        {inv.milestoneCount > 0 && ` · ${inv.milestoneCount}×100К`}
+                      </p>
+                    </div>
+                    <Badge className={inv.activated ? 'bg-green-900/40 text-green-400 text-[9px]' : 'bg-slate-700 text-slate-400 text-[9px]'}>
+                      {inv.activated ? t('friends.referralActive') : t('friends.referralPending')}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg bg-aether-bg border border-aether-border p-3">
+            <p className="text-xs text-slate-400 mb-1">{t('friends.yourId')}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-mono text-aether-cyan flex-1">{p.telegramId}</span>
+              <Button variant="outline" size="sm" onClick={() => void copyPlayerId()}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           <div className="rounded-lg bg-aether-bg border border-aether-border p-3 space-y-2">
             <p className="text-xs text-slate-400">{t('friends.addById')}</p>
@@ -121,6 +212,12 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
                 ))}
               </div>
             </div>
+          )}
+
+          {p.referredBy && (
+            <p className="text-[10px] text-center text-slate-500">
+              {t('friends.referredBy')}: {p.referredBy}
+            </p>
           )}
 
           {message && <p className="text-xs text-center text-aether-cyan">{message}</p>}

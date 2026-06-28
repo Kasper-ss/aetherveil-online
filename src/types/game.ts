@@ -216,6 +216,9 @@ export interface Player {
   dailyRewardStreak: number
   referralCode: string
   referredBy?: string
+  lifetimeGoldEarned?: number
+  referralInvites?: ReferralInviteSummary[]
+  referralEarnings?: ReferralEarnings
   partyId?: string
   guildId?: string
   lastOnlineAt: string
@@ -333,6 +336,23 @@ export interface FairGameStats {
   gamesLost: number
   goldWon: number
   goldLost: number
+}
+
+export interface ReferralInviteSummary {
+  refereeId: number
+  displayName: string
+  joinedAt: string
+  signupRewarded: boolean
+  lifetimeGoldEarned: number
+  milestoneCount: number
+  activated: boolean
+}
+
+export interface ReferralEarnings {
+  signupGold: number
+  milestoneGold: number
+  gems: number
+  items: number
 }
 
 export type QuestEvent =

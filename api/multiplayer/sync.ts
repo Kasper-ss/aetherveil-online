@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { syncPublicPlayer } from '../../server/playerRegistry.js'
+import { processReferralSync } from '../../server/referrals.js'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
 import { claimGuildGifts } from '../../server/guildGifts.js'
 
@@ -18,6 +19,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       guildId?: string
       marketListings?: unknown[]
       publicProfile?: Record<string, unknown>
+      referredBy?: string
+      lifetimeGoldEarned?: number
+      classSelected?: boolean
+      tutorialCompleted?: boolean
     }
 
     const user = validateInitData(body.initData ?? '', getBotToken())
@@ -52,7 +57,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const incomingGifts = claimGuildGifts(user.id)
 
-    return res.status(200).json({ ok: true, ...result, incomingGifts })
+    const referral = await processReferralSync({
+      telegramId: user.id,
+      referredBy: body.referredBy,
+      displayName: body.displayName ?? user.first_name,
+      lifetimeGoldEarned: Number(body.lifetimeGoldEarned ?? 0),
+      classSelected: !!body.classSelected,
+      tutorialCompleted: !!body.tutorialCompleted,
+      level: Number(body.level ?? 1),
+      highestFloor: Number(body.highestFloor ?? 1),
+    })
+
+    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })

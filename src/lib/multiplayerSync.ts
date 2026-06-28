@@ -1,4 +1,5 @@
 import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile, MonthlyLeaderboardResponse } from '@/types/game'
+import type { ReferralInviteSummary } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
 
@@ -12,6 +13,10 @@ function mapListing(raw: MarketListing): MarketListing {
 export interface SyncResult {
   pendingGold: number
   soldListingIds: string[]
+  pendingReferralGold: number
+  pendingReferralGems: number
+  pendingReferralItems: string[]
+  referrals: ReferralInviteSummary[]
   incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
 }
 
@@ -35,17 +40,29 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
           sellerId: player.telegramId,
         })),
         publicProfile: buildPublicProfile(player),
+        referredBy: player.referredBy,
+        lifetimeGoldEarned: player.lifetimeGoldEarned ?? 0,
+        classSelected: player.classSelected,
+        tutorialCompleted: player.tutorialCompleted,
       }),
     })
     const data = await res.json() as {
       pendingGold?: number
       soldListingIds?: string[]
+      pendingReferralGold?: number
+      pendingReferralGems?: number
+      pendingReferralItems?: string[]
+      referrals?: ReferralInviteSummary[]
       incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
     }
     if (!res.ok) return null
     return {
       pendingGold: data.pendingGold ?? 0,
       soldListingIds: data.soldListingIds ?? [],
+      pendingReferralGold: data.pendingReferralGold ?? 0,
+      pendingReferralGems: data.pendingReferralGems ?? 0,
+      pendingReferralItems: data.pendingReferralItems ?? [],
+      referrals: data.referrals ?? [],
       incomingGifts: data.incomingGifts ?? [],
     }
   } catch (error) {

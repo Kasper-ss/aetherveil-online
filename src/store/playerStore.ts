@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent } from '@/types/game'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
+import { parseReferralStartParam } from '@/data/referrals'
+import { getTelegramStartParam } from '@/lib/telegram'
 import { pickNewerPlayer } from '@/lib/playerMigration'
 import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
@@ -242,6 +244,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
       }
+      const refCode = parseReferralStartParam(getTelegramStartParam())
+      if (refCode && !player.referredBy && refCode !== player.referralCode) {
+        player = { ...player, referredBy: refCode }
+      }
       player = migratePlayer(player)
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
@@ -255,6 +261,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       let player = local
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
+      }
+      const refCode = parseReferralStartParam(getTelegramStartParam())
+      if (refCode && !player.referredBy && refCode !== player.referralCode) {
+        player = { ...player, referredBy: refCode }
       }
       player = migratePlayer(player)
       storageSet(SAVE_KEY, player)
@@ -277,6 +287,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const merged = { ...player, ...partial }
+    if (partial.gold != null && partial.gold > player.gold) {
+      merged.lifetimeGoldEarned = (player.lifetimeGoldEarned ?? 0) + (partial.gold - player.gold)
+    }
     merged.activeEffects = pruneActiveEffects(merged.activeEffects)
     const maxHp = getCombatMaxHp(merged)
     if (merged.currentHp != null) {
@@ -1405,18 +1418,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const soldSet = new Set(result.soldListingIds)
     const hasGifts = (result.incomingGifts?.length ?? 0) > 0
-    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts
+    const hasReferralPayout = result.pendingReferralGold > 0
+      || result.pendingReferralGems > 0
+      || result.pendingReferralItems.length > 0
+    const referralList = result.referrals ?? []
+    const listChanged = JSON.stringify(referralList) !== JSON.stringify(player.referralInvites ?? [])
+    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts || hasReferralPayout || listChanged
     if (!needsUpdate) return
 
     const inventory = [...player.inventory]
     for (const gift of result.incomingGifts ?? []) {
       inventory.push(ensureItemDurability(gift.item))
     }
+    for (const templateId of result.pendingReferralItems) {
+      const inst = createItemInstance(templateId)
+      if (inst) inventory.push(inst)
+    }
+
+    const earnings = { ...(player.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 }) }
+    if (result.pendingReferralGold > 0 || result.pendingReferralGems > 0 || result.pendingReferralItems.length > 0) {
+      earnings.gems += result.pendingReferralGems
+      earnings.items += result.pendingReferralItems.length
+      // Approximate split for display — signup vs milestone not tracked per payout batch
+      earnings.milestoneGold += result.pendingReferralGold
+    }
 
     const updated = {
       ...player,
-      gold: player.gold + result.pendingGold,
+      gold: player.gold + result.pendingGold + result.pendingReferralGold,
+      gems: player.gems + result.pendingReferralGems,
       inventory,
+      referralInvites: listChanged ? referralList : player.referralInvites,
+      referralEarnings: earnings,
       marketListings: soldSet.size > 0
         ? player.marketListings.filter((l) => !soldSet.has(l.id))
         : player.marketListings,

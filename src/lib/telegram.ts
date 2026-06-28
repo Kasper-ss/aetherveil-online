@@ -250,7 +250,7 @@ async function openShareLink(url: string, text: string): Promise<void> {
 export async function shareInviteLink(referralCode: string): Promise<void> {
   const botUsername = await resolveBotUsername()
   const url = `https://t.me/${botUsername}?start=ref_${referralCode}`
-  const text = `⚔️ Присоединяйся ко мне в Aetherveil Online! Покорим Башню вместе!\n${url}`
+  const text = `⚔️ Присоединяйся ко мне в Aetherveil Online! За регистрацию я получу награду, а ты — старт в башне.\n${url}`
   await openShareLink(url, text)
 }
 
@@ -268,6 +268,18 @@ export async function shareGuildInviteLink(referralCode: string): Promise<void> 
  */
 export function getInitData(): string {
   return getWebApp()?.initData ?? ''
+}
+
+/** Deep-link start param from Telegram (e.g. ref_AV...) */
+export function getTelegramStartParam(): string | null {
+  const webApp = getWebApp()
+  const unsafe = webApp?.initDataUnsafe as { start_param?: string } | undefined
+  if (unsafe?.start_param) return unsafe.start_param
+  try {
+    return new URL(window.location.href).searchParams.get('tgWebAppStartParam')
+  } catch {
+    return null
+  }
 }
 
 export function saveDevUser(user: TelegramUser): void {
