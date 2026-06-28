@@ -113,7 +113,11 @@ export function CombatPage() {
           <div>
             <h2 className="text-sm font-bold text-red-400">{combat.enemy.name}</h2>
             <p className="text-[10px] text-slate-500">
-              {combat.isBoss ? `👑 ${t('combat.boss')}` : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
+              {combat.isWorldBoss
+                ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
+                : combat.isBoss
+                  ? `👑 ${t('combat.boss')}${combat.bossPhase === 2 ? ' · фаза 2' : combat.bossPhase === 1 && combat.floor >= 5 ? ' · фаза 1' : ''}`
+                  : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
               {combat.combo > 1 && <span className="text-aether-gold ml-2">{combat.combo}x комбо</span>}
             </p>
           </div>

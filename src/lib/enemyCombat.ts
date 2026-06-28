@@ -1,5 +1,6 @@
 import type { CombatLogEntry, CombatState, FloorEnemy } from '@/types/game'
 import type { EffectiveStats } from '@/lib/playerStats'
+import type { EFFECT_PRESETS } from '@/lib/activeEffects'
 
 export interface EnemyAbility {
   id: string
@@ -89,6 +90,21 @@ export interface EnemyAttackResult {
   enemyHeal: number
   logs: CombatLogEntry[]
   enemyCombat: EnemyCombatState
+  debuffPresets?: Array<{ preset: keyof typeof EFFECT_PRESETS; durationMs: number }>
+}
+
+const PHASE2_DEBUFF_MS = 3 * 60_000
+
+function getPhase2Abilities(floor: number): EnemyAbility[] {
+  const abilities: EnemyAbility[] = [
+    { id: 'molten_curse', nameRu: 'Раскалённое проклятие', cooldown: 4 },
+    { id: 'armor_shatter', nameRu: 'Разрушение брони', cooldown: 5 },
+    { id: 'inferno_wave', nameRu: 'Волна пламени', cooldown: 3 },
+    { id: 'dark_regen', nameRu: 'Тёмная регенерация', cooldown: 5 },
+  ]
+  if (floor >= 10) abilities.push({ id: 'toxic_mist', nameRu: 'Токсичный туман', cooldown: 4 })
+  if (floor >= 20) abilities.push({ id: 'void_rage', nameRu: 'Ярость бездны', cooldown: 6 })
+  return abilities
 }
 
 export function executeEnemyAttack(
@@ -100,6 +116,8 @@ export function executeEnemyAttack(
   let state = tickCooldowns(combat.enemyCombat ?? createEnemyCombatState())
   const logs: CombatLogEntry[] = []
   const abilities = getEnemyAbilities(enemy, floor)
+  const phase2Abilities = combat.bossPhase === 2 ? getPhase2Abilities(floor) : []
+  const debuffPresets: EnemyAttackResult['debuffPresets'] = []
   let playerDmg = 0
 
   // Poison tick from previous turns
@@ -114,6 +132,7 @@ export function executeEnemyAttack(
   let defIgnore = 0
   let atkMult = 1
   let lifeDrain = false
+  let enemyHeal = 0
 
   if (abilities.some((a) => a.id === 'blood_frenzy') && combat.enemyHp <= combat.enemyMaxHp * 0.5) {
     if (!state.enraged) {
@@ -178,21 +197,79 @@ export function executeEnemyAttack(
     }
   }
 
+  for (const ability of phase2Abilities) {
+    if (ability.cooldown > 0 && !canUseAbility(state, ability)) continue
+
+    switch (ability.id) {
+      case 'molten_curse':
+        atkMult *= 1.2
+        debuffPresets.push({ preset: 'boss_atk_down', durationMs: PHASE2_DEBUFF_MS })
+        state = setCooldown(state, ability.id, ability.cooldown)
+        logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu} (−атака)`, 'enemy'))
+        break
+      case 'armor_shatter':
+        defIgnore = Math.max(defIgnore, 0.35)
+        debuffPresets.push({ preset: 'boss_def_down', durationMs: PHASE2_DEBUFF_MS })
+        state = setCooldown(state, ability.id, ability.cooldown)
+        logs.push(log(`💥 ${enemy.name}: ${ability.nameRu} (−защита)`, 'enemy'))
+        break
+      case 'inferno_wave':
+        atkMult *= 1.55
+        debuffPresets.push({ preset: 'boss_burn', durationMs: PHASE2_DEBUFF_MS })
+        state = setCooldown(state, ability.id, ability.cooldown)
+        logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
+        break
+      case 'dark_regen': {
+        const heal = Math.floor(combat.enemyMaxHp * 0.08)
+        const shield = Math.floor(combat.enemyMaxHp * 0.1)
+        enemyHeal += heal
+        if (state.shieldRemaining <= 0) {
+          state = { ...setCooldown(state, ability.id, ability.cooldown), shieldRemaining: shield }
+        } else {
+          state = setCooldown(state, ability.id, ability.cooldown)
+        }
+        logs.push(log(`💚 ${enemy.name}: ${ability.nameRu} (+${heal} HP, щит)`, 'system'))
+        break
+      }
+      case 'toxic_mist':
+        state = {
+          ...setCooldown(state, ability.id, ability.cooldown),
+          dotTurns: 4,
+          dotDamage: Math.max(6, Math.floor(enemy.stats.atk * 0.45)),
+        }
+        debuffPresets.push({ preset: 'boss_poison', durationMs: PHASE2_DEBUFF_MS })
+        logs.push(log(`☠️ ${enemy.name}: ${ability.nameRu} (яд 4 хода)`, 'enemy'))
+        break
+      case 'void_rage':
+        atkMult *= 1.85
+        state = { ...setCooldown(state, ability.id, ability.cooldown), enraged: true }
+        logs.push(log(`🌑 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
+        break
+      default:
+        break
+    }
+  }
+
   const effectiveDef = Math.floor(playerStats.def * (1 - defIgnore))
   const enemyDmg = Math.max(1, Math.floor(enemy.stats.atk * atkMult * dmgMult - effectiveDef * 0.35))
 
   const dodge = Math.random() < playerStats.speed * 0.008 + playerStats.stealth * 0.012
-  let enemyHeal = 0
 
   if (dodge) {
     logs.push(log(`💨 Вы уклонились от атаки ${enemy.name}!`, 'system'))
   } else {
     playerDmg += enemyDmg
-    if (lifeDrain) enemyHeal = Math.floor(enemyDmg * 0.2)
+    if (lifeDrain) enemyHeal += Math.floor(enemyDmg * 0.2)
     logs.push(log(`🔴 ${enemy.name} нанёс вам ${enemyDmg} урона`, 'enemy'))
   }
 
-  return { playerDmg, enemyHeal, logs, enemyCombat: state }
+  return {
+    playerDmg,
+    enemyHeal,
+    logs,
+    enemyCombat: state,
+    debuffPresets: debuffPresets.length ? debuffPresets : undefined,
+  }
 }
 
 export function absorbEnemyShield(

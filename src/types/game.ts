@@ -279,6 +279,9 @@ export interface Player {
   monthlyStats?: MonthlyStats
   monthlyRewardsClaimed?: string[]
   achievementsClaimed?: string[]
+  bossTrophies?: string[]
+  worldBossLastKillAt?: string
+  worldBossKills?: number
   unlockedTitles?: string[]
   profileTitleId?: string
   achievementBonuses?: import('@/lib/achievementBonuses').AchievementBonuses
@@ -393,6 +396,8 @@ export interface CombatState {
   isPvp?: boolean
   pvpOpponentId?: number
   isEpic?: boolean
+  bossPhase?: 1 | 2
+  isWorldBoss?: boolean
 }
 
 export interface CombatResult {
@@ -408,6 +413,7 @@ export interface CombatResult {
   killedBy?: string
   fled?: boolean
   isEpic?: boolean
+  isWorldBoss?: boolean
 }
 
 export interface GuildMember {

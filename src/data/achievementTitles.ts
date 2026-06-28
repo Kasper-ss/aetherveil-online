@@ -13,6 +13,7 @@ export const ACHIEVEMENT_TITLES: Record<string, AchievementTitle> = {
   master_smith: { id: 'master_smith', label: 'Мастер кузни', colorClass: 'text-orange-400' },
   alchemist_sage: { id: 'alchemist_sage', label: 'Мудрый алхимик', colorClass: 'text-green-400' },
   keeper_ancient_traditions: { id: 'keeper_ancient_traditions', label: 'Хранитель Древних Традиций', colorClass: 'text-amber-400' },
+  world_boss_slayer: { id: 'world_boss_slayer', label: 'Убийца Архонта', colorClass: 'text-purple-400' },
 }
 
 export function getTitleLabel(titleId?: string): string | null {

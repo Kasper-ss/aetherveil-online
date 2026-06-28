@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AchievementsPanel } from '@/components/ui/AchievementsPanel'
+import { TrophiesPanel } from '@/components/ui/TrophiesPanel'
 import { usePlayerStore, usePlayerStats } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { xpForLevel, formatNumber } from '@/lib/utils'
@@ -64,6 +65,7 @@ export function ProfilePage() {
   const achReady = ACHIEVEMENTS.filter((a) => canClaimAchievement(player, a.id)).length
   const achBonuses = getAchievementMultipliers(player)
   const hasAchBonuses = achBonuses.exp > 1 || achBonuses.gold > 1 || achBonuses.loot > 1 || achBonuses.allStats > 1
+  const trophyCount = (player.bossTrophies ?? []).length
 
   function handleExpClick() {
     if (player!.expEasterEggClaimed) return
@@ -165,6 +167,9 @@ export function ProfilePage() {
                 {achReady}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="trophies" className="flex-1 text-xs">
+            Трофеи {trophyCount > 0 && <span className="text-aether-gold ml-0.5">{trophyCount}</span>}
           </TabsTrigger>
         </TabsList>
 
@@ -396,6 +401,10 @@ export function ProfilePage() {
 
         <TabsContent value="achievements" className="mt-0">
           <AchievementsPanel />
+        </TabsContent>
+
+        <TabsContent value="trophies" className="mt-0">
+          <TrophiesPanel />
         </TabsContent>
       </Tabs>
 

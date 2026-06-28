@@ -122,6 +122,18 @@ function sanitizeEquipped(equipped: Partial<import('@/types/game').EquippedItems
   return result
 }
 
+function migrateBossTrophies(player: import('@/types/game').Player): string[] {
+  const earned = new Set(player.bossTrophies ?? [])
+  const highest = player.highestFloor ?? 1
+  for (let f = 1; f < highest; f++) {
+    earned.add(`trophy_floor_${f}`)
+  }
+  if ((player.worldBossKills ?? 0) > 0 || player.worldBossLastKillAt) {
+    earned.add('trophy_world_boss')
+  }
+  return [...earned]
+}
+
 export function migratePlayer(player: import('@/types/game').Player): import('@/types/game').Player {
   const synced = syncPlayerSkills(
     player.classId,
@@ -197,6 +209,9 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
       ? (player.monthlyRewardsClaimed ?? [])
       : [],
     achievementsClaimed: player.achievementsClaimed ?? [],
+    bossTrophies: migrateBossTrophies(player),
+    worldBossLastKillAt: player.worldBossLastKillAt,
+    worldBossKills: player.worldBossKills ?? 0,
     unlockedTitles: player.unlockedTitles ?? [],
     profileTitleId: player.profileTitleId,
     achievementBonuses: player.achievementBonuses ?? { expPct: 0, goldPct: 0, lootPct: 0, allStatsPct: 0 },

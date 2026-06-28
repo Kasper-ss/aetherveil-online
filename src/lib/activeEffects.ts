@@ -50,4 +50,9 @@ export const EFFECT_PRESETS = {
   event_curse: { id: 'event_curse', label: 'Проклятие тени', type: 'debuff' as const, stat: 'all' as const, mult: 0.9 },
   potion_might: { id: 'potion_might', label: 'Зелье силы', type: 'buff' as const, stat: 'atk' as const, mult: 1.15 },
   food_feast: { id: 'food_feast', label: 'Сытный обед', type: 'buff' as const, stat: 'hp' as const, mult: 1.2 },
+  boss_burn: { id: 'boss_burn', label: 'Поджог босса', type: 'debuff' as const, stat: 'all' as const, mult: 0.92 },
+  boss_poison: { id: 'boss_poison', label: 'Отравление босса', type: 'debuff' as const, stat: 'hp' as const, mult: 0.88 },
+  boss_atk_down: { id: 'boss_atk_down', label: 'Подавление атаки', type: 'debuff' as const, stat: 'atk' as const, mult: 0.72 },
+  boss_def_down: { id: 'boss_def_down', label: 'Пробой брони', type: 'debuff' as const, stat: 'def' as const, mult: 0.72 },
+  boss_rage: { id: 'boss_rage', label: 'Ярость босса', type: 'buff' as const, stat: 'atk' as const, mult: 1.25 },
 } as const

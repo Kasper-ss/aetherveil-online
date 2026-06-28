@@ -73,6 +73,7 @@ import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/
 import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
 import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
+import { WORLD_BOSS_REWARDS } from '@/data/worldBoss'
 import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
 import { maybeNotifyVitalFull, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
 import {
@@ -104,6 +105,8 @@ interface PlayerState {
   setFarmFloor: (floor: number) => void
   recordMobKill: (floor: number) => void
   advanceFloor: () => void
+  awardBossTrophy: (floor: number) => void
+  applyWorldBossVictory: () => void
   applyCombatResult: (result: CombatResult) => void
   applyDeathPenalty: (killerName?: string) => void
   claimIdleRewards: () => void
@@ -414,6 +417,34 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       monthlyStats: bumpMonthlyStat(player, 'highestFloor', next),
     })
     if (next > prevHighest) applyQuestTracking(get, 'advance_floor', 1)
+  },
+
+  awardBossTrophy: (floor) => {
+    const { player } = get()
+    if (!player) return
+    const trophyId = `trophy_floor_${floor}`
+    const trophies = player.bossTrophies ?? []
+    if (trophies.includes(trophyId)) return
+    get().updatePlayer({ bossTrophies: [...trophies, trophyId] })
+  },
+
+  applyWorldBossVictory: () => {
+    const { player } = get()
+    if (!player) return
+    const trophies = player.bossTrophies ?? []
+    const trophyId = 'trophy_world_boss'
+    const newTrophies = trophies.includes(trophyId) ? trophies : [...trophies, trophyId]
+    const titles = player.unlockedTitles ?? []
+    const newTitles = titles.includes('world_boss_slayer')
+      ? titles
+      : [...titles, 'world_boss_slayer']
+    get().updatePlayer({
+      bossTrophies: newTrophies,
+      worldBossLastKillAt: new Date().toISOString(),
+      worldBossKills: (player.worldBossKills ?? 0) + 1,
+      unlockedTitles: newTitles,
+      gems: player.gems + WORLD_BOSS_REWARDS.gems,
+    })
   },
 
   applyCombatResult: (result) => {

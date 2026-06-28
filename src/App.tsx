@@ -28,6 +28,7 @@ import { AetherPage } from '@/pages/AetherPage'
 import { KitchenPage } from '@/pages/KitchenPage'
 import { HerbFieldPage } from '@/pages/HerbFieldPage'
 import { QuestsPage } from '@/pages/QuestsPage'
+import { WorldBossPage } from '@/pages/WorldBossPage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
@@ -74,6 +75,7 @@ function AppRoutes() {
           <Route path="/kitchen" element={<KitchenPage />} />
           <Route path="/field" element={<HerbFieldPage />} />
           <Route path="/quests" element={<QuestsPage />} />
+          <Route path="/world-boss" element={<WorldBossPage />} />
         </Routes>
       </div>
     </>

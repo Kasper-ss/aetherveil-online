@@ -357,6 +357,18 @@ export const CONSUMABLES: Record<string, Item> = {
     upgradeLevel: 1,
     starLevel: 0,
   },
+  aether_worldbreaker: {
+    id: 'aether_worldbreaker',
+    name: 'Клинок Разлома Миров',
+    description: 'Легендарный меч, выкованный из сердца Архонта. Нельзя купить или скрафтить.',
+    slot: 'weapon',
+    rarity: 'legendary',
+    stats: { atk: 88, def: 12, hp: 120, crit: 18, speed: 10 },
+    icon: '🗡️',
+    sellPrice: 0,
+    upgradeLevel: 1,
+    starLevel: 0,
+  },
 }
 
 export const ALL_ITEMS: Record<string, Item> = { ...generated, ...CONSUMABLES }

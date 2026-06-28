@@ -14,6 +14,9 @@ import { FEATURES } from '@/lib/featureFlags'
 import {
   absorbEnemyShield, createEnemyCombatState, executeEnemyAttack, formatEnemyAbilityHint,
 } from '@/lib/enemyCombat'
+import { handleBossDefeated } from '@/lib/bossPhases'
+import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked } from '@/data/worldBoss'
+import { createItemInstance } from '@/data/items'
 
 interface CombatStore {
   combat: CombatState | null
@@ -23,6 +26,7 @@ interface CombatStore {
   tickInterval: ReturnType<typeof setInterval> | null
 
   startCombat: (enemy: FloorEnemy, floor: number, isBoss?: boolean) => void
+  startWorldBossCombat: () => boolean
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
   playerAttack: () => void
   playerSkill: (skillId: SkillId) => void
@@ -82,6 +86,12 @@ function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffec
   }
 
   const result = executeEnemyAttack(combat, stats)
+  if (result.debuffPresets?.length) {
+    const store = usePlayerStore.getState()
+    for (const d of result.debuffPresets) {
+      store.grantEffectPreset(d.preset, d.durationMs)
+    }
+  }
   const enemyHp = Math.min(combat.enemyMaxHp, combat.enemyHp + result.enemyHeal)
   return {
     playerHp: combat.playerHp - result.playerDmg,
@@ -127,6 +137,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isBoss: isBoss ?? !!enemy.isBoss,
       isEpic: !!enemy.isEpic,
       floor,
+      bossPhase: (isBoss ?? !!enemy.isBoss) && floor >= 5 ? 1 : undefined,
       enemyCombat: createEnemyCombatState(),
       combatLog: startLogs,
       turn: 1,
@@ -134,6 +145,47 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
     set({ combat, isActive: true, result: null, showLootScreen: false, tickInterval })
+  },
+
+  startWorldBossCombat: () => {
+    const player = usePlayerStore.getState().player
+    if (!player) return false
+    if (!isWorldBossUnlocked(player)) return false
+    if (!getWorldBossCooldown(player).canFight) return false
+    if (getPlayerCurrentHp(player) < 1) return false
+    if (!usePlayerStore.getState().spendEnergy(15)) return false
+
+    const enemy = buildWorldBossEnemy(player)
+    const scaleFloor = Math.max(25, player.highestFloor)
+    const maxHp = getCombatMaxHp(player)
+    const startHp = Math.max(1, getPlayerCurrentHp(player))
+    const startLogs: CombatLogEntry[] = [
+      logEntry('🌌 Мировой Босс: Архонт Эфирной Бездны!', 'system'),
+      logEntry('⚠️ Двухфазный бой — вторая фаза с дебаффами и усилениями!', 'system'),
+    ]
+    const abilityHint = formatEnemyAbilityHint(enemy, scaleFloor)
+    if (abilityHint) startLogs.push(logEntry(`⚠️ Способности: ${abilityHint}`, 'system'))
+
+    const combat: CombatState = {
+      enemy,
+      playerHp: startHp,
+      playerMaxHp: maxHp,
+      enemyHp: enemy.stats.hp,
+      enemyMaxHp: enemy.stats.hp,
+      combo: 0,
+      skillCooldowns: {},
+      isBoss: true,
+      isWorldBoss: true,
+      bossPhase: 1,
+      floor: scaleFloor,
+      enemyCombat: createEnemyCombatState(),
+      combatLog: startLogs,
+      turn: 1,
+    }
+
+    const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
+    set({ combat, isActive: true, result: null, showLootScreen: false, tickInterval })
+    return true
   },
 
   startPvpCombat: (opponent) => {
@@ -204,10 +256,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     if (newEnemyHp <= 0) {
-      logs.push(logEntry(`✅ ${combat.enemy.name} повержен!`, 'system'))
-      set({ combat: { ...combat, enemyHp: 0, combo: newCombo, enemyCombat: hit.enemyCombat, combatLog: logs } })
-      get().endCombat(true)
-      return
+      if (handleBossDefeated(get, set, combat, logs, { enemyHp: 0, combo: newCombo, enemyCombat: hit.enemyCombat })) {
+        return
+      }
     }
 
     const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: hit.enemyCombat }
@@ -306,17 +357,15 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     ))
 
     if (newEnemyHp <= 0) {
-      logs.push(logEntry(`✅ ${combat.enemy.name} повержен!`, 'system'))
-      set({
-        combat: {
-          ...combat, enemyHp: 0, playerHp: playerHpAfter, combo: combat.combo + 3,
-          enemyCombat: hit.enemyCombat,
-          skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
-          combatLog: logs,
-        },
-      })
-      get().endCombat(true)
-      return
+      if (handleBossDefeated(get, set, combat, logs, {
+        enemyHp: 0,
+        playerHp: playerHpAfter,
+        combo: combat.combo + 3,
+        enemyCombat: hit.enemyCombat,
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+      })) {
+        return
+      }
     }
 
     const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: hit.enemyCombat, playerHp: playerHpAfter }
@@ -418,7 +467,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   fleeCombat: () => {
     const { combat, isActive, tickInterval } = get()
-    if (!combat || !isActive || combat.isPvp || combat.isBoss) return
+    if (!combat || !isActive || combat.isPvp || combat.isBoss || combat.isWorldBoss) return
     if (tickInterval) clearInterval(tickInterval)
 
     const playerStore = usePlayerStore.getState()
@@ -460,6 +509,17 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           usePlayerStore.getState().updatePlayer({ pvpWins: p.pvpWins + 1 })
           usePlayerStore.getState().trackQuestEvent('pvp_win', 1)
         }
+      } else if (combat.isWorldBoss) {
+        exp = combat.enemy.expReward
+        gold = WORLD_BOSS_REWARDS.gold
+        const sword = createItemInstance('aether_worldbreaker')
+        const p = usePlayerStore.getState().player
+        const hasSword = p && (
+          p.inventory.some((i) => i.id === 'aether_worldbreaker')
+          || p.equipped.weapon?.id === 'aether_worldbreaker'
+        )
+        if (sword && !hasSword) loot.push(sword)
+        resources = { ...WORLD_BOSS_REWARDS.resources }
       } else {
         exp = combat.enemy.expReward
         gold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
@@ -478,6 +538,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       victory, exp, gold, loot, resources,
       comboMax: combat.combo,
       isBoss: combat.isBoss,
+      isWorldBoss: combat.isWorldBoss,
       lootClaimed: combat.isPvp ? true : false,
       mobKilled: victory && !combat.isBoss && !combat.isPvp,
       killedBy: !victory ? combat.enemy.name : undefined,
@@ -515,8 +576,13 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       playerStore.recordMobKill(combat?.floor ?? playerStore.player?.farmFloor ?? 1)
     }
 
-    if (combat?.isBoss) {
+    if (combat?.isBoss && !combat.isWorldBoss) {
       playerStore.advanceFloor()
+      playerStore.awardBossTrophy(combat.floor)
+    }
+
+    if (combat?.isWorldBoss) {
+      playerStore.applyWorldBossVictory()
     }
 
     set({ result: { ...result, lootClaimed: true }, showLootScreen: false })

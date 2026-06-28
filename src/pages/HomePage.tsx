@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2 } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2, Skull } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -22,6 +22,7 @@ import { ManaTimer } from '@/components/ui/ManaTimer'
 import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
 import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRewards'
+import { isWorldBossUnlocked, getWorldBossCooldown } from '@/data/worldBoss'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -69,6 +70,8 @@ export function HomePage() {
   const classData = player.classId ? CLASSES.find((c) => c.id === player.classId) : null
   const mobsRequired = getMobsRequiredForFloor(player.farmFloor)
   const mobsKilled = player.floorMobKills[player.farmFloor] ?? 0
+  const worldBossUnlocked = isWorldBossUnlocked(player)
+  const worldBossReady = worldBossUnlocked && getWorldBossCooldown(player).canFight
 
   function nav(path: string) {
     hapticImpact('light')
@@ -98,6 +101,13 @@ export function HomePage() {
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
+    ...(worldBossUnlocked ? [{
+      icon: Skull,
+      label: worldBossReady ? 'Мировой Босс' : 'Мировой Босс ⏳',
+      path: '/world-boss',
+      variant: 'purple' as const,
+      primary: worldBossReady,
+    }] : []),
     { icon: Users, label: t('hub.guild'), path: '/guild', variant: 'secondary' as const },
     { icon: Package, label: t('hub.inventory'), path: '/inventory', variant: 'secondary' as const },
     { icon: ShoppingBag, label: t('hub.shop'), path: '/shop', variant: 'purple' as const },
