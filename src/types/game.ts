@@ -282,6 +282,8 @@ export interface Player {
   unlockedTitles?: string[]
   profileTitleId?: string
   achievementBonuses?: import('@/lib/achievementBonuses').AchievementBonuses
+  /** Future on-chain state — wallets, NFT bridge; see src/lib/crypto */
+  cryptoState?: import('@/lib/crypto').PlayerCryptoState
   notificationSettings?: NotificationSettings
   petLastRewardAt?: string
   saveVersion?: number

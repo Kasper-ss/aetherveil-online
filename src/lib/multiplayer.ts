@@ -102,6 +102,7 @@ export function getOnlinePlayers(excludeId?: number): OnlinePlayerSnapshot[] {
   })
 }
 
+/** PvP arena matchmaking — dormant while FEATURES.pvpArena is false */
 export function findArenaOpponent(selfId: number): OnlinePlayerSnapshot | null {
   const online = getOnlinePlayers(selfId)
   const candidates = online.filter((p) => p.inArena)

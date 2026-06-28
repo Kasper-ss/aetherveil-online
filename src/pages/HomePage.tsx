@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Swords, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2 } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -98,7 +98,6 @@ export function HomePage() {
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
-    { icon: Swords, label: t('hub.arena'), path: '/arena', variant: 'destructive' as const },
     { icon: Users, label: t('hub.guild'), path: '/guild', variant: 'secondary' as const },
     { icon: Package, label: t('hub.inventory'), path: '/inventory', variant: 'secondary' as const },
     { icon: ShoppingBag, label: t('hub.shop'), path: '/shop', variant: 'purple' as const },

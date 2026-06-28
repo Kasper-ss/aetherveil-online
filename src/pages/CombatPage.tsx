@@ -45,9 +45,8 @@ export function CombatPage() {
 
   useTelegramBackButton(() => {
     if (!useCombatStore.getState().isActive && !showLootScreen) {
-      const isPvp = useCombatStore.getState().combat?.isPvp
       clearCombat()
-      navigate(isPvp ? '/arena' : '/tower')
+      navigate('/tower')
     }
   }, !useCombatStore.getState().isActive && !showLootScreen)
 
@@ -60,7 +59,7 @@ export function CombatPage() {
     return null
   }
 
-  if (showLootScreen && result?.victory && !combat.isPvp) return <LootScreen />
+  if (showLootScreen && result?.victory) return <LootScreen />
 
   const energyPct = player ? (player.energy / player.maxEnergy) * 100 : 0
   const manaMax = player && usesMana(player) ? getMaxMana(player) : 0
@@ -82,13 +81,10 @@ export function CombatPage() {
     ? Object.entries(
         player.inventory
           .filter((i) => FOOD_BUFF_MAP[i.id])
-          .reduce<Record<string, { name: string; icon: string; count: number; buffLabel: string }>>((acc, item) => {
+          .reduce<Record<string, { name: string; icon: string; count: number }>>((acc, item) => {
             const cur = acc[item.id]
             if (cur) cur.count++
-            else {
-              const buff = FOOD_BUFF_MAP[item.id]
-              acc[item.id] = { name: item.name, icon: item.icon, count: 1, buffLabel: buff.label }
-            }
+            else acc[item.id] = { name: item.name, icon: item.icon, count: 1 }
             return acc
           }, {}),
       )
@@ -105,14 +101,8 @@ export function CombatPage() {
   }
 
   function handleDefeatContinue() {
-    const isPvp = combat?.isPvp
     clearCombat()
-    navigate(isPvp ? '/arena' : '/tower')
-  }
-
-  function handlePvpVictoryContinue() {
-    clearCombat()
-    navigate('/arena')
+    navigate('/tower')
   }
 
   return (
@@ -182,13 +172,13 @@ export function CombatPage() {
             <Button className="flex-1 h-12 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
               ⚔️ Атаковать
             </Button>
-            {!combat.isPvp && !combat.isBoss && (
+            {!combat.isBoss && (
               <Button variant="outline" className="h-12 px-3" onClick={handleFlee}>
                 🏃
               </Button>
             )}
           </div>
-          {sortedHpPotions.length > 0 && !combat.isPvp && sortedHpPotions.map((stack) => {
+          {sortedHpPotions.length > 0 && sortedHpPotions.map((stack) => {
             const pct = Math.round((CONSUMABLE_EFFECTS[stack.itemId]?.healPercent ?? 0.5) * 100)
             return (
               <Button
@@ -203,7 +193,7 @@ export function CombatPage() {
               </Button>
             )
           })}
-          {energyStacks.length > 0 && !combat.isPvp && (
+          {energyStacks.length > 0 && (
             <div className="grid grid-cols-2 gap-1.5">
               {energyStacks.map((stack) => {
                 const energy = CONSUMABLE_EFFECTS[stack.itemId]?.energy ?? 0
@@ -223,20 +213,23 @@ export function CombatPage() {
               })}
             </div>
           )}
-          {foodStacks.length > 0 && !combat.isPvp && (
+          {foodStacks.length > 0 && (
             <div className="grid grid-cols-2 gap-1.5">
               {foodStacks.map(([itemId, stack]) => (
                 <Button
                   key={itemId}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="h-auto min-h-0 py-2 px-1.5 whitespace-normal flex flex-col items-center justify-center gap-0.5"
                   onClick={() => { hapticImpact('light'); eatFoodInCombat(itemId) }}
                 >
-                    {stack.icon} {stack.buffLabel} ×{stack.count}
-                    <span className="block text-[9px] text-slate-500 font-normal mt-0.5">
-                      {formatFoodBuffDescription(itemId)}
-                    </span>
+                  <span className="text-[11px] font-medium leading-tight text-center w-full truncate">
+                    {stack.icon} {stack.name}
+                    <span className="text-slate-400 font-normal"> ×{stack.count}</span>
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-normal leading-tight text-center w-full line-clamp-2">
+                    {formatFoodBuffDescription(itemId)}
+                  </span>
                 </Button>
               ))}
             </div>
@@ -292,9 +285,7 @@ export function CombatPage() {
               <p className="text-sm text-red-400 font-medium">Вас убил {result.killedBy}</p>
             )}
             <p className="text-sm text-slate-400">
-              {combat?.isPvp
-                ? 'Соперник оказался сильнее. Попробуйте снова!'
-                : 'Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.'}
+              Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.
             </p>
             {player && hasDeathDebuff(player) && (
               <p className="text-xs text-amber-500">Дебафф смерти активен (−30% к статам)</p>
@@ -304,20 +295,6 @@ export function CombatPage() {
         </Dialog>
       )}
 
-      {result?.victory && combat?.isPvp && !showLootScreen && (
-        <Dialog open onOpenChange={handlePvpVictoryContinue}>
-          <DialogContent className="text-center">
-            <DialogHeader>
-              <div className="text-5xl mb-2">🏆</div>
-              <DialogTitle className="text-aether-success">Победа в PvP!</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-slate-400">
-              +{result.exp} опыта · +{result.gold} золота
-            </p>
-            <Button onClick={handlePvpVictoryContinue} className="w-full">{t('combat.continue')}</Button>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

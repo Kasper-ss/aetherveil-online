@@ -10,6 +10,7 @@ import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
 import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion, isEnergyDrink } from '@/lib/consumables'
 import { formatFoodCombatLog } from '@/lib/foodBuffs'
+import { FEATURES } from '@/lib/featureFlags'
 import {
   absorbEnemyShield, createEnemyCombatState, executeEnemyAttack, formatEnemyAbilityHint,
 } from '@/lib/enemyCombat'
@@ -136,6 +137,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   startPvpCombat: (opponent) => {
+    if (!FEATURES.pvpArena) return
     const player = usePlayerStore.getState().player
     if (!player) return
 
