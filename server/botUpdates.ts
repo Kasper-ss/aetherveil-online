@@ -3,6 +3,7 @@ import { getMiniAppUrl, sendMessage } from './telegram.js'
 export interface TelegramUpdate {
   pre_checkout_query?: { id: string; invoice_payload: string; from: { id: number } }
   message?: {
+    message_id?: number
     chat: { id: number }
     from?: { id: number; first_name?: string }
     text?: string
@@ -16,6 +17,11 @@ export interface TelegramUpdate {
 }
 
 export async function handleStartCommand(chatId: number, firstName?: string, startArg?: string) {
+  if (startArg?.toLowerCase() === 'appss_verify') {
+    await handleAppssVerifyCommand(chatId)
+    return
+  }
+
   const appUrl = getMiniAppUrl()
   if (!appUrl) {
     throw new Error('MINI_APP_URL не настроен на сервере (укажите URL вашего Vercel-деплоя)')
@@ -46,11 +52,24 @@ export async function handleStartCommand(chatId: number, firstName?: string, sta
 }
 
 /** Hidden verification command — not registered in bot menu */
-export async function handleAppssVerifyCommand(chatId: number) {
+export const APPSS_VERIFY_CODE = 'appss_18516a'
+
+export async function handleAppssVerifyCommand(chatId: number, messageId?: number) {
   await sendMessage({
     chat_id: chatId,
-    text: 'appss_18516a',
+    text: APPSS_VERIFY_CODE,
+    ...(messageId != null ? { reply_parameters: { message_id: messageId } } : {}),
   })
+}
+
+export function isAppssVerifyRequest(text: string): boolean {
+  const trimmed = text.trim().toLowerCase()
+  if (trimmed === 'appss_verify' || trimmed === '/appss_verify') return true
+  const parsed = parseStartCommand(text)
+  if (!parsed) return false
+  if (parsed.command === '/appss_verify') return true
+  if (parsed.command === '/start' && parsed.arg?.toLowerCase() === 'appss_verify') return true
+  return false
 }
 
 export function parseStartCommand(text: string): { command: string; arg?: string } | null {

@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Webhook error'
-    console.error('[telegram/webhook]', message)
+    console.error('[telegram/webhook]', message, error)
     return res.status(500).json({ error: message })
   }
 }

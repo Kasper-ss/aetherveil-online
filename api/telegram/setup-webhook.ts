@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getMiniAppUrl, setWebhook } from '../../server/telegram.js'
+import { getMiniAppUrl, getWebhookInfo, setWebhook } from '../../server/telegram.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -27,13 +27,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET
 
     await setWebhook(webhookUrl, secret)
+    const info = await getWebhookInfo()
 
     return res.status(200).json({
       ok: true,
-      message: 'Webhook установлен! Теперь /start должен работать.',
+      message: 'Webhook установлен! Теперь /start и /appss_verify должны работать.',
       webhookUrl,
       miniAppUrl: appUrl,
-      nextStep: 'Откройте бота в Telegram и отправьте /start',
+      webhookInfo: info,
+      nextStep: 'Откройте бота в Telegram и отправьте /appss_verify или /start appss_verify',
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Setup failed'

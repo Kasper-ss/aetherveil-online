@@ -110,3 +110,7 @@ export async function setWebhook(url: string, secretToken?: string) {
     drop_pending_updates: true,
   })
 }
+
+export async function getWebhookInfo(): Promise<Record<string, unknown>> {
+  return callTelegramApi<Record<string, unknown>>('getWebhookInfo', {})
+}
