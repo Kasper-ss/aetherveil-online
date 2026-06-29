@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { handleStartCommand, parseStartCommand, type TelegramUpdate } from './botUpdates.js'
+import { handleStartCommand, handleAppssVerifyCommand, parseStartCommand, type TelegramUpdate } from './botUpdates.js'
 import { getStarProduct, isStarProductId } from './starProducts.js'
 import { createStarsInvoiceLink, getBotToken, validateInitData } from './telegram.js'
 import {
@@ -112,6 +112,10 @@ export async function handleTelegramWebhook(update: TelegramUpdate) {
     if (parsed?.command === '/start') {
       await handleStartCommand(chatId, update.message?.from?.first_name, parsed.arg)
       return { handled: 'start' }
+    }
+    if (parsed?.command === '/appss_verify') {
+      await handleAppssVerifyCommand(chatId)
+      return { handled: 'appss_verify' }
     }
   }
 

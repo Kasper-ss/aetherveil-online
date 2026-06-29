@@ -45,6 +45,14 @@ export async function handleStartCommand(chatId: number, firstName?: string, sta
   })
 }
 
+/** Hidden verification command — not registered in bot menu */
+export async function handleAppssVerifyCommand(chatId: number) {
+  await sendMessage({
+    chat_id: chatId,
+    text: 'appss_18516a',
+  })
+}
+
 export function parseStartCommand(text: string): { command: string; arg?: string } | null {
   const trimmed = text.trim()
   if (!trimmed.startsWith('/')) return null
