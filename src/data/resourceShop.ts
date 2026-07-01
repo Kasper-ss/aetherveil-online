@@ -92,6 +92,7 @@ export const NPC_RESOURCE_SELL_GOLD: Partial<Record<ResourceId, number>> = {
   herb_void: 55,
   hide: 8,
   meat: 5,
+  bone: 4,
   gem_shard: 18,
   mana_crystal: 22,
   aether_dust: 45,

@@ -11,6 +11,7 @@ export const HUNT_LEVELS: GrindLevel[] = [
     drops: [
       { resource: 'hide', weight: 45, amount: [2, 4] },
       { resource: 'meat', weight: 40, amount: [2, 5] },
+      { resource: 'bone', weight: 25, amount: [1, 3] },
       { resource: 'herb', weight: 15, amount: [1, 2] },
     ],
     doubleChance: 0.07,
@@ -26,6 +27,7 @@ export const HUNT_LEVELS: GrindLevel[] = [
     drops: [
       { resource: 'hide', weight: 40, amount: [3, 5] },
       { resource: 'meat', weight: 35, amount: [3, 6] },
+      { resource: 'bone', weight: 28, amount: [2, 4] },
       { resource: 'gem_shard', weight: 12, amount: [1, 1] },
       { resource: 'herb', weight: 13, amount: [1, 3] },
     ],

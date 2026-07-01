@@ -32,8 +32,18 @@ export const NEW_CRAFT_RESOURCE_IDS: ResourceId[] = [
 ]
 
 export const LUCKY_MAIN_RESOURCE_COST = 7_777_777
-export const LUCKY_NEW_RESOURCE_COST = 7_777
+export const LUCKY_EXTRA_RESOURCE_COST = 7_777
 export const LUCKY_GOLD_COST = 7_777_777
+
+/** Ресурсы Lucky-крафта (дополнительно к основному паку) */
+export const LUCKY_CRAFT_RESOURCE_IDS: ResourceId[] = [
+  'adamantite',
+  'mithril_ore',
+  'meat',
+  'bone',
+  'gem_shard',
+  'aether_dust',
+]
 
 export function buildMainResourcePack(amount: number): Partial<Record<ResourceId, number>> {
   const pack: Partial<Record<ResourceId, number>> = {}
@@ -48,10 +58,11 @@ export function buildNewResourcePack(amount: number): Partial<Record<ResourceId,
 }
 
 export function buildLuckyCraftResources(): Partial<Record<ResourceId, number>> {
-  return {
-    ...buildMainResourcePack(LUCKY_MAIN_RESOURCE_COST),
-    ...buildNewResourcePack(LUCKY_NEW_RESOURCE_COST),
+  const pack = buildMainResourcePack(LUCKY_MAIN_RESOURCE_COST)
+  for (const id of LUCKY_CRAFT_RESOURCE_IDS) {
+    pack[id] = (pack[id] ?? 0) + LUCKY_EXTRA_RESOURCE_COST
   }
+  return pack
 }
 
 export type EpicCraftTier = 'light' | 'mid' | 'heavy' | 'jewelry'

@@ -2,7 +2,7 @@ import type { ResourceId } from '@/types/game'
 import { FISH_TABLE } from '@/data/fishing'
 
 export const BASIC_RESOURCE_IDS: ResourceId[] = [
-  'hide', 'meat', 'gem_shard', 'mana_crystal', 'aether_dust', 'star_shard',
+  'hide', 'meat', 'bone', 'gem_shard', 'mana_crystal', 'aether_dust', 'star_shard',
   'upgrade_core', 'rare_spice', 'abyssal_pearl', 'fishing_junk',
 ]
 
