@@ -2,6 +2,7 @@ import type { Player, NotificationSettings } from '@/types/game'
 import { getCombatMaxHp, getMaxEnergy, getPlayerCurrentHp } from '@/lib/playerStats'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { showTelegramAlert } from '@/lib/telegram'
+import { requestBotVitalNotify } from '@/lib/botNotifications'
 import type { PetReward } from '@/lib/petRewards'
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -21,6 +22,7 @@ export function getNotificationSettings(player: Player): NotificationSettings {
   return { ...DEFAULT_NOTIFICATION_SETTINGS, ...player.notificationSettings }
 }
 
+/** In-game alert only for mana; HP/energy go to Telegram bot */
 export function maybeNotifyVitalFull(
   player: Player,
   kind: keyof typeof MESSAGES,
@@ -39,16 +41,37 @@ export function maybeNotifyVitalFull(
 
   if (before >= max || after < max) return
 
-  const message = MESSAGES[kind]
-  showTelegramAlert(message)
-
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification('Aetherveil Online', { body: message, tag: `vital_${kind}` })
-    } catch {
-      /* ignore */
+  if (kind === 'mana') {
+    const message = MESSAGES[kind]
+    showTelegramAlert(message)
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('Aetherveil Online', { body: message, tag: `vital_${kind}` })
+      } catch {
+        /* ignore */
+      }
     }
   }
+}
+
+export function maybeNotifyVitalsViaBot(
+  player: Player,
+  beforeHp: number,
+  beforeEnergy: number,
+  afterHp: number,
+  afterEnergy: number,
+): void {
+  const settings = getNotificationSettings(player)
+  const maxHp = getCombatMaxHp(player)
+  const maxEnergy = getMaxEnergy(player)
+
+  const hpJustFull = settings.hpFull && beforeHp < maxHp && afterHp >= maxHp
+  const energyJustFull = settings.energyFull && beforeEnergy < maxEnergy && afterEnergy >= maxEnergy
+
+  if (!hpJustFull && !energyJustFull) return
+
+  const kind = hpJustFull && energyJustFull ? 'both' : hpJustFull ? 'hp' : 'energy'
+  void requestBotVitalNotify(player, kind)
 }
 
 export function maybeNotifyPetReward(reward: PetReward): void {

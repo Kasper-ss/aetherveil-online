@@ -2,6 +2,7 @@ import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile
 import type { ReferralInviteSummary } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
+import { buildVitalSyncPayload } from '@/lib/botNotifications'
 
 function mapListing(raw: MarketListing): MarketListing {
   return {
@@ -40,6 +41,7 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
           sellerId: player.telegramId,
         })),
         publicProfile: buildPublicProfile(player),
+        vitals: buildVitalSyncPayload(player),
         referredBy: player.referredBy,
         lifetimeGoldEarned: player.lifetimeGoldEarned ?? 0,
         classSelected: player.classSelected,

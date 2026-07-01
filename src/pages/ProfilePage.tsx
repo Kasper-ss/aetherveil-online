@@ -335,7 +335,9 @@ export function ProfilePage() {
       <Card className="mx-4 mt-3">
         <CardContent className="p-4 space-y-3">
           <p className="text-sm font-medium text-white">Уведомления о восстановлении</p>
-          <p className="text-[10px] text-slate-500">Сообщение, когда HP, энергия, мана восстановлены или питомец принёс дар.</p>
+          <p className="text-[10px] text-slate-500">
+            HP и энергия — уведомление в Telegram-боте. Мана и дар питомца — в игре.
+          </p>
           {([
             ['hpFull', '❤️ HP'] as const,
             ['energyFull', '⚡ Энергия'] as const,

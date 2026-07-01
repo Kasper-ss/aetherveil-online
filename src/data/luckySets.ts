@@ -1,19 +1,6 @@
-import type { CraftRecipe, PlayerClass, ResourceId } from '@/types/game'
+import type { CraftRecipe, PlayerClass } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
-
-export const LUCKY_GOLD_COST = 777_777
-export const LUCKY_RESOURCE_COST = 777
-
-export const LUCKY_RESOURCE_PACK: Partial<Record<ResourceId, number>> = {
-  iron_ore: LUCKY_RESOURCE_COST,
-  herb: LUCKY_RESOURCE_COST,
-  hide: LUCKY_RESOURCE_COST,
-  gem_shard: LUCKY_RESOURCE_COST,
-  mana_crystal: LUCKY_RESOURCE_COST,
-  aether_dust: LUCKY_RESOURCE_COST,
-  star_shard: LUCKY_RESOURCE_COST,
-  upgrade_core: LUCKY_RESOURCE_COST,
-}
+import { buildLuckyCraftResources, LUCKY_GOLD_COST } from '@/data/craftResources'
 
 const PIECE_LUCK_DESC = '+4% золото, +4% опыт, +3% добыча за каждую вещь'
 const FULL_LUCK_DESC = `Полный сет: ещё +15% золото, +15% опыт, +10% добыча. ${PIECE_LUCK_DESC}`
@@ -33,7 +20,6 @@ interface LuckySetDef {
   bonus: string
   pieces: LuckyPiece[]
 }
-
 
 function buildPieces(prefix: string, icon: string, weaponName: string, weaponStats: Partial<import('@/types/game').Stats>): LuckyPiece[] {
   return [
@@ -110,7 +96,7 @@ function craftPiece(set: LuckySetDef, piece: LuckyPiece): CraftRecipe {
     resultItemId: `${set.id}_${piece.slot}`,
     name: piece.name,
     description: `Lucky-сет «${set.classLabel}». ${statDesc}. ${PIECE_LUCK_DESC}`,
-    resources: { ...LUCKY_RESOURCE_PACK },
+    resources: buildLuckyCraftResources(),
     goldCost: LUCKY_GOLD_COST,
     requiredProfession: prof,
     requiredProfessionLevel: 35,

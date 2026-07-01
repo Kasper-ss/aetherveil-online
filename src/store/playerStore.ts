@@ -77,7 +77,7 @@ import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
 import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
 import { WORLD_BOSS_REWARDS } from '@/data/worldBoss'
 import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
-import { maybeNotifyVitalFull, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
+import { maybeNotifyVitalFull, maybeNotifyVitalsViaBot, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
 import {
   buildPetReward, getPetRewardCycles, PET_REWARD_INTERVAL_MS, type PetReward,
 } from '@/lib/petRewards'
@@ -579,7 +579,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (ticks <= 0) return
     const newEnergy = Math.min(max, player.energy + ticks)
     const remainder = elapsed % interval
-    maybeNotifyVitalFull(player, 'energy', player.energy, newEnergy)
     get().updatePlayer({
       energy: newEnergy,
       maxEnergy: max,
@@ -600,7 +599,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (ticks <= 0) return
     const newHp = Math.min(max, current + ticks)
     const remainder = elapsed % interval
-    maybeNotifyVitalFull(player, 'hp', current, newHp)
     get().updatePlayer({
       currentHp: newHp,
       hpLastRegenAt: new Date(Date.now() - remainder).toISOString(),
@@ -608,11 +606,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   tryRegenVitals: () => {
+    const { player } = get()
+    if (!player) return
+    const beforeHp = getPlayerCurrentHp(player)
+    const beforeEnergy = player.energy
+
     get().tryRegenEnergy()
     get().tryRegenHp()
     get().tryRegenMana()
     get().accrueBankInterest()
     get().checkPetRewards({ showModal: true })
+
+    const after = get().player
+    if (after) {
+      maybeNotifyVitalsViaBot(
+        after,
+        beforeHp,
+        beforeEnergy,
+        getPlayerCurrentHp(after),
+        after.energy,
+      )
+    }
   },
 
   tryRegenMana: () => {

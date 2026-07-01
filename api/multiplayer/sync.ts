@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { syncPublicPlayer } from '../../server/playerRegistry.js'
 import { processReferralSync } from '../../server/referrals.js'
+import { processVitalBotNotifications } from '../../server/vitalNotifications.js'
+import type { VitalSyncPayload } from '../../server/vitalNotifications.js'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
 import { claimGuildGifts } from '../../server/guildGifts.js'
 
@@ -23,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lifetimeGoldEarned?: number
       classSelected?: boolean
       tutorialCompleted?: boolean
+      vitals?: VitalSyncPayload
     }
 
     const user = validateInitData(body.initData ?? '', getBotToken())
@@ -68,7 +71,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       highestFloor: Number(body.highestFloor ?? 1),
     })
 
-    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral })
+    const vitalNotify = await processVitalBotNotifications(user.id, body.vitals)
+
+    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral, vitalNotify })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })
