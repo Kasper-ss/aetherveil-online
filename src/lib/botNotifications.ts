@@ -38,13 +38,17 @@ export async function requestBotVitalNotify(
   if (!initData) return
 
   try {
-    await fetch('/api/telegram/notify-vital', {
+    await fetch('/api/multiplayer/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         initData,
-        kind,
+        instantVitalKind: kind,
         vitals: buildVitalSyncPayload(player),
+        level: player.level,
+        highestFloor: player.highestFloor ?? 1,
+        displayName: player.displayName,
+        username: player.username,
       }),
     })
   } catch (err) {
