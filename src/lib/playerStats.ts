@@ -21,6 +21,8 @@ export const BASE_HP_REGEN_MS = 60_000
 
 /** Max crit chance % from any source (gear, stats, skills, buffs). */
 export const MAX_CRIT_CHANCE = 40
+/** Max dodge chance (0–1) from any source (gear, stats, buffs). */
+export const MAX_DODGE_CHANCE = 0.7
 /** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
 export const DODGE_SPEED_FACTOR = 0.008
 export const DODGE_STEALTH_FACTOR = 0.012
@@ -34,12 +36,13 @@ export function rollCrit(critChance: number): boolean {
 }
 
 export function getDodgeChance(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
-  return stats.speed * DODGE_SPEED_FACTOR + stats.stealth * DODGE_STEALTH_FACTOR
+  const raw = stats.speed * DODGE_SPEED_FACTOR + stats.stealth * DODGE_STEALTH_FACTOR
+  return Math.min(MAX_DODGE_CHANCE, Math.max(0, raw))
 }
 
-/** Display dodge as 0–100% (probability × 100, capped at 100). */
+/** Display dodge as 0–70% (probability × 100, capped). */
 export function formatDodgePercent(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
-  return Math.min(100, Math.round(getDodgeChance(stats) * 1000) / 10)
+  return Math.round(getDodgeChance(stats) * 1000) / 10
 }
 
 export function rollDodge(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): boolean {
