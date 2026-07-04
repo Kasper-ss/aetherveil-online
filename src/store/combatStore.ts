@@ -562,10 +562,18 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const playerStore = usePlayerStore.getState()
     if (victory) {
-      playerStore.updatePlayer({
-        currentHp: combat.playerHp,
-        hpLastRegenAt: new Date().toISOString(),
-      })
+      const player = playerStore.player
+      if (player) {
+        const newMaxHp = getCombatMaxHp(player)
+        const tookDamage = combat.playerHp < combat.playerMaxHp
+        const newCurrentHp = tookDamage
+          ? Math.max(1, Math.min(newMaxHp, Math.round((combat.playerHp / combat.playerMaxHp) * newMaxHp)))
+          : newMaxHp
+        playerStore.updatePlayer({
+          currentHp: newCurrentHp,
+          hpLastRegenAt: new Date().toISOString(),
+        })
+      }
     }
     // Death penalty handler sets full HP respawn
 
