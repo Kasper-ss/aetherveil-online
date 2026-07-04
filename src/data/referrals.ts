@@ -26,6 +26,13 @@ export function formatReferralGold(n: number): string {
   return n.toLocaleString('ru-RU')
 }
 
+export function getReferralUncollectedTotal(
+  uncollected: import('@/types/game').ReferralUncollected | undefined,
+): number {
+  if (!uncollected) return 0
+  return uncollected.gold + uncollected.gems + uncollected.items
+}
+
 export function parseReferralStartParam(startParam: string | null | undefined): string | null {
   if (!startParam) return null
   if (startParam.startsWith('ref_')) return startParam.slice(4)

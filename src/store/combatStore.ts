@@ -5,7 +5,7 @@ import { getLootMultiplier } from '@/lib/playerBuffs'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
-import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
+import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp, rollCrit, rollDodge } from '@/lib/playerStats'
 import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { randomInt } from '@/lib/utils'
 import { CONSUMABLE_EFFECTS, type ConsumableId, isHpPotion, isEnergyDrink } from '@/lib/consumables'
@@ -68,7 +68,7 @@ function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffec
 } {
   if (combat.isPvp) {
     const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk - stats.def * 0.35))
-    const dodge = Math.random() < stats.speed * 0.008 + stats.stealth * 0.012
+    const dodge = rollDodge(stats)
     if (dodge) {
       return {
         playerHp: combat.playerHp,
@@ -245,7 +245,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const stats = getEffectiveStats(player)
     const comboBonus = 1 + combat.combo * 0.04
-    const isCrit = Math.random() * 100 < stats.crit
+    const isCrit = rollCrit(stats.crit)
     const baseDmg = stats.atk * comboBonus
     const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * 0.4)
     const finalDmg = Math.max(1, rawDmg)
@@ -342,7 +342,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const stats = getEffectiveStats(player)
-    const isCrit = Math.random() * 100 < stats.crit + 10
+    const isCrit = rollCrit(stats.crit + 10)
     let damage = Math.floor(stats.atk * scaled.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
     const finalDmg = Math.max(1, damage)
     const hit = applyDamageToEnemy(combat, finalDmg)
@@ -595,8 +595,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       playerStore.recordMiniBossKill(combat.floor)
     }
 
-    if (combat?.isBoss && !combat.isWorldBoss) {
-      playerStore.advanceFloor()
+    if (combat?.isBoss && !combat.isWorldBoss && combat.floor) {
+      playerStore.advanceFloor(combat.floor)
       playerStore.awardBossTrophy(combat.floor)
     }
 

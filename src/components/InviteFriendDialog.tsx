@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Copy, Share2, UserPlus, Gift, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import {
   REFERRAL_SIGNUP_GOLD,
   countActiveReferrals,
   formatReferralGold,
+  getReferralUncollectedTotal,
 } from '@/data/referrals'
 
 interface InviteFriendDialogProps {
@@ -24,15 +25,24 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
   const player = usePlayerStore((s) => s.player)
   const addFriendById = usePlayerStore((s) => s.addFriendById)
   const removeFriend = usePlayerStore((s) => s.removeFriend)
+  const claimReferralRewards = usePlayerStore((s) => s.claimReferralRewards)
+  const syncPlayerState = usePlayerStore((s) => s.syncPlayerState)
   const [friendIdInput, setFriendIdInput] = useState('')
   const [message, setMessage] = useState<string | null>(null)
+  const [claiming, setClaiming] = useState(false)
 
   if (!player) return null
   const p = player
   const invites = p.referralInvites ?? []
   const earnings = p.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 }
+  const uncollected = p.referralUncollected ?? { gold: 0, gems: 0, items: 0 }
   const activeCount = countActiveReferrals(invites)
   const totalEarned = earnings.signupGold + earnings.milestoneGold
+  const hasUncollected = getReferralUncollectedTotal(uncollected) > 0
+
+  useEffect(() => {
+    if (open) void syncPlayerState()
+  }, [open, syncPlayerState])
 
   async function copyReferralCode() {
     try {
@@ -59,6 +69,30 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
   function handleShareInvite() {
     void shareInviteLink(p.referralCode)
     hapticSuccess()
+  }
+
+  async function handleCollectReferralReward() {
+    if (claiming) return
+    if (!hasUncollected) {
+      setMessage(t('friends.collectReferralRewardEmpty'))
+      hapticError()
+      setTimeout(() => setMessage(null), 2000)
+      return
+    }
+    setClaiming(true)
+    try {
+      const ok = await claimReferralRewards()
+      if (ok) {
+        setMessage(t('friends.collectReferralRewardDone'))
+        hapticSuccess()
+      } else {
+        setMessage(t('friends.collectReferralRewardFailed'))
+        hapticError()
+      }
+      setTimeout(() => setMessage(null), 2500)
+    } finally {
+      setClaiming(false)
+    }
   }
 
   function handleAddFriend() {
@@ -132,6 +166,27 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
             <Share2 className="h-4 w-4" />
             {t('friends.inviteToGame')}
           </Button>
+
+          <Card className={hasUncollected ? 'border-aether-gold/40' : undefined}>
+            <CardContent className="p-3 space-y-2">
+              <p className="text-xs text-slate-400">{t('friends.referralUncollected')}</p>
+              <p className="text-sm text-aether-gold font-medium">
+                {formatReferralGold(uncollected.gold)} 🪙
+                {uncollected.gems > 0 && ` + ${uncollected.gems} 💎`}
+                {uncollected.items > 0 && ` + ${uncollected.items} предм.`}
+                {!hasUncollected && <span className="text-slate-500 font-normal"> — 0</span>}
+              </p>
+              <Button
+                variant="gold"
+                className="w-full"
+                disabled={claiming || !hasUncollected}
+                onClick={() => void handleCollectReferralReward()}
+              >
+                <Gift className="h-4 w-4" />
+                {claiming ? '...' : t('friends.collectReferralReward')}
+              </Button>
+            </CardContent>
+          </Card>
 
           {(activeCount > 0 || totalEarned > 0) && (
             <Card>

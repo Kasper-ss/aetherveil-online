@@ -19,6 +19,28 @@ export const BASE_MAX_ENERGY = 100
 export const BASE_ENERGY_REGEN_MS = 30_000
 export const BASE_HP_REGEN_MS = 60_000
 
+/** Max crit chance % from any source (gear, stats, skills, buffs). */
+export const MAX_CRIT_CHANCE = 40
+/** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
+export const DODGE_SPEED_FACTOR = 0.004
+export const DODGE_STEALTH_FACTOR = 0.006
+
+export function capCritChance(crit: number): number {
+  return Math.min(MAX_CRIT_CHANCE, Math.max(0, crit))
+}
+
+export function rollCrit(critChance: number): boolean {
+  return Math.random() * 100 < capCritChance(critChance)
+}
+
+export function getDodgeChance(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
+  return stats.speed * DODGE_SPEED_FACTOR + stats.stealth * DODGE_STEALTH_FACTOR
+}
+
+export function rollDodge(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): boolean {
+  return Math.random() < getDodgeChance(stats)
+}
+
 export const ALLOC_STAT_LABELS: Record<AllocStatKey, string> = {
   atk: 'Атака',
   hp: 'Здоровье',
@@ -113,7 +135,7 @@ export function getEffectiveStats(player: Player): EffectiveStats {
 
   const achMult = getAchievementMultipliers(player).allStats
 
-  return applySetBonuses(player, {
+  const withSets = applySetBonuses(player, {
     atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk') * achMult),
     def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def') * achMult),
     hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp') * achMult),
@@ -122,4 +144,5 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     stealth: alloc.stealth,
     endurance: alloc.endurance,
   })
+  return { ...withSets, crit: capCritChance(withSets.crit) }
 }

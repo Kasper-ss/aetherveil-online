@@ -221,6 +221,7 @@ export interface Player {
   lifetimeGoldEarned?: number
   referralInvites?: ReferralInviteSummary[]
   referralEarnings?: ReferralEarnings
+  referralUncollected?: ReferralUncollected
   partyId?: string
   guildId?: string
   lastOnlineAt: string
@@ -353,6 +354,12 @@ export interface ReferralInviteSummary {
 export interface ReferralEarnings {
   signupGold: number
   milestoneGold: number
+  gems: number
+  items: number
+}
+
+export interface ReferralUncollected {
+  gold: number
   gems: number
   items: number
 }

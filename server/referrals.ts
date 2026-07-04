@@ -141,7 +141,7 @@ async function notifyMilestoneReward(referrerId: number, refereeName: string): P
   try {
     await sendMessage({
       chat_id: referrerId,
-      text: `Ваш друг ${refereeName} накопил 100К монет! Вам начислено ${REFERRAL_MILESTONE_GOLD.toLocaleString('ru-RU')} монет.`,
+      text: `Ваш друг ${refereeName} накопил 100К монет! Заберите ${REFERRAL_MILESTONE_GOLD.toLocaleString('ru-RU')} монет в разделе «Пригласить».`,
     })
   } catch (err) {
     console.warn('[referrals] Telegram notify failed', err)
@@ -235,6 +235,36 @@ async function listReferralsForReferrer(referrerId: number): Promise<ReferralInv
   }))
 }
 
+async function getPendingRewards(referrerId: number): Promise<{
+  gold: number
+  gems: number
+  items: string[]
+}> {
+  const supabase = getSupabase()
+  let pending: ReferralRewardRecord[] = []
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('referral_rewards')
+      .select('*')
+      .eq('referrer_id', referrerId)
+      .eq('settled', false)
+    pending = (data ?? []) as ReferralRewardRecord[]
+  } else {
+    pending = [...rewards().values()].filter((r) => r.referrer_id === referrerId && !r.settled)
+  }
+
+  let gold = 0
+  let gems = 0
+  const items: string[] = []
+  for (const r of pending) {
+    gold += r.gold
+    gems += r.gems
+    if (r.item_template_id) items.push(r.item_template_id)
+  }
+  return { gold, gems, items }
+}
+
 async function collectPendingRewards(referrerId: number): Promise<{
   gold: number
   gems: number
@@ -286,6 +316,7 @@ export async function processReferralSync(input: {
   tutorialCompleted: boolean
   level: number
   highestFloor: number
+  claimRewards?: boolean
 }): Promise<ReferralSyncResult> {
   const activated = input.classSelected && (
     input.tutorialCompleted || input.level >= 2 || input.highestFloor > 1
@@ -301,7 +332,9 @@ export async function processReferralSync(input: {
     })
   }
 
-  const payout = await collectPendingRewards(input.telegramId)
+  const payout = input.claimRewards
+    ? await collectPendingRewards(input.telegramId)
+    : await getPendingRewards(input.telegramId)
   const referralList = await listReferralsForReferrer(input.telegramId)
 
   return {

@@ -21,7 +21,10 @@ export interface SyncResult {
   incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
 }
 
-export async function syncPlayerToServer(player: Player): Promise<SyncResult | null> {
+export async function syncPlayerToServer(
+  player: Player,
+  opts?: { claimReferralRewards?: boolean },
+): Promise<SyncResult | null> {
   const initData = getInitData()
   if (!initData) return null
 
@@ -46,6 +49,7 @@ export async function syncPlayerToServer(player: Player): Promise<SyncResult | n
         lifetimeGoldEarned: player.lifetimeGoldEarned ?? 0,
         classSelected: player.classSelected,
         tutorialCompleted: player.tutorialCompleted,
+        claimReferralRewards: opts?.claimReferralRewards ?? false,
       }),
     })
     const data = await res.json() as {

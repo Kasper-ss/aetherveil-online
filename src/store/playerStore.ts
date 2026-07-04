@@ -107,7 +107,7 @@ interface PlayerState {
   setFarmFloor: (floor: number) => void
   recordMobKill: (floor: number) => void
   recordMiniBossKill: (floor: number) => void
-  advanceFloor: () => void
+  advanceFloor: (clearedFloor: number) => void
   awardBossTrophy: (floor: number) => void
   applyWorldBossVictory: () => void
   applyCombatResult: (result: CombatResult) => void
@@ -145,6 +145,7 @@ interface PlayerState {
   buyMarketListing: (listing: MarketListing) => Promise<boolean>
   dismantleItem: (item: Item) => boolean
   syncPlayerState: () => Promise<void>
+  claimReferralRewards: () => Promise<boolean>
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
   claimUnderwearEasterEgg: () => boolean
@@ -432,14 +433,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().updatePlayer({ floorMiniBossKills: kills })
   },
 
-  advanceFloor: () => {
+  advanceFloor: (clearedFloor) => {
     const { player } = get()
     if (!player) return
+    if (clearedFloor < player.highestFloor) return
     const prevHighest = player.highestFloor
-    const next = Math.min(MAX_FLOOR, player.currentFloor + 1)
+    const next = Math.min(MAX_FLOOR, clearedFloor + 1)
+    if (next <= player.highestFloor) return
     get().updatePlayer({
       currentFloor: next,
-      highestFloor: Math.max(player.highestFloor, next),
+      highestFloor: next,
       farmFloor: next,
       monthlyStats: bumpMonthlyStat(player, 'highestFloor', next),
     })
@@ -1452,38 +1455,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const soldSet = new Set(result.soldListingIds)
     const hasGifts = (result.incomingGifts?.length ?? 0) > 0
-    const hasReferralPayout = result.pendingReferralGold > 0
-      || result.pendingReferralGems > 0
-      || result.pendingReferralItems.length > 0
     const referralList = result.referrals ?? []
+    const uncollected = {
+      gold: result.pendingReferralGold,
+      gems: result.pendingReferralGems,
+      items: result.pendingReferralItems.length,
+    }
     const listChanged = JSON.stringify(referralList) !== JSON.stringify(player.referralInvites ?? [])
-    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts || hasReferralPayout || listChanged
+    const uncollectedChanged = JSON.stringify(uncollected) !== JSON.stringify(
+      player.referralUncollected ?? { gold: 0, gems: 0, items: 0 },
+    )
+    const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts || listChanged || uncollectedChanged
     if (!needsUpdate) return
 
     const inventory = [...player.inventory]
     for (const gift of result.incomingGifts ?? []) {
       inventory.push(ensureItemDurability(gift.item))
     }
-    for (const templateId of result.pendingReferralItems) {
-      const inst = createItemInstance(templateId)
-      if (inst) inventory.push(inst)
-    }
-
-    const earnings = { ...(player.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 }) }
-    if (result.pendingReferralGold > 0 || result.pendingReferralGems > 0 || result.pendingReferralItems.length > 0) {
-      earnings.gems += result.pendingReferralGems
-      earnings.items += result.pendingReferralItems.length
-      // Approximate split for display — signup vs milestone not tracked per payout batch
-      earnings.milestoneGold += result.pendingReferralGold
-    }
 
     const updated = {
       ...player,
-      gold: player.gold + result.pendingGold + result.pendingReferralGold,
-      gems: player.gems + result.pendingReferralGems,
+      gold: player.gold + result.pendingGold,
       inventory,
-      referralInvites: listChanged ? referralList : player.referralInvites,
-      referralEarnings: earnings,
+      referralInvites: referralList,
+      referralUncollected: uncollected,
       marketListings: soldSet.size > 0
         ? player.marketListings.filter((l) => !soldSet.has(l.id))
         : player.marketListings,
@@ -1493,6 +1488,51 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     storageSet(SAVE_KEY, updated)
     await savePlayerToSupabase(updated)
     registerOnlinePlayer(updated)
+  },
+
+  claimReferralRewards: async () => {
+    const { player } = get()
+    if (!player) return false
+    const pending = player.referralUncollected
+    if (!pending || (pending.gold <= 0 && pending.gems <= 0 && pending.items <= 0)) return false
+
+    const result = await syncPlayerToServer(player, { claimReferralRewards: true })
+    if (!result) return false
+
+    const payoutGold = result.pendingReferralGold
+    const payoutGems = result.pendingReferralGems
+    const payoutItems = result.pendingReferralItems
+    if (payoutGold <= 0 && payoutGems <= 0 && payoutItems.length === 0) return false
+
+    const inventory = [...player.inventory]
+    for (const templateId of payoutItems) {
+      const inst = createItemInstance(templateId)
+      if (inst) inventory.push(inst)
+    }
+
+    const earnings = { ...(player.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 }) }
+    earnings.gems += payoutGems
+    earnings.items += payoutItems.length
+    earnings.milestoneGold += payoutGold
+
+    const updated = {
+      ...player,
+      gold: player.gold + result.pendingGold + payoutGold,
+      gems: player.gems + payoutGems,
+      inventory,
+      referralEarnings: earnings,
+      referralInvites: result.referrals ?? player.referralInvites,
+      referralUncollected: { gold: 0, gems: 0, items: 0 },
+      marketListings: result.soldListingIds.length > 0
+        ? player.marketListings.filter((l) => !result.soldListingIds.includes(l.id))
+        : player.marketListings,
+    }
+    set({ player: updated })
+    updated.lastOnlineAt = new Date().toISOString()
+    storageSet(SAVE_KEY, updated)
+    await savePlayerToSupabase(updated)
+    registerOnlinePlayer(updated)
+    return true
   },
 
   dismantleItem: (item) => {

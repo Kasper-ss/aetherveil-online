@@ -25,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lifetimeGoldEarned?: number
       classSelected?: boolean
       tutorialCompleted?: boolean
+      claimReferralRewards?: boolean
       vitals?: VitalSyncPayload
       instantVitalKind?: 'hp' | 'energy' | 'both'
     }
@@ -70,6 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       tutorialCompleted: !!body.tutorialCompleted,
       level: Number(body.level ?? 1),
       highestFloor: Number(body.highestFloor ?? 1),
+      claimRewards: !!body.claimReferralRewards,
     })
 
     let vitalNotify: { sent: string[] }

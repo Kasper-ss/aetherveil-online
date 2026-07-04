@@ -1,5 +1,5 @@
 import type { CombatLogEntry, CombatState, FloorEnemy } from '@/types/game'
-import type { EffectiveStats } from '@/lib/playerStats'
+import { rollDodge, type EffectiveStats } from '@/lib/playerStats'
 import type { EFFECT_PRESETS } from '@/lib/activeEffects'
 
 export interface EnemyAbility {
@@ -253,7 +253,7 @@ export function executeEnemyAttack(
   const effectiveDef = Math.floor(playerStats.def * (1 - defIgnore))
   const enemyDmg = Math.max(1, Math.floor(enemy.stats.atk * atkMult * dmgMult - effectiveDef * 0.35))
 
-  const dodge = Math.random() < playerStats.speed * 0.008 + playerStats.stealth * 0.012
+  const dodge = rollDodge(playerStats)
 
   if (dodge) {
     logs.push(log(`💨 Вы уклонились от атаки ${enemy.name}!`, 'system'))
