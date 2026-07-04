@@ -222,6 +222,8 @@ export interface Player {
   referralInvites?: ReferralInviteSummary[]
   referralEarnings?: ReferralEarnings
   referralUncollected?: ReferralUncollected
+  ownedPropertyId?: string
+  propertyPurchasePrice?: number
   partyId?: string
   guildId?: string
   lastOnlineAt: string

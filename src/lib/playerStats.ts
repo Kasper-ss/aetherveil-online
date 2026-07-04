@@ -1,8 +1,9 @@
-import type { Player, AllocStatKey, AllocatedStats, Stats } from '@/types/game'
+import type { Player, AllocStatKey, AllocatedStats, Stats, PlayerClass } from '@/types/game'
 import { getEffectiveItemStats } from '@/data/items'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
+import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -19,20 +20,25 @@ export const BASE_MAX_ENERGY = 100
 export const BASE_ENERGY_REGEN_MS = 30_000
 export const BASE_HP_REGEN_MS = 60_000
 
-/** Max crit chance % from any source (gear, stats, skills, buffs). */
-export const MAX_CRIT_CHANCE = 40
+/** Legacy default; use getMaxCritChanceForClass for per-class caps. */
+export const MAX_CRIT_CHANCE = 45
 /** Max dodge chance (0–1) from any source (gear, stats, buffs). */
 export const MAX_DODGE_CHANCE = 0.7
 /** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
 export const DODGE_SPEED_FACTOR = 0.008
 export const DODGE_STEALTH_FACTOR = 0.012
-
-export function capCritChance(crit: number): number {
-  return Math.min(MAX_CRIT_CHANCE, Math.max(0, crit))
+/** Max crit % by class: archer/assassin 80%, others 45%. */
+export function getMaxCritChanceForClass(classId?: PlayerClass): number {
+  if (classId === 'archer' || classId === 'assassin') return 80
+  return 45
 }
 
-export function rollCrit(critChance: number): boolean {
-  return Math.random() * 100 < capCritChance(critChance)
+export function capCritChance(crit: number, classId?: PlayerClass): number {
+  return Math.min(getMaxCritChanceForClass(classId), Math.max(0, crit))
+}
+
+export function rollCrit(critChance: number, classId?: PlayerClass): boolean {
+  return Math.random() * 100 < capCritChance(critChance, classId)
 }
 
 export function getDodgeChance(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
@@ -69,12 +75,15 @@ export function getAllocatedStats(player: Player): AllocatedStats {
 
 export function getMaxEnergy(player: Player): number {
   const end = getAllocatedStats(player).endurance
-  return BASE_MAX_ENERGY + end * 3
+  const prop = getPropertyMultipliers(player).maxEnergy
+  return Math.floor((BASE_MAX_ENERGY + end * 3) * prop)
 }
 
 export function getEnergyRegenIntervalMs(player: Player): number {
   const end = getAllocatedStats(player).endurance
-  return Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
+  const base = Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
+  const prop = getPropertyMultipliers(player).energyRegen
+  return Math.max(5_000, Math.floor(base / prop))
 }
 
 export function getHpRegenIntervalMs(player: Player): number {
@@ -142,15 +151,16 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     getEffectMultForStat(player, stat) * getEffectMultForStat(player, 'all')
 
   const achMult = getAchievementMultipliers(player).allStats
+  const propMult = getPropertyMultipliers(player).allStats
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk') * achMult),
-    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def') * achMult),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp') * achMult),
-    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult),
-    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult),
+    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
+    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
+    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),
     stealth: alloc.stealth,
     endurance: alloc.endurance,
   })
-  return { ...withSets, crit: capCritChance(withSets.crit) }
+  return { ...withSets, crit: capCritChance(withSets.crit, player.classId) }
 }

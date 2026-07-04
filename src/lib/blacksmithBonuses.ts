@@ -1,5 +1,6 @@
 import type { CraftRecipe, Item, ItemRarity, Player, ResourceId } from '@/types/game'
 import { ensureItemDurability } from '@/lib/equipmentDurability'
+import { getCraftSuccessMultiplier } from '@/lib/playerBuffs'
 
 function bsLevel(player: Player, skillIndex: number): number {
   return player.professionLevels.blacksmith?.[skillIndex] ?? 0
@@ -20,7 +21,8 @@ export function getBlacksmithDoubleCraftChance(player: Player): number {
 export function getBlacksmithRarityUpgradeChance(player: Player): number {
   const master = bsLevel(player, 4) * 0.03
   const legendary = bsLevel(player, 8) * 0.02
-  return Math.min(0.45, master + legendary)
+  const base = master + legendary
+  return Math.min(0.45, base * getCraftSuccessMultiplier(player))
 }
 
 function scaleResources(

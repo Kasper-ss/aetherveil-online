@@ -245,7 +245,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const stats = getEffectiveStats(player)
     const comboBonus = 1 + combat.combo * 0.04
-    const isCrit = rollCrit(stats.crit)
+    const isCrit = rollCrit(stats.crit, player.classId)
     const baseDmg = stats.atk * comboBonus
     const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * 0.4)
     const finalDmg = Math.max(1, rawDmg)
@@ -342,7 +342,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const stats = getEffectiveStats(player)
-    const isCrit = rollCrit(stats.crit + 10)
+    const isCrit = rollCrit(stats.crit + 10, player.classId)
     let damage = Math.floor(stats.atk * scaled.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
     const finalDmg = Math.max(1, damage)
     const hit = applyDamageToEnemy(combat, finalDmg)

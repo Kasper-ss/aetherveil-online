@@ -18,6 +18,7 @@ import { ProfessionsPage } from '@/pages/ProfessionsPage'
 import { ForgePage } from '@/pages/ForgePage'
 import { BankPage } from '@/pages/BankPage'
 import { FairPage } from '@/pages/FairPage'
+import { RealEstatePage } from '@/pages/RealEstatePage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { PlayerViewPage } from '@/pages/PlayerViewPage'
 import { MinePage } from '@/pages/MinePage'
@@ -67,6 +68,7 @@ function AppRoutes() {
           <Route path="/bank" element={<BankPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/fair" element={<FairPage />} />
+          <Route path="/real-estate" element={<RealEstatePage />} />
           <Route path="/mine" element={<MinePage />} />
           <Route path="/fishing" element={<FishingPage />} />
           <Route path="/hunt" element={<HuntPage />} />

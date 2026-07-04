@@ -14,6 +14,7 @@ export const ACHIEVEMENT_TITLES: Record<string, AchievementTitle> = {
   alchemist_sage: { id: 'alchemist_sage', label: 'Мудрый алхимик', colorClass: 'text-green-400' },
   keeper_ancient_traditions: { id: 'keeper_ancient_traditions', label: 'Хранитель Древних Традиций', colorClass: 'text-amber-400' },
   world_boss_slayer: { id: 'world_boss_slayer', label: 'Убийца Архонта', colorClass: 'text-purple-400' },
+  ascension_homeowner: { id: 'ascension_homeowner', label: 'Владелец Таунхауса Восхождения', colorClass: 'text-aether-gold' },
 }
 
 export function getTitleLabel(titleId?: string): string | null {

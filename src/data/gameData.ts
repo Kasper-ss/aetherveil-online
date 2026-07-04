@@ -229,6 +229,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     referralInvites: player.referralInvites ?? [],
     referralEarnings: player.referralEarnings ?? { signupGold: 0, milestoneGold: 0, gems: 0, items: 0 },
     referralUncollected: player.referralUncollected ?? { gold: 0, gems: 0, items: 0 },
+    ownedPropertyId: player.ownedPropertyId,
+    propertyPurchasePrice: player.propertyPurchasePrice,
     unlockedTitles: player.unlockedTitles ?? [],
     profileTitleId: player.profileTitleId,
     achievementBonuses: player.achievementBonuses ?? { expPct: 0, goldPct: 0, lootPct: 0, allStatsPct: 0 },

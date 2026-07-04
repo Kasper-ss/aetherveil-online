@@ -26,7 +26,7 @@ import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMax
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
-import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
+import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, getGatherResourceMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
 import { calcFairPayout, spinFairWheel, type FairColor } from '@/lib/fairGame'
 import {
   canDrawFateCard, FATE_CARD_BUFF_DURATION_MS,
@@ -78,6 +78,10 @@ import { bumpMonthlyStat, MONTHLY_RANK_REWARDS, isMonthlyRewardClaimWindowOpen }
 import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
 import { WORLD_BOSS_REWARDS } from '@/data/worldBoss'
 import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
+import {
+  getPropertyById, getPropertySellPrice, isPropertyUnlockedForPlayer, isRealEstateUnlocked,
+} from '@/data/realEstate'
+import { propertyActionOnServer, type PropertyAvailability } from '@/lib/multiplayerSync'
 import { maybeNotifyVitalFull, maybeNotifyVitalsViaBot, getNotificationSettings, maybeNotifyPetReward } from '@/lib/vitalNotifications'
 import {
   buildPetReward, getPetRewardCycles, PET_REWARD_INTERVAL_MS, type PetReward,
@@ -205,6 +209,9 @@ interface PlayerState {
   sellResourceToNpc: (resourceId: ResourceId, amount: number) => boolean
   sellItemToNpc: (item: Item) => boolean
   claimMonthlyReward: (categoryId: string, rank: 1 | 2 | 3) => boolean
+  fetchPropertyStatus: () => Promise<{ availability: PropertyAvailability[]; totalPlayers: number } | null>
+  buyProperty: (propertyId: string) => Promise<{ ok: boolean; error?: string }>
+  sellProperty: () => Promise<{ ok: boolean; error?: string; refund?: number }>
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void
 }
 
@@ -940,6 +947,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     get().addResources(activity.rewards)
+    const gatherMult = getGatherResourceMultiplier(player)
+    if (gatherMult > 1) {
+      for (const [resId, amount] of Object.entries(activity.rewards)) {
+        if (amount && Math.random() < gatherMult - 1) {
+          get().addResources({ [resId as import('@/types/game').ResourceId]: amount })
+        }
+      }
+    }
     if (activity.id === 'herb_gather' || activity.id === 'herb_rare') {
       const extra = getHerbGatherBonus(player)
       if (extra > 0) get().addResources({ herb: extra })
@@ -1012,6 +1027,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (fish) {
       get().addResources({ [fish.id]: 1 })
+      const gatherMult = getGatherResourceMultiplier(player)
+      if (gatherMult > 1 && Math.random() < gatherMult - 1) {
+        get().addResources({ [fish.id]: 1 })
+      }
       const profXp = spot.xpPerCast + (fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0)
       const newXp = (player.fishingSpotXp ?? 0) + spot.xpPerCast
       get().updatePlayer({
@@ -2121,6 +2140,75 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       monthlyRewardsClaimed: [...claimed, key],
     })
     return true
+  },
+
+  fetchPropertyStatus: async () => {
+    const { player } = get()
+    if (!player) return null
+    const result = await propertyActionOnServer(player, { action: 'status' })
+    if (!result?.ok) return null
+    if (result.ownedPropertyId !== player.ownedPropertyId
+      || result.purchasePrice !== player.propertyPurchasePrice) {
+      get().updatePlayer({
+        ownedPropertyId: result.ownedPropertyId ?? undefined,
+        propertyPurchasePrice: result.purchasePrice ?? undefined,
+      })
+    }
+    return { availability: result.availability, totalPlayers: result.totalPlayers }
+  },
+
+  buyProperty: async (propertyId) => {
+    const { player } = get()
+    if (!player) return { ok: false, error: 'Нет игрока' }
+    const property = getPropertyById(propertyId)
+    if (!property) return { ok: false, error: 'Неизвестный дом' }
+    if (!isRealEstateUnlocked(player)) return { ok: false, error: 'Доступно с 5 этажа' }
+    if (!isPropertyUnlockedForPlayer(player, property)) {
+      return { ok: false, error: `Нужен ${property.unlockLevel} уровень` }
+    }
+    if (player.ownedPropertyId) return { ok: false, error: 'Сначала продайте текущий дом' }
+    if (player.gold < property.goldCost) return { ok: false, error: 'Недостаточно золота' }
+
+    const server = await propertyActionOnServer(player, {
+      action: 'buy',
+      propertyId,
+      expectedPrice: property.goldCost,
+    })
+    if (!server?.ok) return { ok: false, error: server?.error ?? 'Ошибка сервера' }
+    if (!get().spendGold(property.goldCost)) {
+      await propertyActionOnServer(player, { action: 'sell' })
+      return { ok: false, error: 'Недостаточно золота' }
+    }
+
+    const titles = player.unlockedTitles ?? []
+    const updates: Partial<import('@/types/game').Player> = {
+      ownedPropertyId: propertyId,
+      propertyPurchasePrice: property.goldCost,
+    }
+    if (property.exclusiveTitleId && !titles.includes(property.exclusiveTitleId)) {
+      updates.unlockedTitles = [...titles, property.exclusiveTitleId]
+    }
+    get().updatePlayer(updates)
+    return { ok: true }
+  },
+
+  sellProperty: async () => {
+    const { player } = get()
+    if (!player?.ownedPropertyId) return { ok: false, error: 'У вас нет дома' }
+    const purchasePrice = player.propertyPurchasePrice
+      ?? getPropertyById(player.ownedPropertyId)?.goldCost
+      ?? 0
+    const refund = getPropertySellPrice(purchasePrice)
+
+    const server = await propertyActionOnServer(player, { action: 'sell' })
+    if (!server?.ok) return { ok: false, error: server?.error ?? 'Ошибка сервера' }
+
+    get().addGold(refund)
+    get().updatePlayer({
+      ownedPropertyId: undefined,
+      propertyPurchasePrice: undefined,
+    })
+    return { ok: true, refund }
   },
 
   updateNotificationSettings: (settings) => {

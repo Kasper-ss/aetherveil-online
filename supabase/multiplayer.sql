@@ -35,3 +35,12 @@ CREATE INDEX IF NOT EXISTS idx_market_sales_seller ON market_sales (seller_id, s
 
 -- Если таблица уже создана ранее:
 -- ALTER TABLE public_players ADD COLUMN IF NOT EXISTS monthly_stats JSONB;
+
+CREATE TABLE IF NOT EXISTS property_ownership (
+  owner_id BIGINT PRIMARY KEY,
+  property_id TEXT NOT NULL,
+  purchase_price INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_property_ownership_property ON property_ownership (property_id);

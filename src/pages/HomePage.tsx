@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2, Skull } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Pickaxe, Fish, ChefHat, ScrollText, Sprout, Crosshair, Gem, Wand2, Skull, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -23,6 +23,7 @@ import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
 import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRewards'
 import { isWorldBossUnlocked, getWorldBossCooldown } from '@/data/worldBoss'
+import { isRealEstateUnlocked } from '@/data/realEstate'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -72,6 +73,7 @@ export function HomePage() {
   const mobsKilled = player.floorMobKills[player.farmFloor] ?? 0
   const worldBossUnlocked = isWorldBossUnlocked(player)
   const worldBossReady = worldBossUnlocked && getWorldBossCooldown(player).canFight
+  const realEstateUnlocked = isRealEstateUnlocked(player)
 
   function nav(path: string) {
     hapticImpact('light')
@@ -123,6 +125,7 @@ export function HomePage() {
     { icon: Sparkles, label: t('hub.skills'), path: '/skills', variant: 'purple' as const },
     { icon: Anvil, label: t('hub.forge'), path: '/forge', variant: 'gold' as const },
     { icon: Landmark, label: t('hub.bank'), path: '/bank', variant: 'gold' as const },
+    ...(realEstateUnlocked ? [{ icon: Home, label: t('hub.realEstate'), path: '/real-estate', variant: 'gold' as const }] : []),
     { icon: Dices, label: t('hub.fair'), path: '/fair', variant: 'purple' as const },
     { icon: Trophy, label: t('hub.leaderboard'), path: '/leaderboard', variant: 'secondary' as const },
     { icon: User, label: t('hub.profile'), path: '/profile', variant: 'ghost' as const },

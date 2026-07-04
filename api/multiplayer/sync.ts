@@ -5,6 +5,7 @@ import { notifyVitalViaBot, processVitalBotNotifications } from '../../server/vi
 import type { VitalSyncPayload } from '../../server/vitalNotifications.js'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
 import { claimGuildGifts } from '../../server/guildGifts.js'
+import { processPropertyAction } from '../../server/realEstate.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -28,6 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       claimReferralRewards?: boolean
       vitals?: VitalSyncPayload
       instantVitalKind?: 'hp' | 'energy' | 'both'
+      propertyAction?: {
+        action: 'buy' | 'sell' | 'status'
+        propertyId?: string
+        expectedPrice?: number
+      }
     }
 
     const user = validateInitData(body.initData ?? '', getBotToken())
@@ -74,6 +80,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       claimRewards: !!body.claimReferralRewards,
     })
 
+    const property = body.propertyAction
+      ? await processPropertyAction({
+          telegramId: user.id,
+          action: body.propertyAction.action,
+          propertyId: body.propertyAction.propertyId,
+          expectedPrice: body.propertyAction.expectedPrice,
+        })
+      : undefined
+
     let vitalNotify: { sent: string[] }
     if (body.instantVitalKind && body.vitals) {
       const sent = await notifyVitalViaBot(user.id, body.instantVitalKind, body.vitals)
@@ -82,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       vitalNotify = await processVitalBotNotifications(user.id, body.vitals)
     }
 
-    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral, vitalNotify })
+    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral, vitalNotify, property })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })

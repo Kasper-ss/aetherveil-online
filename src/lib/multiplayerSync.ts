@@ -21,6 +21,21 @@ export interface SyncResult {
   incomingGifts?: Array<{ fromId: number; fromName: string; item: Item }>
 }
 
+export interface PropertyAvailability {
+  propertyId: string
+  owned: number
+  limit: number
+}
+
+export interface PropertyActionResult {
+  ok: boolean
+  error?: string
+  ownedPropertyId?: string | null
+  purchasePrice?: number
+  availability: PropertyAvailability[]
+  totalPlayers: number
+}
+
 export async function syncPlayerToServer(
   player: Player,
   opts?: { claimReferralRewards?: boolean },
@@ -73,6 +88,40 @@ export async function syncPlayerToServer(
     }
   } catch (error) {
     console.warn('[multiplayer] sync failed', error)
+    return null
+  }
+}
+
+export async function propertyActionOnServer(
+  player: Player,
+  opts: { action: 'buy' | 'sell' | 'status'; propertyId?: string; expectedPrice?: number },
+): Promise<PropertyActionResult | null> {
+  const initData = getInitData()
+  if (!initData) return null
+
+  try {
+    const res = await fetch('/api/multiplayer/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        level: player.level,
+        highestFloor: player.highestFloor,
+        displayName: player.displayName,
+        username: player.username,
+        propertyAction: opts,
+      }),
+    })
+    const data = await res.json() as {
+      error?: string
+      property?: PropertyActionResult
+    }
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? 'Ошибка сервера', availability: [], totalPlayers: 0 }
+    }
+    return data.property ?? null
+  } catch (error) {
+    console.warn('[multiplayer] property action failed', error)
     return null
   }
 }
