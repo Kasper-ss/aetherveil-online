@@ -107,6 +107,34 @@ export function makeEpicEnemy(base: FloorEnemy): FloorEnemy {
   }
 }
 
+export const MAX_MINI_BOSSES_PER_FLOOR = 3
+export const MINI_BOSS_SPAWN_CHANCE = 0.09
+
+const MINI_BOSS_PREFIXES = ['Страж', 'Избранник', 'Аватар', 'Вестник', 'Падший']
+
+/** Mini-boss — rarer than epic, boosted loot, up to 3 per floor lifetime */
+export function makeMiniBoss(base: FloorEnemy, floor: number): FloorEnemy {
+  const prefix = MINI_BOSS_PREFIXES[floor % MINI_BOSS_PREFIXES.length]
+  return {
+    ...base,
+    id: `${base.id}_mini`,
+    name: `👹 ${prefix} ${base.name}`,
+    isMiniBoss: true,
+    stats: {
+      hp: Math.floor(base.stats.hp * 2.4),
+      atk: Math.floor(base.stats.atk * 1.4),
+      def: Math.floor(base.stats.def * 1.5),
+      crit: Math.min(28, base.stats.crit + 4),
+      speed: Math.min(22, base.stats.speed + 2),
+    },
+    expReward: Math.floor(base.expReward * 1.75),
+    goldReward: [
+      Math.floor(base.goldReward[0] * 1.8),
+      Math.floor(base.goldReward[1] * 1.8),
+    ],
+  }
+}
+
 function mobName(floor: number, index: number): string {
   const base = MOB_NAMES[(floor * 3 + index) % MOB_NAMES.length]
   if (floor <= 5) return base

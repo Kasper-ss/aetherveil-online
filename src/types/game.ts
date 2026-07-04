@@ -175,6 +175,7 @@ export interface FloorEnemy {
   lootTable: string[]
   isBoss?: boolean
   isEpic?: boolean
+  isMiniBoss?: boolean
 }
 
 export interface FloorData {
@@ -204,6 +205,7 @@ export interface Player {
   highestFloor: number
   farmFloor: number
   floorMobKills: Record<number, number>
+  floorMiniBossKills: Record<number, number>
   stats: Stats
   statPoints: number
   allocatedStats: AllocatedStats
@@ -416,6 +418,7 @@ export interface CombatState {
   isPvp?: boolean
   pvpOpponentId?: number
   isEpic?: boolean
+  isMiniBoss?: boolean
   bossPhase?: 1 | 2
   isWorldBoss?: boolean
 }
@@ -433,6 +436,7 @@ export interface CombatResult {
   killedBy?: string
   fled?: boolean
   isEpic?: boolean
+  isMiniBoss?: boolean
   isWorldBoss?: boolean
 }
 

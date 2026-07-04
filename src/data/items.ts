@@ -407,6 +407,43 @@ export function formatItemStats(item: Item): string {
   return Object.entries(stats).map(([k, v]) => `${labels[k] ?? k} +${v}`).join(' · ')
 }
 
+export function getBaseItemName(item: Item): string {
+  const template = ALL_ITEMS[item.id]
+  if (template) return template.name
+  return item.name
+    .replace(/^✦ /, '')
+    .replace(/\s+\+\d+/g, '')
+    .replace(/\s+★+/g, '')
+    .trim()
+}
+
+export function formatItemDisplayName(item: Item): string {
+  const base = getBaseItemName(item)
+  const lvl = item.upgradeLevel ?? 1
+  const stars = item.starLevel ?? 0
+  let name = item.rarity === 'mythic' ? `✦ ${base}` : base
+  if (lvl > 1) name += ` +${lvl}`
+  if (stars > 0) name += ` ${'★'.repeat(stars)}`
+  return name
+}
+
+export function buildItemBonusDescription(item: Item): string {
+  const template = ALL_ITEMS[item.id]
+  const prefix = template?.description?.split('Бонусы:')[0]?.trim()
+    ?? template?.description?.split('.')[0]?.trim()
+    ?? item.name
+  const mythicTag = item.rarity === 'mythic' ? ' [Мифический]' : ''
+  return `${prefix}. Бонусы: ${formatItemStats(item)}.${mythicTag}`
+}
+
+export function refreshItemMeta(item: Item): Item {
+  return {
+    ...item,
+    name: formatItemDisplayName(item),
+    description: buildItemBonusDescription(item),
+  }
+}
+
 export function getLootTableForFloor(floor: number): string[] {
   const tier = Math.min(9, Math.floor((floor - 1) / 1))
   const slots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']

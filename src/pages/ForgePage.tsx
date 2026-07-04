@@ -315,7 +315,9 @@ export function ForgePage() {
                   <div className="text-sm font-bold text-white">{selectedItem.name}</div>
                   <Badge variant={selectedItem.rarity}>{RARITY_LABELS_RU[selectedItem.rarity]}</Badge>
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(selectedItem)}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{selectedItem.description}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Ур.{selectedItem.upgradeLevel ?? 1} · ★{selectedItem.starLevel ?? 0} · +{((selectedItem.upgradeLevel ?? 1) - 1) * 8 + (selectedItem.starLevel ?? 0) * 5}% к бонусам
+                  </p>
                 </div>
 
                 {(selectedItem.upgradeLevel ?? 1) < 10 && (

@@ -117,7 +117,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const startLogs: CombatLogEntry[] = [
       logEntry(
-        enemy.isEpic ? `⚡ Эпический противник: ${enemy.name}!` : `⚔️ Бой начался: ${enemy.name}!`,
+        enemy.isMiniBoss
+          ? `👹 Мини-босс: ${enemy.name}!`
+          : enemy.isEpic
+            ? `⚡ Эпический противник: ${enemy.name}!`
+            : `⚔️ Бой начался: ${enemy.name}!`,
         'system',
       ),
     ]
@@ -136,6 +140,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       skillCooldowns: {},
       isBoss: isBoss ?? !!enemy.isBoss,
       isEpic: !!enemy.isEpic,
+      isMiniBoss: !!enemy.isMiniBoss,
       floor,
       bossPhase: (isBoss ?? !!enemy.isBoss) && floor >= 5 ? 1 : undefined,
       enemyCombat: createEnemyCombatState(),
@@ -526,8 +531,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         const pvePlayer = usePlayerStore.getState().player
         const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
         const isEpic = !!combat.enemy.isEpic
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, isEpic))
-        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic)
+        const isMiniBoss = !!combat.enemy.isMiniBoss
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, isEpic, isMiniBoss))
+        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic, isMiniBoss)
       }
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player
@@ -543,6 +549,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       mobKilled: victory && !combat.isBoss && !combat.isPvp,
       killedBy: !victory ? combat.enemy.name : undefined,
       isEpic: combat.isEpic,
+      isMiniBoss: combat.isMiniBoss,
     }
 
     if (!victory && !combat.isPvp) {
@@ -574,6 +581,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (result.mobKilled) {
       playerStore.recordMobKill(combat?.floor ?? playerStore.player?.farmFloor ?? 1)
+    }
+
+    if (result.isMiniBoss && combat?.floor) {
+      playerStore.recordMiniBossKill(combat.floor)
     }
 
     if (combat?.isBoss && !combat.isWorldBoss) {

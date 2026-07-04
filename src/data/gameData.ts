@@ -1,5 +1,5 @@
 import type { ShopItem, DailyReward, ResourceId, Item } from '@/types/game'
-import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS } from '@/data/items'
+import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta } from '@/data/items'
 import { EMPTY_ALLOCATED, getMaxEnergy } from '@/lib/playerStats'
 import { ensureItemDurability } from '@/lib/equipmentDurability'
 import { getMaxMana, usesMana } from '@/lib/mana'
@@ -61,41 +61,53 @@ export function generateCombatResources(
   floor: number,
   isBoss: boolean,
   isEpic = false,
+  isMiniBoss = false,
 ): Partial<Record<ResourceId, number>> {
-  const mult = isBoss ? 3 : isEpic ? 2 : 1
+  const mult = isBoss ? 3 : isMiniBoss ? 2.5 : isEpic ? 2 : 1
   const meat = Math.max(1, Math.floor((2 + floor * 0.8) * mult + Math.random() * 2))
   const hide = Math.max(1, Math.floor((1 + floor * 0.5) * mult))
 
   const res: Partial<Record<ResourceId, number>> = { meat, hide }
 
-  const dustChance = isBoss ? 0.5 : isEpic ? 0.18 : 0.05
+  const dustChance = isBoss ? 0.5 : isMiniBoss ? 0.32 : isEpic ? 0.18 : 0.05
   if (Math.random() < dustChance) {
-    res.aether_dust = isBoss ? 2 + Math.floor(Math.random() * 2) : 1
+    res.aether_dust = isBoss ? 2 + Math.floor(Math.random() * 2) : isMiniBoss ? 1 + Math.floor(Math.random() * 2) : 1
   }
 
   if (isBoss) {
     res.upgrade_core = 1 + Math.floor(floor / 3)
     if (Math.random() > 0.5) res.star_shard = 1
+  } else if (isMiniBoss) {
+    if (Math.random() < 0.45) res.gem_shard = 1 + Math.floor(Math.random() * 2)
+    if (Math.random() < 0.22) res.star_shard = 1
+    if (Math.random() < 0.18) res.upgrade_core = 1
   }
 
   return res
 }
 
-export function generateVictoryLoot(floor: number, isBoss: boolean, lootMult = 1, isEpic = false): Item[] {
+export function generateVictoryLoot(
+  floor: number,
+  isBoss: boolean,
+  lootMult = 1,
+  isEpic = false,
+  isMiniBoss = false,
+): Item[] {
   const loot: Item[] = []
-  const epicMult = isEpic ? 1.5 : 1
-  const effectiveMult = lootMult * epicMult
+  const bonusMult = isMiniBoss ? 1.65 : isEpic ? 1.5 : 1
+  const effectiveMult = lootMult * bonusMult
+  const boostedRoll = isBoss || isEpic || isMiniBoss
 
-  if (!isBoss && !isEpic && Math.random() > 0.1) return loot
+  if (!boostedRoll && Math.random() > 0.1) return loot
 
-  const drop = rollEquipmentDrop(floor, isBoss || isEpic, effectiveMult)
+  const drop = rollEquipmentDrop(floor, isBoss || isEpic || isMiniBoss, effectiveMult)
   if (drop) loot.push(drop)
 
   if (isBoss && Math.random() > 0.35) {
     const bonus = rollEquipmentDrop(floor, true, effectiveMult)
     if (bonus) loot.push(bonus)
-  } else if ((isEpic || isBoss) && Math.random() > 0.5) {
-    const bonus = rollEquipmentDrop(floor, isBoss, effectiveMult)
+  } else if (boostedRoll && Math.random() > (isMiniBoss ? 0.35 : 0.5)) {
+    const bonus = rollEquipmentDrop(floor, isBoss || isMiniBoss, effectiveMult)
     if (bonus) loot.push(bonus)
   }
 
@@ -110,7 +122,7 @@ function sanitizeItem(i: import('@/types/game').Item): import('@/types/game').It
     upgradeLevel: i.upgradeLevel ?? 1,
     starLevel: i.starLevel ?? 0,
   }
-  return ensureItemDurability(base)
+  return refreshItemMeta(ensureItemDurability(base))
 }
 
 function sanitizeEquipped(equipped: Partial<import('@/types/game').EquippedItems>): import('@/types/game').EquippedItems {
@@ -148,6 +160,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     classSelected: player.classSelected ?? !!player.classId,
     farmFloor: player.farmFloor ?? player.currentFloor ?? 1,
     floorMobKills: player.floorMobKills ?? {},
+    floorMiniBossKills: player.floorMiniBossKills ?? {},
     equipped: sanitizeEquipped(player.equipped ?? {}),
     inventory: (player.inventory ?? []).filter((i) => {
       const valid = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet', 'consumable']
@@ -239,6 +252,7 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     hpLastRegenAt: new Date().toISOString(),
     currentFloor: 1, highestFloor: 1, farmFloor: 1,
     floorMobKills: {},
+    floorMiniBossKills: {},
     stats: { atk: 10, def: 5, hp: 100, crit: 5, speed: 10 },
     statPoints: 0,
     allocatedStats: { ...EMPTY_ALLOCATED },

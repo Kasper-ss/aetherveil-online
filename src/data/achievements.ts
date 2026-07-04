@@ -90,7 +90,7 @@ function gems(n: number) {
   return (p: Player) => p.gems >= n
 }
 
-export const ACHIEVEMENTS: AchievementDef[] = [
+export const ACHIEVEMENTS_BASE: AchievementDef[] = [
   {
     id: 'first_steps',
     nameRu: 'Первые шаги',
@@ -646,6 +646,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     check: hasLegendaryUnderwear,
   },
 ]
+
+import { ACHIEVEMENTS_HARD } from '@/data/achievementsHard'
+
+export const ACHIEVEMENTS: AchievementDef[] = [...ACHIEVEMENTS_BASE, ...ACHIEVEMENTS_HARD]
 
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>
 

@@ -15,7 +15,7 @@ import {
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
-import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS } from '@/data/items'
+import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta } from '@/data/items'
 import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import {
@@ -106,6 +106,7 @@ interface PlayerState {
   unequipItem: (slot: keyof Player['equipped']) => void
   setFarmFloor: (floor: number) => void
   recordMobKill: (floor: number) => void
+  recordMiniBossKill: (floor: number) => void
   advanceFloor: () => void
   awardBossTrophy: (floor: number) => void
   applyWorldBossVictory: () => void
@@ -271,6 +272,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
+      get().checkPetRewards({ showModal: !idle })
       registerOnlinePlayer(player)
     }
   },
@@ -400,7 +402,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player || !player.equipped[slot]) return
     get().addItem(player.equipped[slot]!)
-    get().updatePlayer({ equipped: { ...player.equipped, [slot]: null } })
+    const patch: Partial<Player> = { equipped: { ...player.equipped, [slot]: null } }
+    if (slot === 'pet') {
+      patch.petLastRewardAt = new Date().toISOString()
+    }
+    get().updatePlayer(patch)
   },
 
   setFarmFloor: (floor) => {
@@ -416,6 +422,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     kills[floor] = (kills[floor] ?? 0) + 1
     get().updatePlayer({ floorMobKills: kills, monthlyStats: bumpMonthlyStat(player, 'mobsKilled', 1) })
     applyQuestTracking(get, 'kill_mob', 1)
+  },
+
+  recordMiniBossKill: (floor) => {
+    const { player } = get()
+    if (!player) return
+    const kills = { ...player.floorMiniBossKills }
+    kills[floor] = (kills[floor] ?? 0) + 1
+    get().updatePlayer({ floorMiniBossKills: kills })
   },
 
   advanceFloor: () => {
@@ -1268,8 +1282,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (lvl >= 10) return null
     const cost = getUpgradeLevelCost(item)
     if (!get().spendGold(cost.gold)) return null
-    if (!get().spendResources(cost.resources)) return null
-    return ensureItemDurability({ ...item, upgradeLevel: lvl + 1, name: item.name.replace(/ \+\d+$/, '') + ` +${lvl + 1}` })
+    if (!get().spendResources(cost.resources)) {
+      grantGoldRaw(get, cost.gold)
+      return null
+    }
+    return refreshItemMeta(ensureItemDurability({ ...item, upgradeLevel: lvl + 1 }))
   },
 
   upgradeItemStars: (item) => {
@@ -1277,9 +1294,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (stars >= 10) return null
     const cost = getStarUpgradeCost(item)
     if (!get().spendGold(cost.gold)) return null
-    if (!get().spendResources(cost.resources)) return null
-    const starStr = '★'.repeat(stars + 1)
-    return ensureItemDurability({ ...item, starLevel: stars + 1, name: `${item.name.replace(/ ★+$/, '')} ${starStr}` })
+    if (!get().spendResources(cost.resources)) {
+      grantGoldRaw(get, cost.gold)
+      return null
+    }
+    return refreshItemMeta(ensureItemDurability({ ...item, starLevel: stars + 1 }))
   },
 
   listOnMarket: (item, price) => {
@@ -1377,18 +1396,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player || item.rarity === 'mythic') return null
     if ((item.upgradeLevel ?? 1) < 10 || (item.starLevel ?? 0) < 10) return null
     if (!get().spendGold(MYTHIC_UPGRADE_COST.gold)) return null
-    if (!get().spendResources(MYTHIC_UPGRADE_COST.resources)) return null
+    if (!get().spendResources(MYTHIC_UPGRADE_COST.resources)) {
+      grantGoldRaw(get, MYTHIC_UPGRADE_COST.gold)
+      return null
+    }
     const boosted: Partial<import('@/types/game').Stats> = {}
     for (const [k, v] of Object.entries(item.stats)) {
       boosted[k as keyof import('@/types/game').Stats] = Math.floor((v as number) * 1.5)
     }
-    return {
+    return refreshItemMeta(ensureItemDurability({
       ...item,
       rarity: 'mythic' as const,
       stats: boosted,
-      name: `✦ ${item.name.replace(/^✦ /, '')}`,
-      description: `${item.description} [Мифический]`,
-    }
+    }))
   },
 
   upgradeProfessionMythicSkill: (professionId, skillIndex) => {

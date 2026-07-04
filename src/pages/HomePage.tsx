@@ -250,16 +250,16 @@ export function HomePage() {
 
       <InviteFriendDialog open={showInvite} onOpenChange={setShowInvite} />
 
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-3 gap-2 p-3 pb-4">
         {menuItems.map((item) => (
           <Button
             key={item.path}
             variant={item.variant}
-            className={`h-16 flex-col gap-1 ${item.primary ? 'col-span-2 h-14' : ''}`}
+            className={`h-11 flex-col gap-0.5 px-1 ${item.primary ? 'col-span-3 h-10' : ''}`}
             onClick={() => nav(item.path)}
           >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs">{item.label}</span>
+            <item.icon className="h-4 w-4" />
+            <span className="text-[10px] leading-tight">{item.label}</span>
           </Button>
         ))}
       </div>

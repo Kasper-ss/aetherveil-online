@@ -120,9 +120,11 @@ export function getPetRewardCycles(player: { equipped: { pet?: Item | null }; pe
   return Math.min(MAX_PET_REWARD_CYCLES, Math.floor(elapsed / PET_REWARD_INTERVAL_MS))
 }
 
-export function getPetRewardTimeRemaining(player: { equipped: { pet?: Item | null }; petLastRewardAt?: string }): number | null {
+export function getPetRewardTimeRemaining(
+  player: { equipped: { pet?: Item | null }; petLastRewardAt?: string; lastOnlineAt: string },
+): number | null {
   if (!player.equipped.pet) return null
-  const last = new Date(player.petLastRewardAt ?? Date.now()).getTime()
+  const last = new Date(player.petLastRewardAt ?? player.lastOnlineAt).getTime()
   return Math.max(0, last + PET_REWARD_INTERVAL_MS - Date.now())
 }
 

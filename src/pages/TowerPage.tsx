@@ -10,7 +10,7 @@ import { FloorEventModal, getEventExpAmount, getEventGoldAmount } from '@/compon
 import { usePlayerStore, getMobsRequiredForFloor } from '@/store/playerStore'
 import { useCombatStore } from '@/store/combatStore'
 import { getFloorData } from '@/data/gameData'
-import { makeEpicEnemy } from '@/data/floors'
+import { makeEpicEnemy, makeMiniBoss, MAX_MINI_BOSSES_PER_FLOOR, MINI_BOSS_SPAWN_CHANCE } from '@/data/floors'
 import { pickFloorEvent, rollExploreType, type FloorEventChoice } from '@/data/floorEvents'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { getPlayerCurrentHp } from '@/lib/playerStats'
@@ -48,6 +48,8 @@ export function TowerPage() {
   const mobsRequired = getMobsRequiredForFloor(farmFloor)
   const mobsKilled = player.floorMobKills[farmFloor] ?? 0
   const mobPct = (mobsKilled / mobsRequired) * 100
+  const miniBossKills = player.floorMiniBossKills?.[farmFloor] ?? 0
+  const miniBossLeft = MAX_MINI_BOSSES_PER_FLOOR - miniBossKills
   const canBoss = mobsKilled >= mobsRequired
   const activeEffects = getActiveEffects(player)
 
@@ -62,8 +64,14 @@ export function TowerPage() {
     hapticImpact('medium')
     playSfx('click')
 
-    const exploreType = rollExploreType()
     const baseEnemy = floor.enemies[randomInt(0, floor.enemies.length - 1)]
+    const miniKills = player!.floorMiniBossKills?.[farmFloor] ?? 0
+    if (miniKills < MAX_MINI_BOSSES_PER_FLOOR && Math.random() < MINI_BOSS_SPAWN_CHANCE) {
+      beginCombat(makeMiniBoss(baseEnemy, farmFloor), farmFloor)
+      return
+    }
+
+    const exploreType = rollExploreType()
 
     if (exploreType === 'event') {
       const ev = pickFloorEvent(farmFloor)
@@ -190,6 +198,13 @@ export function TowerPage() {
             <p className="text-xs text-slate-500 mt-2 text-center">
               Осталось: {mobsRequired - mobsKilled} мобов до босса
             </p>
+          )}
+          {miniBossLeft > 0 ? (
+            <p className="text-xs text-purple-300 mt-2 text-center">
+              👹 Мини-боссов осталось: {miniBossLeft}/{MAX_MINI_BOSSES_PER_FLOOR} · шанс ~{Math.round(MINI_BOSS_SPAWN_CHANCE * 100)}%
+            </p>
+          ) : (
+            <p className="text-xs text-slate-600 mt-2 text-center">👹 Все мини-боссы этажа побеждены</p>
           )}
         </CardContent>
       </Card>
