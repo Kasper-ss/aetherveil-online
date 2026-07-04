@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,7 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { SKILLS } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
-import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
+import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU, sortGearItems, type GearSortMode } from '@/data/items'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
 import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
@@ -29,6 +30,7 @@ export function InventoryPage() {
   const unequipItem = usePlayerStore((s) => s.unequipItem)
   const consumeConsumable = usePlayerStore((s) => s.consumeConsumable)
   const eatFood = usePlayerStore((s) => s.eatFood)
+  const [gearSort, setGearSort] = useState<GearSortMode>('type')
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -51,7 +53,10 @@ export function InventoryPage() {
         return acc
       }, {}),
   )
-  const gearItems = player.inventory.filter((i) => i.slot !== 'consumable')
+  const gearItems = sortGearItems(
+    player.inventory.filter((i) => i.slot !== 'consumable'),
+    gearSort,
+  )
 
   function handleEquip(item: Item) {
     if (item.slot !== 'consumable') equipItem(item)
@@ -158,6 +163,27 @@ export function InventoryPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {gearItems.length > 0 && (
+            <div className="flex gap-2 mb-3">
+              <Button
+                size="sm"
+                variant={gearSort === 'type' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs"
+                onClick={() => setGearSort('type')}
+              >
+                По типу
+              </Button>
+              <Button
+                size="sm"
+                variant={gearSort === 'rarity' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs"
+                onClick={() => setGearSort('rarity')}
+              >
+                По редкости
+              </Button>
             </div>
           )}
 

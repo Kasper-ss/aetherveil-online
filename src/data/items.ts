@@ -23,6 +23,42 @@ export const RARITY_LABELS_RU: Record<import('@/types/game').ItemRarity, string>
   mythic: 'Мифический',
 }
 
+export const RARITY_ORDER: Record<import('@/types/game').ItemRarity, number> = {
+  common: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  mythic: 5,
+}
+
+const EQUIP_SLOT_ORDER: EquipSlot[] = [
+  'helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet',
+]
+
+export type GearSortMode = 'type' | 'rarity'
+
+export function sortGearItems(items: Item[], mode: GearSortMode): Item[] {
+  const sorted = [...items]
+  const slotIndex = (slot: Item['slot']) => {
+    if (slot === 'consumable') return 99
+    return EQUIP_SLOT_ORDER.indexOf(slot as EquipSlot)
+  }
+  if (mode === 'type') {
+    sorted.sort((a, b) => {
+      const slotDiff = slotIndex(a.slot) - slotIndex(b.slot)
+      if (slotDiff !== 0) return slotDiff
+      return RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]
+    })
+  } else {
+    sorted.sort((a, b) => {
+      const rarityDiff = RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]
+      if (rarityDiff !== 0) return rarityDiff
+      return slotIndex(a.slot) - slotIndex(b.slot)
+    })
+  }
+  return sorted
+}
+
 const TIER_RARITIES: ItemRarity[] = [
   'common', 'common', 'common', 'common',
   'rare', 'rare',

@@ -196,10 +196,7 @@ export function MonthlyLeaderboardPanel({
 
       {categories.map((cat) => {
         const selfRow = cat.entries.find((e) => e.telegramId === selfId)
-        const topRows = Array.from({ length: MONTHLY_LIVE_TOP_COUNT }, (_, i) => {
-          const rank = i + 1
-          return cat.entries.find((e) => e.rank === rank)
-        })
+        const topRows = cat.entries.slice(0, MONTHLY_LIVE_TOP_COUNT)
 
         return (
           <Card key={cat.categoryId}>
@@ -208,27 +205,33 @@ export function MonthlyLeaderboardPanel({
                 <span className="text-lg">{cat.icon}</span>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium text-white">{cat.nameRu}</span>
-                  <p className="text-[9px] text-slate-500">Текущий Топ-{MONTHLY_LIVE_TOP_COUNT}</p>
+                  <p className="text-[9px] text-slate-500">
+                    {topRows.length > 0 ? `Топ-${topRows.length} игроков` : 'Пока нет участников'}
+                  </p>
                 </div>
                 {selfRow && (
                   <Badge className="text-[9px] shrink-0">Вы: #{selfRow.rank}</Badge>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                {topRows.map((entry, index) => (
-                  <MonthlyRankRow
-                    key={`${cat.categoryId}_${index + 1}`}
-                    rank={index + 1}
-                    entry={entry}
-                    categoryId={cat.categoryId}
-                    selfId={selfId}
-                    claimed={claimed}
-                    onClaim={onClaim}
-                    onOpenPlayer={onOpenPlayer}
-                  />
-                ))}
-              </div>
+              {topRows.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-3">Играйте и синхронизируйте прогресс — рейтинг обновляется автоматически</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {topRows.map((entry) => (
+                    <MonthlyRankRow
+                      key={`${cat.categoryId}_${entry.telegramId}`}
+                      rank={entry.rank}
+                      entry={entry}
+                      categoryId={cat.categoryId}
+                      selfId={selfId}
+                      claimed={claimed}
+                      onClaim={onClaim}
+                      onOpenPlayer={onOpenPlayer}
+                    />
+                  ))}
+                </div>
+              )}
 
               <CategoryMotivation cat={cat} player={player} selfRow={selfRow} />
             </CardContent>

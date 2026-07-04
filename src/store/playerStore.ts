@@ -42,7 +42,8 @@ import { AVATAR_OPTIONS, FRAME_OPTIONS, getCosmeticStarProductId } from '@/data/
 import { addActiveEffect, pruneActiveEffects, EFFECT_PRESETS } from '@/lib/activeEffects'
 import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
-  isProfessionActive, professionRankRequiredForSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
+  isProfessionActive, professionRankRequiredForSkill, canUpgradeProfessionSkill,
+  canUpgradeProfessionMythicSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
 } from '@/lib/professionProgress'
 import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress } from '@/lib/quests'
 import { DAILY_QUESTS, WEEKLY_QUESTS, GUILD_QUESTS } from '@/data/quests'
@@ -1209,7 +1210,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   upgradeProfessionSkill: (professionId, skillIndex) => {
     const { player } = get()
     if (!player) return false
-    if (!isProfessionActive(player, professionId)) return false
+    if (!canUpgradeProfessionSkill(player, professionId, skillIndex)) return false
     const rank = getProfessionRank(getProfessionExp(player, professionId))
     if (rank < professionRankRequiredForSkill(skillIndex)) return false
     const prof = PROFESSIONS.find((p) => p.id === professionId)
@@ -1420,6 +1421,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   upgradeProfessionMythicSkill: (professionId, skillIndex) => {
     const { player } = get()
     if (!player) return false
+    if (!canUpgradeProfessionMythicSkill(player, professionId)) return false
     const levels = player.professionLevels[professionId] ?? []
     if (!isProfessionMaxed(professionId, levels)) return false
     const skill = MYTHIC_SKILLS[professionId]?.[skillIndex]

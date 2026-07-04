@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const board = getMonthlyLeaderboardRecords()
+    const board = await getMonthlyLeaderboardRecords()
     return res.status(200).json({ ok: true, ...board })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Monthly leaderboard error'

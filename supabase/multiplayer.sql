@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public_players (
   level INT NOT NULL DEFAULT 1,
   highest_floor INT NOT NULL DEFAULT 1,
   guild_id TEXT,
+  monthly_stats JSONB,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -31,3 +32,6 @@ CREATE TABLE IF NOT EXISTS market_sales (
 );
 
 CREATE INDEX IF NOT EXISTS idx_market_sales_seller ON market_sales (seller_id, settled);
+
+-- Если таблица уже создана ранее:
+-- ALTER TABLE public_players ADD COLUMN IF NOT EXISTS monthly_stats JSONB;

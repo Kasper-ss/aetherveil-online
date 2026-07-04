@@ -10,6 +10,7 @@ import { useT } from '@/hooks/useT'
 import { getLeaderboardEntries } from '@/lib/leaderboard'
 import { buildGlobalLeaderboardView } from '@/lib/leaderboardDisplay'
 import { fetchMonthlyLeaderboard } from '@/lib/multiplayerSync'
+import { mergeMonthlyLeaderboardWithPlayer } from '@/lib/monthlyStats'
 import { MonthlyLeaderboardPanel } from '@/components/ui/MonthlyLeaderboardPanel'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { LeaderboardEntry, MonthlyLeaderboardResponse } from '@/types/game'
@@ -74,6 +75,7 @@ export function LeaderboardPage() {
   const loadBoards = useCallback(async () => {
     if (!player) return
     setLoading(true)
+    void usePlayerStore.getState().syncPlayerState()
     const [global, friends, monthly] = await Promise.all([
       getLeaderboardEntries(player, false),
       getLeaderboardEntries(player, true),
@@ -81,7 +83,7 @@ export function LeaderboardPage() {
     ])
     setAllGlobal(global)
     setFriendsBoard(friends)
-    setMonthlyBoard(monthly)
+    setMonthlyBoard(monthly ? mergeMonthlyLeaderboardWithPlayer(monthly, player) : null)
     setLoading(false)
   }, [player])
 

@@ -1,4 +1,4 @@
-import type { MonthlyStats, Player } from '@/types/game'
+import type { MonthlyStats, Player, MonthlyLeaderboardResponse, MonthlyLeaderboardCategory } from '@/types/game'
 
 export function monthKey(date = new Date()): string {
   return date.toISOString().slice(0, 7)
@@ -99,4 +99,40 @@ export function formatMonthlyCategoryValue(categoryId: string, value: number): s
 export function getGapToBeat(targetValue: number, selfValue: number): number | null {
   if (selfValue > targetValue) return null
   return targetValue - selfValue + 1
+}
+
+/** Ensure local player appears in monthly board when server cache is cold. */
+export function mergeMonthlyLeaderboardWithPlayer(
+  board: MonthlyLeaderboardResponse,
+  player: Player,
+): MonthlyLeaderboardResponse {
+  const stats = normalizeMonthlyStats(player)
+  if (stats.monthKey !== board.monthKey) return board
+
+  const categories: MonthlyLeaderboardCategory[] = board.categories.map((cat) => {
+    const def = MONTHLY_CATEGORIES.find((c) => c.id === cat.categoryId)
+    if (!def) return cat
+
+    const value = stats[def.field]
+    if (value <= 0) return cat
+
+    const withoutSelf = cat.entries.filter((e) => e.telegramId !== player.telegramId)
+    const rows = [
+      ...withoutSelf,
+      {
+        rank: 0,
+        telegramId: player.telegramId,
+        displayName: player.displayName,
+        username: player.username,
+        value,
+      },
+    ]
+    rows.sort((a, b) => b.value - a.value || a.displayName.localeCompare(b.displayName, 'ru'))
+    return {
+      ...cat,
+      entries: rows.slice(0, 10).map((row, index) => ({ ...row, rank: index + 1 })),
+    }
+  })
+
+  return { ...board, categories }
 }

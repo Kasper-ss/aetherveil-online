@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { buildMonthlyLeaderboardFromProfiles } from './monthlyLeaderboard.js'
+import { buildMonthlyLeaderboardFromProfiles, currentMonthKey } from './monthlyLeaderboard.js'
 
 export interface PublicPlayerRecord {
   telegram_id: number
@@ -226,6 +226,7 @@ export async function syncPublicPlayer(input: {
       level: record.level,
       highest_floor: record.highest_floor,
       guild_id: record.guild_id ?? null,
+      monthly_stats: input.publicProfile?.monthlyStats ?? null,
       updated_at: now,
     })
     await supabase.from('market_listings').delete().eq('seller_id', input.telegramId)
@@ -380,6 +381,31 @@ export async function getPlayerProfileRecord(telegramId: number): Promise<Record
   }
 }
 
-export function getMonthlyLeaderboardRecords() {
-  return buildMonthlyLeaderboardFromProfiles(profiles())
+export async function getMonthlyLeaderboardRecords() {
+  const profileMap: ProfileMap = new Map(profiles())
+
+  const supabase = getSupabase()
+  if (supabase) {
+    const since = new Date(Date.now() - PLAYER_TTL_MS).toISOString()
+    const monthKey = currentMonthKey()
+    const { data } = await supabase
+      .from('public_players')
+      .select('telegram_id, username, display_name, monthly_stats')
+      .gte('updated_at', since)
+
+    for (const row of data ?? []) {
+      const stats = row.monthly_stats as Record<string, unknown> | null
+      if (!stats || stats.monthKey !== monthKey) continue
+      const id = row.telegram_id as number
+      const existing = profileMap.get(id) ?? {}
+      profileMap.set(id, {
+        ...existing,
+        displayName: row.display_name,
+        username: row.username,
+        monthlyStats: stats,
+      })
+    }
+  }
+
+  return buildMonthlyLeaderboardFromProfiles(profileMap)
 }

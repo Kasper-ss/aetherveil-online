@@ -25,6 +25,9 @@ import {
   getProfessionRankProgress,
   getProfessionSlotLimit,
   professionRankRequiredForSkill,
+  canUpgradeProfessionSkill,
+  canUpgradeProfessionMythicSkill,
+  isProfessionActive,
 } from '@/lib/professionProgress'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
@@ -88,6 +91,10 @@ export function ProfessionsPage() {
   }
 
   function handleSkillUpgrade(professionId: ProfessionId, skillIndex: number) {
+    if (!canUpgradeProfessionSkill(player!, professionId, skillIndex)) {
+      hapticError()
+      return
+    }
     const rank = getProfessionRankProgress(getProfessionExp(player!, professionId)).rank
     if (rank < professionRankRequiredForSkill(skillIndex)) {
       hapticError()
@@ -103,6 +110,10 @@ export function ProfessionsPage() {
   }
 
   function handleMythicUpgrade(professionId: ProfessionId, skillIndex: number) {
+    if (!canUpgradeProfessionMythicSkill(player!, professionId)) {
+      hapticError()
+      return
+    }
     const missing = getProfessionMythicSkillMissing(professionId, skillIndex)
     if (missing.length > 0) {
       showMissing('Недостаточно для мифического навыка', missing)
@@ -251,6 +262,8 @@ export function ProfessionsPage() {
                   const cost = getProfessionSkillUpgradeCost(prof.id, idx, lvl)
                   const rankReq = professionRankRequiredForSkill(idx)
                   const rankLocked = profRank.rank < rankReq
+                  const inactiveLocked = !canUpgradeProfessionSkill(player, prof.id, idx)
+                  const profActive = isProfessionActive(player, prof.id)
                   return (
                     <Card key={skill.id}>
                       <CardContent className="p-3">
@@ -261,6 +274,12 @@ export function ProfessionsPage() {
                             {rankLocked && (
                               <div className="text-[9px] text-amber-400">Ранг профессии {rankReq}+</div>
                             )}
+                            {inactiveLocked && (
+                              <div className="text-[9px] text-slate-500">Активируйте профессию для улучшения</div>
+                            )}
+                            {!profActive && idx === 0 && (
+                              <div className="text-[9px] text-aether-cyan">Базовый навык доступен без активации</div>
+                            )}
                           </div>
                           <span className="text-xs text-aether-cyan">Ур.{lvl}/{skill.maxLevel}</span>
                         </div>
@@ -270,7 +289,7 @@ export function ProfessionsPage() {
                           size="sm"
                           variant={maxed ? 'secondary' : 'default'}
                           className="w-full"
-                          disabled={maxed || rankLocked}
+                          disabled={maxed || rankLocked || inactiveLocked}
                           onClick={() => handleSkillUpgrade(prof.id, idx)}
                         >
                           {maxed
@@ -297,6 +316,7 @@ export function ProfessionsPage() {
                       const lvl = mythicLevels[idx] ?? 0
                       const maxed = lvl >= skill.maxLevel
                       const cost = getProfessionMythicSkillUpgradeCost(prof.id, idx, lvl)
+                      const mythicInactive = !canUpgradeProfessionMythicSkill(player, prof.id)
                       return (
                         <Card key={skill.id} className="border-fuchsia-500/30">
                           <CardContent className="p-3">
@@ -304,6 +324,9 @@ export function ProfessionsPage() {
                               <div>
                                 <div className="text-sm font-medium text-fuchsia-300">{skill.nameRu}</div>
                                 <div className="text-[10px] text-slate-400">{skill.descriptionRu}</div>
+                                {mythicInactive && (
+                                  <div className="text-[9px] text-slate-500">Нужна активная профессия</div>
+                                )}
                               </div>
                               <span className="text-xs text-fuchsia-400">Ур.{lvl}/{skill.maxLevel}</span>
                             </div>
@@ -313,7 +336,7 @@ export function ProfessionsPage() {
                               size="sm"
                               variant={maxed ? 'secondary' : 'gold'}
                               className="w-full"
-                              disabled={maxed}
+                              disabled={maxed || mythicInactive}
                               onClick={() => handleMythicUpgrade(prof.id, idx)}
                             >
                               {maxed

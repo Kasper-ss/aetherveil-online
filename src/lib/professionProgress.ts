@@ -50,3 +50,17 @@ export function getProfessionRankProgress(exp: number): { rank: number; intoRank
 export function professionRankRequiredForSkill(skillIndex: number): number {
   return skillIndex + 1
 }
+
+/** Inactive professions: only skill 0. Skills 1+ and mythic require active slot. */
+export function canUpgradeProfessionSkill(
+  player: Player,
+  professionId: ProfessionId,
+  skillIndex: number,
+): boolean {
+  if (skillIndex === 0) return true
+  return isProfessionActive(player, professionId)
+}
+
+export function canUpgradeProfessionMythicSkill(player: Player, professionId: ProfessionId): boolean {
+  return isProfessionActive(player, professionId)
+}

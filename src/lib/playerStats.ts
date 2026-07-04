@@ -22,8 +22,8 @@ export const BASE_HP_REGEN_MS = 60_000
 /** Max crit chance % from any source (gear, stats, skills, buffs). */
 export const MAX_CRIT_CHANCE = 40
 /** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
-export const DODGE_SPEED_FACTOR = 0.004
-export const DODGE_STEALTH_FACTOR = 0.006
+export const DODGE_SPEED_FACTOR = 0.008
+export const DODGE_STEALTH_FACTOR = 0.012
 
 export function capCritChance(crit: number): number {
   return Math.min(MAX_CRIT_CHANCE, Math.max(0, crit))
