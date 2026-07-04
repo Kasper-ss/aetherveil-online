@@ -421,7 +421,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (isHpPotion(itemId)) {
       if (combat.playerHp >= combat.playerMaxHp) return false
-      const consumed = playerStore.consumeConsumable(itemId as ConsumableId)
+      const consumed = playerStore.consumeConsumable(itemId as ConsumableId, {
+        combatHp: combat.playerHp,
+        combatMaxHp: combat.playerMaxHp,
+      })
       if (!consumed?.healHp) return false
       const heal = Math.min(consumed.healHp, combat.playerMaxHp - combat.playerHp)
       const pct = Math.round((CONSUMABLE_EFFECTS[itemId as ConsumableId]?.healPercent ?? 0.5) * 100)

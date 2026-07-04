@@ -179,7 +179,10 @@ interface PlayerState {
   playFairBet: (bet: number, pick: FairColor) => { won: boolean; result: FairColor; payout: number } | null
   drawFateCard: (type: import('@/lib/fateCards').FateCardType) => boolean
   resetAllocatedStats: () => boolean
-  consumeConsumable: (itemId: ConsumableId) => { healHp?: number; energy?: number } | null
+  consumeConsumable: (
+    itemId: ConsumableId,
+    opts?: { combatHp?: number; combatMaxHp?: number },
+  ) => { healHp?: number; energy?: number } | null
   replaceItemInstance: (oldInstanceId: string, newItem: Item) => void
   applyCosmetic: (type: 'avatar' | 'frame', id: string) => boolean
   purchaseCosmetic: (id: string) => Promise<boolean>
@@ -1792,7 +1795,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true
   },
 
-  consumeConsumable: (itemId) => {
+  consumeConsumable: (itemId, opts) => {
     const { player } = get()
     if (!player) return null
     const item = findConsumableInstance(player.inventory, itemId)
@@ -1800,18 +1803,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const effect = CONSUMABLE_EFFECTS[itemId]
     if (!effect) return null
 
+    const inCombat = opts?.combatHp != null && opts?.combatMaxHp != null
     const result: { healHp?: number; energy?: number } = {}
 
     if (effect.healPercent > 0) {
-      const maxHp = getCombatMaxHp(player)
-      const current = getPlayerCurrentHp(player)
+      const maxHp = opts?.combatMaxHp ?? getCombatMaxHp(player)
+      const current = inCombat ? opts!.combatHp! : getPlayerCurrentHp(player)
       if (current >= maxHp) return null
       const heal = Math.floor(maxHp * effect.healPercent)
       result.healHp = heal
-      get().updatePlayer({
-        currentHp: Math.min(maxHp, current + heal),
-        hpLastRegenAt: new Date().toISOString(),
-      })
+      if (!inCombat) {
+        get().updatePlayer({
+          currentHp: Math.min(maxHp, current + heal),
+          hpLastRegenAt: new Date().toISOString(),
+        })
+      }
     }
 
     if (effect.energy > 0) {
