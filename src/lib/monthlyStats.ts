@@ -57,6 +57,36 @@ export const MONTHLY_RANK_REWARDS: Record<1 | 2 | 3, { gold: number; gems: numbe
 
 export const MONTHLY_LIVE_TOP_COUNT = 5
 
+/** Rewards can be claimed only during the last N days of the month. */
+export const MONTHLY_REWARD_CLAIM_WINDOW_DAYS = 5
+
+export function isMonthlyRewardClaimWindowOpen(date = new Date()): boolean {
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  const firstClaimDay = lastDay - MONTHLY_REWARD_CLAIM_WINDOW_DAYS + 1
+  return date.getDate() >= firstClaimDay
+}
+
+export function getDaysUntilMonthlyRewardClaim(date = new Date()): number {
+  if (isMonthlyRewardClaimWindowOpen(date)) return 0
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  const firstClaimDay = lastDay - MONTHLY_REWARD_CLAIM_WINDOW_DAYS + 1
+  return Math.max(0, firstClaimDay - date.getDate())
+}
+
+export function getMonthlyRewardClaimStartDay(date = new Date()): number {
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  return lastDay - MONTHLY_REWARD_CLAIM_WINDOW_DAYS + 1
+}
+
+export function formatMonthlyRewardClaimHint(date = new Date()): string {
+  if (isMonthlyRewardClaimWindowOpen(date)) {
+    return `Окно получения наград открыто (последние ${MONTHLY_REWARD_CLAIM_WINDOW_DAYS} дн. месяца)`
+  }
+  const startDay = getMonthlyRewardClaimStartDay(date)
+  const days = getDaysUntilMonthlyRewardClaim(date)
+  return `Забрать награды можно с ${startDay} числа (через ${days} дн.)`
+}
+
 export const MONTHLY_RANK_BONUSES: Record<1 | 2 | 3, string> = {
   1: 'Титул «Чемпион месяца» и значок в профиле',
   2: 'Значок «Серебряный призёр» в профиле',

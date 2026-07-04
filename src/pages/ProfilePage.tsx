@@ -15,7 +15,7 @@ import { useRef, useState } from 'react'
 import { shareInviteLink, hapticSuccess, hapticError, showTelegramAlert } from '@/lib/telegram'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { formatStarsPriceLabel } from '@/data/starShop'
-import { getCombatMaxHp, hasDeathDebuff } from '@/lib/playerStats'
+import { getCombatMaxHp, hasDeathDebuff, formatDodgePercent } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
@@ -216,7 +216,7 @@ export function ProfilePage() {
             <Progress value={(player.exp / xpNeeded) * 100} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-center">
+          <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-aether-bg rounded-lg p-2">
               <div className="text-lg font-bold text-orange-400">{stats.atk}</div>
               <div className="text-[10px] text-slate-500">АТК</div>
@@ -239,6 +239,10 @@ export function ProfilePage() {
             <div className="bg-aether-bg rounded-lg p-2">
               <div className="text-lg font-bold text-yellow-400">{stats.crit}%</div>
               <div className="text-[10px] text-slate-500">КРИТ</div>
+            </div>
+            <div className="bg-aether-bg rounded-lg p-2">
+              <div className="text-lg font-bold text-emerald-400">{formatDodgePercent(stats)}%</div>
+              <div className="text-[10px] text-slate-500">УКЛОН</div>
             </div>
           </div>
 

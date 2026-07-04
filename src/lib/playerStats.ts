@@ -37,6 +37,11 @@ export function getDodgeChance(stats: Pick<EffectiveStats, 'speed' | 'stealth'>)
   return stats.speed * DODGE_SPEED_FACTOR + stats.stealth * DODGE_STEALTH_FACTOR
 }
 
+/** Display dodge as 0–100% (probability × 100, capped at 100). */
+export function formatDodgePercent(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
+  return Math.min(100, Math.round(getDodgeChance(stats) * 1000) / 10)
+}
+
 export function rollDodge(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): boolean {
   return Math.random() < getDodgeChance(stats)
 }

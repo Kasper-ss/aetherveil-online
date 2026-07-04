@@ -7,10 +7,13 @@ import {
   MONTHLY_RANK_REWARDS,
   formatMonthlyCategoryValue,
   formatMonthlyRewardBonus,
+  formatMonthlyRewardClaimHint,
   formatMonthlyRewardLine,
   getGapToBeat,
+  getMonthlyRewardClaimStartDay,
   getMonthlyRewardRank,
   getPlayerMonthlyCategoryValue,
+  isMonthlyRewardClaimWindowOpen,
 } from '@/lib/monthlyStats'
 
 function rankStyle(rank: number): string {
@@ -41,9 +44,11 @@ function MonthlyRankRow({
   const rewardRank = getMonthlyRewardRank(rank)
   const bonus = formatMonthlyRewardBonus(rank)
   const claimKey = `${categoryId}_${rank}`
+  const claimWindowOpen = isMonthlyRewardClaimWindowOpen()
   const canClaim = entry?.telegramId === selfId
     && rewardRank
     && !claimed.includes(claimKey)
+    && claimWindowOpen
   const isMe = entry?.telegramId === selfId
 
   return (
@@ -92,6 +97,11 @@ function MonthlyRankRow({
           >
             Забрать
           </Button>
+        )}
+        {entry?.telegramId === selfId && rewardRank && !claimed.includes(claimKey) && !claimWindowOpen && (
+          <span className="text-[9px] text-slate-500 shrink-0 self-center max-w-[4.5rem] text-right leading-tight">
+            С {getMonthlyRewardClaimStartDay()} числа
+          </span>
         )}
         {entry?.telegramId === selfId && claimed.includes(claimKey) && (
           <span className="text-[10px] text-green-400 shrink-0 self-center">✓</span>
@@ -178,7 +188,7 @@ export function MonthlyLeaderboardPanel({
             {monthKey} · Топ-{MONTHLY_LIVE_TOP_COUNT} обновляется каждые 30 сек
           </p>
           <p className="text-[10px] text-slate-500 text-center">
-            Места 1–3 получают награды в конце месяца — награды показаны у каждой строки
+            Места 1–3 получают награды — {formatMonthlyRewardClaimHint()}
           </p>
           <div className="grid grid-cols-3 gap-1 pt-1">
             {([1, 2, 3] as const).map((rank) => (

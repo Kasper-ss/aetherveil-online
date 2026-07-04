@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -60,6 +60,8 @@ function LeaderboardRow({ entry, selfId, onOpen, valueLabel }: {
   )
 }
 
+const tabContentClass = 'mt-3 data-[state=inactive]:hidden'
+
 export function LeaderboardPage() {
   const navigate = useNavigate()
   const t = useT()
@@ -68,28 +70,42 @@ export function LeaderboardPage() {
   const [allGlobal, setAllGlobal] = useState<LeaderboardEntry[]>([])
   const [friendsBoard, setFriendsBoard] = useState<LeaderboardEntry[]>([])
   const [monthlyBoard, setMonthlyBoard] = useState<MonthlyLeaderboardResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const hasLoadedRef = useRef(false)
 
   useTelegramBackButton(() => navigate('/'), true)
 
-  const loadBoards = useCallback(async () => {
-    if (!player) return
-    setLoading(true)
-    void usePlayerStore.getState().syncPlayerState()
-    const [global, friends, monthly] = await Promise.all([
-      getLeaderboardEntries(player, false),
-      getLeaderboardEntries(player, true),
-      fetchMonthlyLeaderboard(),
-    ])
-    setAllGlobal(global)
-    setFriendsBoard(friends)
-    setMonthlyBoard(monthly ? mergeMonthlyLeaderboardWithPlayer(monthly, player) : null)
-    setLoading(false)
-  }, [player])
+  const loadBoards = useCallback(async (silent = false) => {
+    const currentPlayer = usePlayerStore.getState().player
+    if (!currentPlayer) return
+
+    if (!silent && !hasLoadedRef.current) {
+      setInitialLoading(true)
+    } else if (silent && hasLoadedRef.current) {
+      setRefreshing(true)
+    }
+
+    try {
+      const [global, friends, monthly] = await Promise.all([
+        getLeaderboardEntries(currentPlayer, false),
+        getLeaderboardEntries(currentPlayer, true),
+        fetchMonthlyLeaderboard(),
+      ])
+      setAllGlobal(global)
+      setFriendsBoard(friends)
+      setMonthlyBoard(monthly ? mergeMonthlyLeaderboardWithPlayer(monthly, currentPlayer) : null)
+      hasLoadedRef.current = true
+    } finally {
+      setInitialLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
-    loadBoards()
-    const interval = setInterval(loadBoards, 30_000)
+    void loadBoards()
+    void usePlayerStore.getState().syncPlayerState()
+    const interval = setInterval(() => void loadBoards(true), 30_000)
     return () => clearInterval(interval)
   }, [loadBoards])
 
@@ -104,61 +120,7 @@ export function LeaderboardPage() {
     else hapticError()
   }
 
-  function renderGlobalBoard() {
-    if (loading) {
-      return <p className="text-sm text-slate-500 text-center py-8">Загрузка рейтинга...</p>
-    }
-    if (globalView.top.length === 0) {
-      return <p className="text-sm text-slate-500 text-center py-8">{t('leaderboard.empty')}</p>
-    }
-    return (
-      <div className="space-y-2">
-        <p className="text-[10px] text-slate-500 text-center">Топ-20 по максимальному этажу</p>
-        {globalView.top.map((entry) => (
-          <LeaderboardRow
-            key={entry.telegramId}
-            entry={entry}
-            selfId={selfId}
-            onOpen={(id) => navigate(`/player/${id}`)}
-          />
-        ))}
-        {!globalView.selfInTop && globalView.selfEntry && globalView.selfRank && (
-          <Card className="border-aether-cyan/50 mt-4">
-            <CardContent className="p-3">
-              <p className="text-[10px] text-aether-cyan text-center mb-2">
-                Ваше место в рейтинге: #{globalView.selfRank}
-              </p>
-              <LeaderboardRow
-                entry={globalView.selfEntry}
-                selfId={selfId}
-                onOpen={(id) => navigate(`/player/${id}`)}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    )
-  }
-
-  function renderMonthlyBoard() {
-    if (loading) {
-      return <p className="text-sm text-slate-500 text-center py-8">Загрузка...</p>
-    }
-    if (!monthlyBoard?.categories.length) {
-      return <p className="text-sm text-slate-500 text-center py-8">Нет данных за этот месяц</p>
-    }
-    const claimed = player!.monthlyRewardsClaimed ?? []
-    return (
-      <MonthlyLeaderboardPanel
-        monthKey={monthlyBoard.monthKey}
-        categories={monthlyBoard.categories}
-        player={player!}
-        claimed={claimed}
-        onClaim={handleClaimMonthly}
-        onOpenPlayer={(id) => navigate(`/player/${id}`)}
-      />
-    )
-  }
+  const showInitialPlaceholder = initialLoading && !hasLoadedRef.current
 
   return (
     <div className="h-full overflow-y-auto page-enter">
@@ -167,34 +129,86 @@ export function LeaderboardPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">{t('leaderboard.title')}</h1>
+        {refreshing && (
+          <span className="ml-auto text-[10px] text-slate-500 animate-pulse">обновление…</span>
+        )}
       </div>
 
-      <Tabs defaultValue="global" className="p-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="global" className="flex-1 text-xs">{t('leaderboard.global')}</TabsTrigger>
-          <TabsTrigger value="monthly" className="flex-1 text-xs">Месяц</TabsTrigger>
-          <TabsTrigger value="friends" className="flex-1 text-xs">{t('leaderboard.friends')}</TabsTrigger>
-        </TabsList>
+      {showInitialPlaceholder ? (
+        <p className="text-sm text-slate-500 text-center py-12">Загрузка рейтинга…</p>
+      ) : (
+        <Tabs defaultValue="global" className="p-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="global" className="flex-1 text-xs">{t('leaderboard.global')}</TabsTrigger>
+            <TabsTrigger value="monthly" className="flex-1 text-xs">Месяц</TabsTrigger>
+            <TabsTrigger value="friends" className="flex-1 text-xs">{t('leaderboard.friends')}</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="global">{renderGlobalBoard()}</TabsContent>
-        <TabsContent value="monthly">{renderMonthlyBoard()}</TabsContent>
-        <TabsContent value="friends">
-          {!loading && friendsBoard.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-8">{t('friends.emptyHint')}</p>
-          ) : (
-            <div className="space-y-2">
-              {friendsBoard.map((entry) => (
-                <LeaderboardRow
-                  key={entry.telegramId}
-                  entry={entry}
-                  selfId={selfId}
-                  onOpen={(id) => navigate(`/player/${id}`)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="global" forceMount className={tabContentClass}>
+            {globalView.top.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">{t('leaderboard.empty')}</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 text-center">Топ-20 по максимальному этажу</p>
+                {globalView.top.map((entry) => (
+                  <LeaderboardRow
+                    key={entry.telegramId}
+                    entry={entry}
+                    selfId={selfId}
+                    onOpen={(id) => navigate(`/player/${id}`)}
+                  />
+                ))}
+                {!globalView.selfInTop && globalView.selfEntry && globalView.selfRank && (
+                  <Card className="border-aether-cyan/50 mt-4">
+                    <CardContent className="p-3">
+                      <p className="text-[10px] text-aether-cyan text-center mb-2">
+                        Ваше место в рейтинге: #{globalView.selfRank}
+                      </p>
+                      <LeaderboardRow
+                        entry={globalView.selfEntry}
+                        selfId={selfId}
+                        onOpen={(id) => navigate(`/player/${id}`)}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="monthly" forceMount className={tabContentClass}>
+            {!monthlyBoard?.categories.length ? (
+              <p className="text-sm text-slate-500 text-center py-8">Нет данных за этот месяц</p>
+            ) : (
+              <MonthlyLeaderboardPanel
+                monthKey={monthlyBoard.monthKey}
+                categories={monthlyBoard.categories}
+                player={player}
+                claimed={player.monthlyRewardsClaimed ?? []}
+                onClaim={handleClaimMonthly}
+                onOpenPlayer={(id) => navigate(`/player/${id}`)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="friends" forceMount className={tabContentClass}>
+            {friendsBoard.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">{t('friends.emptyHint')}</p>
+            ) : (
+              <div className="space-y-2">
+                {friendsBoard.map((entry) => (
+                  <LeaderboardRow
+                    key={entry.telegramId}
+                    entry={entry}
+                    selfId={selfId}
+                    onOpen={(id) => navigate(`/player/${id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   )
 }

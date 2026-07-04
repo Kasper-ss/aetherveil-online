@@ -74,7 +74,7 @@ import {
 import { findAlchemyRecipe, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
-import { bumpMonthlyStat, MONTHLY_RANK_REWARDS } from '@/lib/monthlyStats'
+import { bumpMonthlyStat, MONTHLY_RANK_REWARDS, isMonthlyRewardClaimWindowOpen } from '@/lib/monthlyStats'
 import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
 import { WORLD_BOSS_REWARDS } from '@/data/worldBoss'
 import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
@@ -2110,6 +2110,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   claimMonthlyReward: (categoryId, rank) => {
     const { player } = get()
     if (!player || rank < 1 || rank > 3) return false
+    if (!isMonthlyRewardClaimWindowOpen()) return false
     const key = `${categoryId}_${rank}`
     const claimed = player.monthlyRewardsClaimed ?? []
     if (claimed.includes(key)) return false
