@@ -15,6 +15,7 @@ import {
   isPropertyUnlockedForPlayer,
   isRealEstateUnlocked,
   PROPERTY_SELL_REFUND_RATE,
+  UNLIMITED_PROPERTY_ID,
 } from '@/data/realEstate'
 
 export function RealEstatePage() {
@@ -115,7 +116,8 @@ export function RealEstatePage() {
               Владейте одним домом — каждый даёт уникальный бонус. Новый тип открывается каждые 5 уровней.
             </p>
             <p className="text-xs text-slate-400">
-              Слотов на дом: растут с числом игроков ({formatNumber(totalPlayers)} в игре).
+              Слоты на дом растут с числом игроков ({formatNumber(totalPlayers)} в игре).
+              Таунхаус Восхождения — без ограничений.
               Продажа — {Math.round(PROPERTY_SELL_REFUND_RATE * 100)}% от цены покупки.
             </p>
             {message && (
@@ -153,7 +155,8 @@ export function RealEstatePage() {
           const unlocked = isPropertyUnlockedForPlayer(player, property)
           const isOwned = ownedId === property.id
           const slot = slotCounts[property.id]
-          const full = slot ? slot.owned >= slot.limit : false
+          const unlimited = property.id === UNLIMITED_PROPERTY_ID
+          const full = !unlimited && slot ? slot.owned >= slot.limit : false
           const canBuy = unlocked && !ownedId && !isOwned && !full && player.gold >= property.goldCost
 
           return (
@@ -184,7 +187,9 @@ export function RealEstatePage() {
                       <span className="text-sm text-aether-gold">🪙 {formatNumber(property.goldCost)}</span>
                       {slot && (
                         <span className={`text-[10px] ${full ? 'text-red-400' : 'text-slate-400'}`}>
-                          Слоты: {slot.owned}/{slot.limit}
+                          {unlimited
+                            ? `Владельцев: ${slot.owned} · без лимита`
+                            : `Слоты: ${slot.owned}/${slot.limit}`}
                         </span>
                       )}
                     </div>

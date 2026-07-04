@@ -106,6 +106,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
 ]
 
 export const PROPERTY_SELL_REFUND_RATE = 0.7
+export const UNLIMITED_PROPERTY_ID = 'ascension_townhouse'
 
 export function getPropertyById(id: string): PropertyDef | undefined {
   return REAL_ESTATE_PROPERTIES.find((p) => p.id === id)

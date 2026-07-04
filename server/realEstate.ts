@@ -40,6 +40,8 @@ function getSupabase(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
+export const UNLIMITED_PROPERTY_ID = 'ascension_townhouse'
+
 /** Owner slots per property type — grows with total registered players. */
 export function getPropertyOwnerLimit(totalPlayers: number): number {
   if (totalPlayers < 15) return 5
@@ -47,6 +49,11 @@ export function getPropertyOwnerLimit(totalPlayers: number): number {
   if (totalPlayers < 100) return 20
   if (totalPlayers < 250) return 35
   return 50
+}
+
+export function getPropertySlotLimit(propertyId: string, totalPlayers: number): number {
+  if (propertyId === UNLIMITED_PROPERTY_ID) return Number.MAX_SAFE_INTEGER
+  return getPropertyOwnerLimit(totalPlayers)
 }
 
 const PROPERTY_IDS = [
@@ -100,7 +107,6 @@ async function deleteOwnership(ownerId: number): Promise<void> {
 }
 
 function buildAvailability(rows: PropertyOwnershipRecord[], totalPlayers: number): PropertyAvailabilityDto[] {
-  const limit = getPropertyOwnerLimit(totalPlayers)
   const counts: Record<string, number> = {}
   for (const id of PROPERTY_IDS) counts[id] = 0
   for (const row of rows) {
@@ -109,7 +115,7 @@ function buildAvailability(rows: PropertyOwnershipRecord[], totalPlayers: number
   return PROPERTY_IDS.map((propertyId) => ({
     propertyId,
     owned: counts[propertyId] ?? 0,
-    limit,
+    limit: getPropertySlotLimit(propertyId, totalPlayers),
   }))
 }
 
@@ -134,7 +140,6 @@ export async function processPropertyAction(input: {
   const rows = await loadAllOwnership()
   const totalPlayers = await countTotalPlayers()
   const availability = buildAvailability(rows, totalPlayers)
-  const limit = getPropertyOwnerLimit(totalPlayers)
   const existing = rows.find((r) => r.owner_id === input.telegramId)
 
   if (!input.action || input.action === 'status') {
@@ -173,7 +178,8 @@ export async function processPropertyAction(input: {
       return { ok: false, error: 'Неизвестный дом', availability, totalPlayers }
     }
     const slot = availability.find((a) => a.propertyId === input.propertyId)
-    if (slot && slot.owned >= limit) {
+    const slotLimit = getPropertySlotLimit(input.propertyId, totalPlayers)
+    if (slot && slot.owned >= slotLimit) {
       return { ok: false, error: 'Все слоты этого дома заняты', availability, totalPlayers }
     }
     const price = input.expectedPrice ?? 0
