@@ -17,6 +17,7 @@ import {
 import { handleBossDefeated } from '@/lib/bossPhases'
 import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked } from '@/data/worldBoss'
 import { createItemInstance } from '@/data/items'
+import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
 
 interface CombatStore {
   combat: CombatState | null
@@ -115,34 +116,40 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const maxHp = getCombatMaxHp(player)
     const startHp = Math.max(1, getPlayerCurrentHp(player))
 
+    const scaledEnemy = scaleEnemyForPlayerPower(enemy, player, floor)
+    const easeHint = formatCombatEaseHint(player, floor)
+
     const startLogs: CombatLogEntry[] = [
       logEntry(
-        enemy.isMiniBoss
-          ? `👹 Мини-босс: ${enemy.name}!`
-          : enemy.isEpic
-            ? `⚡ Эпический противник: ${enemy.name}!`
-            : `⚔️ Бой начался: ${enemy.name}!`,
+        scaledEnemy.isMiniBoss
+          ? `👹 Мини-босс: ${scaledEnemy.name}!`
+          : scaledEnemy.isEpic
+            ? `⚡ Эпический противник: ${scaledEnemy.name}!`
+            : `⚔️ Бой начался: ${scaledEnemy.name}!`,
         'system',
       ),
     ]
-    const abilityHint = formatEnemyAbilityHint(enemy, floor)
+    if (easeHint) {
+      startLogs.push(logEntry(`📈 ${easeHint}`, 'system'))
+    }
+    const abilityHint = formatEnemyAbilityHint(scaledEnemy, floor)
     if (abilityHint) {
       startLogs.push(logEntry(`⚠️ Способности: ${abilityHint}`, 'system'))
     }
 
     const combat: CombatState = {
-      enemy,
+      enemy: scaledEnemy,
       playerHp: startHp,
       playerMaxHp: maxHp,
-      enemyHp: enemy.stats.hp,
-      enemyMaxHp: enemy.stats.hp,
+      enemyHp: scaledEnemy.stats.hp,
+      enemyMaxHp: scaledEnemy.stats.hp,
       combo: 0,
       skillCooldowns: {},
-      isBoss: isBoss ?? !!enemy.isBoss,
-      isEpic: !!enemy.isEpic,
-      isMiniBoss: !!enemy.isMiniBoss,
+      isBoss: isBoss ?? !!scaledEnemy.isBoss,
+      isEpic: !!scaledEnemy.isEpic,
+      isMiniBoss: !!scaledEnemy.isMiniBoss,
       floor,
-      bossPhase: (isBoss ?? !!enemy.isBoss) && floor >= 5 ? 1 : undefined,
+      bossPhase: (isBoss ?? !!scaledEnemy.isBoss) && floor >= 5 ? 1 : undefined,
       enemyCombat: createEnemyCombatState(),
       combatLog: startLogs,
       turn: 1,
@@ -246,7 +253,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const stats = getEffectiveStats(player)
     const comboBonus = 1 + combat.combo * 0.04
     const isCrit = rollCrit(stats.crit, player.classId)
-    const baseDmg = stats.atk * comboBonus
+    const levelEase = getPlayerCombatEase(player, combat.floor)
+    const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult
     const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * 0.4)
     const finalDmg = Math.max(1, rawDmg)
     const hit = applyDamageToEnemy(combat, finalDmg)
@@ -343,7 +351,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const stats = getEffectiveStats(player)
     const isCrit = rollCrit(stats.crit + 10, player.classId)
-    let damage = Math.floor(stats.atk * scaled.damageMultiplier * (isCrit ? 2 : 1) - combat.enemy.stats.def * 0.3)
+    const levelEase = getPlayerCombatEase(player, combat.floor)
+    let damage = Math.floor(
+      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * (isCrit ? 2 : 1)
+      - combat.enemy.stats.def * 0.3,
+    )
     const finalDmg = Math.max(1, damage)
     const hit = applyDamageToEnemy(combat, finalDmg)
     logs.push(...hit.logs)

@@ -12,7 +12,11 @@ import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmen
 import {
   canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
 } from '@/lib/rarityUpgrade'
-import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU } from '@/data/items'
+import {
+  ALL_ITEMS, formatItemStats, RARITY_LABELS_RU,
+  getItemStatDeltaPreview, formatStatDelta,
+  getUpgradeLevelStepPercent, getStarStepPercent, getItemStatMultiplier,
+} from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -316,14 +320,17 @@ export function ForgePage() {
                   <Badge variant={selectedItem.rarity}>{RARITY_LABELS_RU[selectedItem.rarity]}</Badge>
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(selectedItem)}</p>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Ур.{selectedItem.upgradeLevel ?? 1} · ★{selectedItem.starLevel ?? 0} · +{((selectedItem.upgradeLevel ?? 1) - 1) * 8 + (selectedItem.starLevel ?? 0) * 5}% к бонусам
+                    Ур.{selectedItem.upgradeLevel ?? 1} · ★{selectedItem.starLevel ?? 0} · ×{getItemStatMultiplier(selectedItem).toFixed(2)} к бонусам
                   </p>
                 </div>
 
                 {(selectedItem.upgradeLevel ?? 1) < 10 && (
                   <div className="bg-aether-bg rounded-lg p-3">
                     <p className="text-xs font-medium text-white mb-1">Улучшение уровня → {(selectedItem.upgradeLevel ?? 1) + 1}</p>
-                    <p className="text-[10px] text-slate-400 mb-2">+8% к статам за уровень.</p>
+                    <p className="text-[10px] text-aether-gold mb-1">
+                      +{getUpgradeLevelStepPercent((selectedItem.upgradeLevel ?? 1) + 1)}% к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'level'))}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, upgradeLevel: (selectedItem.upgradeLevel ?? 1) + 1 })}</p>
                     {(() => {
                       const c = getUpgradeLevelCost(selectedItem)
                       return (
@@ -341,7 +348,10 @@ export function ForgePage() {
                 {(selectedItem.starLevel ?? 0) < 10 && (
                   <div className="bg-aether-bg rounded-lg p-3">
                     <p className="text-xs font-medium text-white mb-1">Звёздность → {(selectedItem.starLevel ?? 0) + 1}★</p>
-                    <p className="text-[10px] text-slate-400 mb-2">+5% к статам за звезду.</p>
+                    <p className="text-[10px] text-aether-gold mb-1">
+                      +{getStarStepPercent((selectedItem.starLevel ?? 0) + 1)}% к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'star'))}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, starLevel: (selectedItem.starLevel ?? 0) + 1 })}</p>
                     {(() => {
                       const c = getStarUpgradeCost(selectedItem)
                       return (

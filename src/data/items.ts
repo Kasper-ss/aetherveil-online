@@ -425,10 +425,61 @@ export function createItemInstance(templateId: string): Item | null {
   return ensureItemDurability(base)
 }
 
-export function getEffectiveItemStats(item: Item): Partial<Stats> {
+export function getUpgradeLevelStepPercent(level: number): number {
+  if (level <= 3) return 6
+  if (level <= 7) return 10
+  return 14
+}
+
+export function getStarStepPercent(star: number): number {
+  if (star <= 4) return 7
+  if (star <= 7) return 9
+  return 12
+}
+
+export function getUpgradeLevelStatBonus(level: number): number {
+  if (level <= 1) return 0
+  let bonus = 0
+  for (let i = 2; i <= level; i++) bonus += getUpgradeLevelStepPercent(i) / 100
+  return bonus
+}
+
+export function getStarStatBonus(stars: number): number {
+  let bonus = 0
+  for (let i = 1; i <= stars; i++) bonus += getStarStepPercent(i) / 100
+  return bonus
+}
+
+export function getItemStatMultiplier(item: Item): number {
   const lvl = item.upgradeLevel ?? 1
   const stars = item.starLevel ?? 0
-  const mult = 1 + (lvl - 1) * 0.08 + stars * 0.05
+  return 1 + getUpgradeLevelStatBonus(lvl) + getStarStatBonus(stars)
+}
+
+export function getItemStatDeltaPreview(item: Item, kind: 'level' | 'star'): Partial<Stats> {
+  const current = getEffectiveItemStats(item)
+  const nextItem = kind === 'level'
+    ? { ...item, upgradeLevel: Math.min(10, (item.upgradeLevel ?? 1) + 1) }
+    : { ...item, starLevel: Math.min(10, (item.starLevel ?? 0) + 1) }
+  const next = getEffectiveItemStats(nextItem)
+  const delta: Partial<Stats> = {}
+  for (const key of Object.keys(next) as (keyof Stats)[]) {
+    const diff = (next[key] ?? 0) - (current[key] ?? 0)
+    if (diff > 0) delta[key] = diff
+  }
+  return delta
+}
+
+export function formatStatDelta(delta: Partial<Stats>): string {
+  const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+  const parts = Object.entries(delta)
+    .filter(([, v]) => v && v > 0)
+    .map(([k, v]) => `+${v} ${labels[k] ?? k}`)
+  return parts.length ? parts.join(', ') : ''
+}
+
+export function getEffectiveItemStats(item: Item): Partial<Stats> {
+  const mult = getItemStatMultiplier(item)
   const duraMult = getDurabilityStatMult(item)
   const maxDura = item.maxDurability ?? getMaxDurability(item)
   const currentDura = item.durability ?? maxDura
