@@ -20,7 +20,9 @@ export { SKILLS, CLASS_SKILL_TREES, getSkillUpgradeCost, getScaledSkill, SKILL_M
 
 const BASE_SHOP: ShopItem[] = [
   { id: 'shop_hp_potion', name: 'HP Potion x5', nameRu: 'Зелье HP x5', description: '5 healing potions', descriptionRu: 'Набор из 5 зелий лечения.', type: 'consumable', goldPrice: 100, icon: '🧪', itemId: 'hp_potion', bundleCount: 5 },
+  { id: 'shop_hp_potion_big', name: 'Big HP Potion x5', nameRu: 'Большое зелье HP x5', description: '5 epic healing potions', descriptionRu: 'Набор из 5 больших зелий (80% HP).', type: 'consumable', goldPrice: 420, icon: '🧪', itemId: 'hp_potion_epic', bundleCount: 5 },
   { id: 'shop_energy', name: 'Energy x3', nameRu: 'Энергетик x3', description: 'Restore energy', descriptionRu: 'Восстановление энергии.', type: 'convenience', goldPrice: 75, icon: '⚡', itemId: 'energy_drink', bundleCount: 3 },
+  { id: 'shop_energy_big', name: 'Big Energy x3', nameRu: 'Большой энергетик x3', description: '3 powerful energy drinks', descriptionRu: 'Набор из 3 мощных энергетиков (+50).', type: 'convenience', goldPrice: 165, icon: '⚡', itemId: 'energy_drink_rare', bundleCount: 3 },
   { id: 'shop_aether_skin', name: 'Aether Skin', nameRu: 'Эфирная аура', description: 'Cosmetic', descriptionRu: 'Косметический эффект ауры.', type: 'cosmetic', starsPrice: 100, icon: '✨' },
   { id: 'shop_idle_boost', name: 'Idle Boost', nameRu: 'Буст простоя', description: '2x idle 24h', descriptionRu: 'x2 награды простоя на 24ч.', type: 'convenience', gemsPrice: 30, icon: '📈' },
 ]
@@ -184,6 +186,10 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     bankBalance: player.bankBalance ?? 0,
     bankLastInterestAt: player.bankLastInterestAt ?? new Date().toISOString(),
     bankPendingInterest: player.bankPendingInterest ?? 0,
+    stockPortfolio: player.stockPortfolio ?? {},
+    stockPendingDividends: player.stockPendingDividends ?? 0,
+    stockLastDividendAt: player.stockLastDividendAt ?? new Date().toISOString(),
+    stockLimitOrders: player.stockLimitOrders ?? [],
     buffFateGoldUntil: player.buffFateGoldUntil,
     buffFateExpUntil: player.buffFateExpUntil,
     fateCardLastUsedAt: player.fateCardLastUsedAt,

@@ -13,9 +13,10 @@ import {
   canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
 } from '@/lib/rarityUpgrade'
 import {
-  ALL_ITEMS, formatItemStats, RARITY_LABELS_RU,
+  ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, sortGearItems,
   getItemStatDeltaPreview, formatStatDelta,
   getUpgradeLevelStepPercent, getStarStepPercent, getItemStatMultiplier,
+  type GearSortMode,
 } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
@@ -49,6 +50,8 @@ export function ForgePage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedRepairItem, setSelectedRepairItem] = useState<Item | null>(null)
   const [selectedRarityItem, setSelectedRarityItem] = useState<Item | null>(null)
+  const [raritySource, setRaritySource] = useState<'inventory' | 'equipped'>('inventory')
+  const [raritySort, setRaritySort] = useState<GearSortMode>('type')
   const [upgradeSource, setUpgradeSource] = useState<'inventory' | 'equipped'>('inventory')
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
@@ -74,7 +77,13 @@ export function ForgePage() {
   ]
   const damagedGear = allGear.filter((i) => needsRepair(ensureItemDurability(i)))
   const repairAllCost = getRepairAllCost()
-  const rarityCandidates = player.inventory.filter((i) => canUpgradeRarity(i))
+  const rarityCandidates = sortGearItems(
+    (raritySource === 'inventory'
+      ? player.inventory
+      : equippableEquipped
+    ).filter((i) => canUpgradeRarity(i)),
+    raritySort,
+  )
 
   function showMissing(title: string, missing: MissingCost[]) {
     if (missing.length === 0) return false
@@ -444,8 +453,48 @@ export function ForgePage() {
 
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
-            Повысьте редкость предмета: нужно {RARITY_DUPLICATES_REQUIRED} копии + ресурсы. Только предметы из инвентаря.
+            Повысьте редкость: нужно {RARITY_DUPLICATES_REQUIRED} копии + ресурсы. Можно улучшать надетые предметы.
           </p>
+          <div className="flex gap-2 mb-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={raritySource === 'inventory' ? 'default' : 'outline'}
+              className="flex-1 text-xs"
+              onClick={() => { setRaritySource('inventory'); setSelectedRarityItem(null) }}
+            >
+              Инвентарь
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={raritySource === 'equipped' ? 'default' : 'outline'}
+              className="flex-1 text-xs"
+              onClick={() => { setRaritySource('equipped'); setSelectedRarityItem(null) }}
+            >
+              Надетое
+            </Button>
+          </div>
+          <div className="flex gap-2 mb-3">
+            <Button
+              type="button"
+              size="sm"
+              variant={raritySort === 'type' ? 'secondary' : 'outline'}
+              className="flex-1 text-[10px]"
+              onClick={() => setRaritySort('type')}
+            >
+              По типу
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={raritySort === 'rarity' ? 'secondary' : 'outline'}
+              className="flex-1 text-[10px]"
+              onClick={() => setRaritySort('rarity')}
+            >
+              По редкости
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {rarityCandidates.map((item) => (
               <Card

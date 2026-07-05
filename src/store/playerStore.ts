@@ -32,6 +32,7 @@ import {
   canDrawFateCard, FATE_CARD_BUFF_DURATION_MS,
 } from '@/lib/fateCards'
 import { calcBankInterest } from '@/lib/bank'
+import { accrueStockDividends as calcStockDividends } from '@/lib/stocks'
 import {
   applyBlacksmithCraftBonuses, applyBlacksmithCraftCost,
   getBlacksmithDoubleCraftChance,
@@ -161,6 +162,12 @@ interface PlayerState {
   collectBankInterest: () => boolean
   depositToBank: (amount: number) => boolean
   withdrawFromBank: (amount: number) => boolean
+  buyStock: (symbolId: string, shares: number, totalGold: number, pricePerShare: number) => boolean
+  sellStock: (symbolId: string, shares: number, totalGold: number) => boolean
+  accrueStockDividends: (quotes: import('@/types/game').StockQuote[]) => void
+  collectStockDividends: () => boolean
+  addStockLimitOrder: (order: import('@/types/game').StockLimitOrder) => boolean
+  cancelStockLimitOrder: (orderId: string) => boolean
   allocateStat: (key: AllocStatKey, points?: number) => boolean
   grantBonusStats: (points: number, gold: number, gems: number) => void
   getCraftMissing: (recipeId: string) => MissingCost[]
@@ -826,6 +833,94 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true
   },
 
+  buyStock: (symbolId, shares, totalGold, pricePerShare) => {
+    if (!get().spendGold(totalGold)) return false
+    const { player } = get()
+    if (!player) return false
+    const portfolio = { ...(player.stockPortfolio ?? {}) }
+    const cur = portfolio[symbolId] ?? { shares: 0, avgCost: 0 }
+    const newShares = cur.shares + shares
+    portfolio[symbolId] = {
+      shares: newShares,
+      avgCost: newShares > 0
+        ? Math.floor((cur.avgCost * cur.shares + totalGold) / newShares)
+        : pricePerShare,
+    }
+    get().updatePlayer({ stockPortfolio: portfolio })
+    return true
+  },
+
+  sellStock: (symbolId, shares, totalGold) => {
+    const { player } = get()
+    if (!player) return false
+    const portfolio = { ...(player.stockPortfolio ?? {}) }
+    const cur = portfolio[symbolId]
+    if (!cur || cur.shares < shares) return false
+    const nextShares = cur.shares - shares
+    if (nextShares <= 0) delete portfolio[symbolId]
+    else portfolio[symbolId] = { ...cur, shares: nextShares }
+    get().updatePlayer({ stockPortfolio: portfolio })
+    get().addGold(totalGold)
+    return true
+  },
+
+  accrueStockDividends: (quotes) => {
+    const { player } = get()
+    if (!player || quotes.length === 0) return
+    const accrued = calcStockDividends(player, quotes)
+    if (accrued <= 0) return
+    get().updatePlayer({
+      stockPendingDividends: (player.stockPendingDividends ?? 0) + accrued,
+      stockLastDividendAt: new Date().toISOString(),
+    })
+  },
+
+  collectStockDividends: () => {
+    const { player } = get()
+    if (!player) return false
+    const pending = player.stockPendingDividends ?? 0
+    if (pending <= 0) return false
+    get().updatePlayer({
+      gold: player.gold + pending,
+      stockPendingDividends: 0,
+      monthlyStats: bumpMonthlyStat(player, 'goldEarned', pending),
+    })
+    return true
+  },
+
+  addStockLimitOrder: (order) => {
+    const { player } = get()
+    if (!player) return false
+    if (order.side === 'buy') {
+      const cost = order.limitPrice * order.shares
+      if (!get().spendGold(cost)) return false
+    } else {
+      const pos = player.stockPortfolio?.[order.symbolId]
+      const reserved = (player.stockLimitOrders ?? [])
+        .filter((o) => o.symbolId === order.symbolId && o.side === 'sell')
+        .reduce((s, o) => s + o.shares, 0)
+      if (!pos || pos.shares - reserved < order.shares) return false
+    }
+    get().updatePlayer({
+      stockLimitOrders: [...(player.stockLimitOrders ?? []), order],
+    })
+    return true
+  },
+
+  cancelStockLimitOrder: (orderId) => {
+    const { player } = get()
+    if (!player) return false
+    const order = (player.stockLimitOrders ?? []).find((o) => o.id === orderId)
+    if (!order) return false
+    const rest = (player.stockLimitOrders ?? []).filter((o) => o.id !== orderId)
+    const updates: Partial<Player> = { stockLimitOrders: rest }
+    if (order.side === 'buy') {
+      updates.gold = player.gold + order.limitPrice * order.shares
+    }
+    get().updatePlayer(updates)
+    return true
+  },
+
   changeDisplayName: (name) => {
     const trimmed = name.trim().slice(0, 20)
     if (trimmed.length < 2) return false
@@ -1187,6 +1282,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!buff) return false
     const item = player.inventory.find((i) => i.id === itemId)
     if (!item?.instanceId) return false
+    const oldMaxHp = getCombatMaxHp(player)
+    const oldCurrentHp = getPlayerCurrentHp(player)
     get().removeItemByInstance(item.instanceId)
     const effects = addActiveEffect(player.activeEffects, {
       id: `food_${itemId}`,
@@ -1196,7 +1293,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       mult: buff.mult,
       durationMs: buff.durationMs,
     })
-    get().updatePlayer({ activeEffects: effects })
+    const merged = { ...player, activeEffects: effects }
+    const newMaxHp = getCombatMaxHp(merged)
+    const hpApplies = buff.stat === 'hp' || buff.stat === 'all'
+    let currentHp = oldCurrentHp
+    if (hpApplies && newMaxHp > oldMaxHp && oldMaxHp > 0) {
+      currentHp = Math.min(newMaxHp, Math.floor(oldCurrentHp * (newMaxHp / oldMaxHp)))
+    }
+    get().updatePlayer({ activeEffects: effects, currentHp })
     return true
   },
 

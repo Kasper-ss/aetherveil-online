@@ -44,3 +44,11 @@ CREATE TABLE IF NOT EXISTS property_ownership (
 );
 
 CREATE INDEX IF NOT EXISTS idx_property_ownership_property ON property_ownership (property_id);
+
+CREATE TABLE IF NOT EXISTS stock_market_state (
+  symbol_id TEXT PRIMARY KEY,
+  price NUMERIC NOT NULL,
+  last_tick_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  history JSONB NOT NULL DEFAULT '[]',
+  price_7d_ago NUMERIC NOT NULL DEFAULT 0
+);

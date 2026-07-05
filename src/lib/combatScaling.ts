@@ -141,3 +141,23 @@ export function formatCombatEaseHint(player: Player, floor: number): string | nu
 export function getRecommendedLevelForFloor(floor: number): number {
   return Math.max(1, Math.floor((floor - 1) * 2 + 4))
 }
+
+export interface FloorStatRequirements {
+  minAtk: number
+  minDef: number
+  recommendedAtk: number
+  recommendedDef: number
+}
+
+/** Minimum and recommended ATK/DEF for comfortable floor progression. */
+export function getFloorStatRequirements(floor: number): FloorStatRequirements {
+  const f = Math.max(1, floor)
+  const baseAtk = 14 + f * 15
+  const baseDef = Math.floor(7 + f * 7.5)
+  return {
+    minAtk: Math.floor(baseAtk * 0.72),
+    minDef: Math.floor(baseDef * 0.72),
+    recommendedAtk: baseAtk,
+    recommendedDef: baseDef,
+  }
+}

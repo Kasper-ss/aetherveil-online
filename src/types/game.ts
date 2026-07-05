@@ -190,6 +190,24 @@ export interface FloorData {
   idleExpPerHour: number
 }
 
+export interface StockLimitOrder {
+  id: string
+  symbolId: string
+  side: 'buy' | 'sell'
+  limitPrice: number
+  shares: number
+  createdAt: string
+}
+
+export interface StockQuote {
+  symbolId: string
+  price: number
+  change24h: number
+  change7d: number
+  history7d: number[]
+  dividendRateDaily: number
+}
+
 export interface Player {
   telegramId: number
   username: string
@@ -266,6 +284,10 @@ export interface Player {
   bankBalance?: number
   bankLastInterestAt?: string
   bankPendingInterest?: number
+  stockPortfolio?: Record<string, { shares: number; avgCost: number }>
+  stockPendingDividends?: number
+  stockLastDividendAt?: string
+  stockLimitOrders?: StockLimitOrder[]
   buffInfiniteEnergyUntil?: string
   buffDoubleExpUntil?: string
   buffTripleGoldUntil?: string

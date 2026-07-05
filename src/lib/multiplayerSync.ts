@@ -224,3 +224,62 @@ export async function buyServerMarketListing(listingId: string): Promise<MarketL
     return null
   }
 }
+
+export async function fetchStockQuotes(): Promise<{
+  quotes: import('@/types/game').StockQuote[]
+  topGainers: Array<{ symbolId: string; change7d: number }>
+} | null> {
+  const initData = getInitData()
+  try {
+    const qs = initData ? `?initData=${encodeURIComponent(initData)}` : ''
+    const res = await fetch(`/api/stocks/quotes${qs}`)
+    const data = await res.json() as {
+      quotes?: import('@/types/game').StockQuote[]
+      topGainers?: Array<{ symbolId: string; change7d: number }>
+    }
+    if (!res.ok || !data.quotes) return null
+    return { quotes: data.quotes, topGainers: data.topGainers ?? [] }
+  } catch {
+    return null
+  }
+}
+
+export async function tradeStockOnServer(opts: {
+  symbolId: string
+  side: 'buy' | 'sell'
+  shares: number
+  expectedPrice: number
+  orderType?: 'market' | 'limit'
+  limitPrice?: number
+}): Promise<{
+  ok: boolean
+  executed?: boolean
+  orderId?: string
+  totalGold?: number
+  price?: number
+  quotes?: import('@/types/game').StockQuote[]
+  topGainers?: Array<{ symbolId: string; change7d: number }>
+  error?: string
+} | null> {
+  const initData = getInitData()
+  if (!initData) return null
+  try {
+    const res = await fetch('/api/stocks/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, action: 'trade', ...opts }),
+    })
+    return await res.json() as {
+      ok: boolean
+      executed?: boolean
+      orderId?: string
+      totalGold?: number
+      price?: number
+      quotes?: import('@/types/game').StockQuote[]
+      topGainers?: Array<{ symbolId: string; change7d: number }>
+      error?: string
+    }
+  } catch {
+    return null
+  }
+}

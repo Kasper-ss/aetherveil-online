@@ -13,7 +13,8 @@ import { getFloorData } from '@/data/gameData'
 import { makeEpicEnemy, makeMiniBoss, MAX_MINI_BOSSES_PER_FLOOR, MINI_BOSS_SPAWN_CHANCE } from '@/data/floors'
 import { pickFloorEvent, rollExploreType, type FloorEventChoice } from '@/data/floorEvents'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
-import { getPlayerCurrentHp } from '@/lib/playerStats'
+import { getPlayerCurrentHp, getEffectiveStats } from '@/lib/playerStats'
+import { getFloorStatRequirements } from '@/lib/combatScaling'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
 import { hapticImpact, hapticError, hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
@@ -52,6 +53,12 @@ export function TowerPage() {
   const miniBossLeft = MAX_MINI_BOSSES_PER_FLOOR - miniBossKills
   const canBoss = mobsKilled >= mobsRequired
   const activeEffects = getActiveEffects(player)
+  const playerStats = getEffectiveStats(player)
+  const floorReq = getFloorStatRequirements(farmFloor)
+  const atkOk = playerStats.atk >= floorReq.recommendedAtk
+  const defOk = playerStats.def >= floorReq.recommendedDef
+  const atkMinOk = playerStats.atk >= floorReq.minAtk
+  const defMinOk = playerStats.def >= floorReq.minDef
 
   function beginCombat(enemy: FloorEnemy, floorNum: number, isBoss = false) {
     startCombat(enemy, floorNum, isBoss)
@@ -185,7 +192,40 @@ export function TowerPage() {
         <p className="absolute bottom-2 left-3 right-3 text-[10px] text-slate-400 text-center">{floor.description}</p>
       </div>
 
-      <Card className="mx-4 mt-4">
+      <Card className="mx-4 mt-4 border-aether-cyan/30">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm">Требования этажа {farmFloor}</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-aether-bg rounded-lg p-2">
+              <div className="text-slate-500 mb-1">Атака</div>
+              <div className="text-slate-400">Мин: {floorReq.minAtk}</div>
+              <div className="text-slate-400">Комфорт: {floorReq.recommendedAtk}</div>
+              <div className={`font-medium mt-1 ${atkOk ? 'text-aether-cyan' : atkMinOk ? 'text-amber-400' : 'text-red-400'}`}>
+                Ваша: {playerStats.atk}
+              </div>
+            </div>
+            <div className="bg-aether-bg rounded-lg p-2">
+              <div className="text-slate-500 mb-1">Защита</div>
+              <div className="text-slate-400">Мин: {floorReq.minDef}</div>
+              <div className="text-slate-400">Комфорт: {floorReq.recommendedDef}</div>
+              <div className={`font-medium mt-1 ${defOk ? 'text-aether-cyan' : defMinOk ? 'text-amber-400' : 'text-red-400'}`}>
+                Ваша: {playerStats.def}
+              </div>
+            </div>
+          </div>
+          {!atkMinOk || !defMinOk ? (
+            <p className="text-[10px] text-red-400 text-center">Ниже минимума — бой будет очень тяжёлым</p>
+          ) : !atkOk || !defOk ? (
+            <p className="text-[10px] text-amber-400 text-center">Можно проходить, но комфортнее подтянуть статы</p>
+          ) : (
+            <p className="text-[10px] text-aether-cyan text-center">Статы подходят для комфортного прохождения</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mx-4 mt-3">
         <CardContent className="p-4 pt-4">
           <div className="flex justify-between text-sm mb-2">
             <span className="text-slate-300">Убито мобов</span>
