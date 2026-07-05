@@ -45,16 +45,16 @@ export function getStatPowerScore(player: Player): number {
     + player.level * 12
 }
 
-/** Baseline power expected for a floor (geared progression — mobs stay threatening). */
+/** Baseline power expected for a floor (aligned with recommended ATK/DEF). */
 export function getFloorBenchmarkPower(floor: number): number {
   const f = Math.max(1, floor)
-  const atk = 14 + f * 15
-  const def = 7 + f * 7.5
-  const hp = 110 + f * 58
+  const atk = f * 12 + 40
+  const def = f * 9 + 30
+  const hp = 80 + f * 45
   const level = Math.max(1, Math.floor((f - 1) * 2 + 4))
-  const gear = 1 + Math.min(0.68, f * 0.028)
+  const gear = 1 + Math.min(0.55, f * 0.024)
   const statScore = atk * 1.35 + def * 1.1 + (hp + level * 20) * 0.06 + level * 12
-  return statScore * gear * 1.28
+  return statScore * gear * 1.12
 }
 
 export function getPlayerCombatPower(player: Player): number {
@@ -83,13 +83,13 @@ export function getPlayerCombatEase(player: Player, floor: number): CombatEaseRe
   const powerAdvantage = Math.max(0, ratio - 1)
   const powerDisadvantage = Math.max(0, 1 - ratio)
 
-  const easeDamage = Math.min(0.2, powerAdvantage * 0.1)
-  const easeEnemy = Math.min(0.16, powerAdvantage * 0.08)
-  const penaltyDamage = Math.min(0.35, powerDisadvantage * 0.48)
-  const penaltyEnemy = Math.min(0.42, powerDisadvantage * 0.52)
+  const easeDamage = Math.min(0.18, powerAdvantage * 0.09)
+  const easeEnemy = Math.min(0.14, powerAdvantage * 0.07)
+  const penaltyDamage = Math.min(0.26, powerDisadvantage * 0.36)
+  const penaltyEnemy = Math.min(0.30, powerDisadvantage * 0.38)
 
-  const playerDamageMult = Math.max(0.65, 1 + easeDamage - penaltyDamage)
-  const enemyPowerMult = Math.min(1.45, Math.max(0.8, 1 - easeEnemy + penaltyEnemy))
+  const playerDamageMult = Math.max(0.72, 1 + easeDamage - penaltyDamage)
+  const enemyPowerMult = Math.min(1.32, Math.max(0.85, 1 - easeEnemy + penaltyEnemy))
 
   return {
     playerDamageMult,
@@ -152,12 +152,10 @@ export interface FloorStatRequirements {
 /** Minimum and recommended ATK/DEF for comfortable floor progression. */
 export function getFloorStatRequirements(floor: number): FloorStatRequirements {
   const f = Math.max(1, floor)
-  const baseAtk = 14 + f * 15
-  const baseDef = Math.floor(7 + f * 7.5)
   return {
-    minAtk: Math.floor(baseAtk * 0.72),
-    minDef: Math.floor(baseDef * 0.72),
-    recommendedAtk: baseAtk,
-    recommendedDef: baseDef,
+    minAtk: f * 8 + 20,
+    minDef: f * 6 + 15,
+    recommendedAtk: f * 12 + 40,
+    recommendedDef: f * 9 + 30,
   }
 }
