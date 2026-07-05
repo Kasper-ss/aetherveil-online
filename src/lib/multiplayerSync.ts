@@ -128,7 +128,7 @@ export async function propertyActionOnServer(
 
 export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardResponse | null> {
   try {
-    const res = await fetch('/api/multiplayer/monthly-leaderboard')
+    const res = await fetch('/api/multiplayer/leaderboard?scope=monthly')
     const data = await res.json() as MonthlyLeaderboardResponse & { ok?: boolean }
     if (!res.ok || !data.categories) return null
     return { monthKey: data.monthKey, categories: data.categories }
@@ -212,7 +212,7 @@ export async function buyServerMarketListing(listingId: string): Promise<MarketL
   if (!initData) return null
 
   try {
-    const res = await fetch('/api/multiplayer/market-buy', {
+    const res = await fetch('/api/multiplayer/market', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData, listingId }),
@@ -232,7 +232,7 @@ export async function fetchStockQuotes(): Promise<{
   const initData = getInitData()
   try {
     const qs = initData ? `?initData=${encodeURIComponent(initData)}` : ''
-    const res = await fetch(`/api/stocks/quotes${qs}`)
+    const res = await fetch(`/api/stocks${qs}`)
     const data = await res.json() as {
       quotes?: import('@/types/game').StockQuote[]
       topGainers?: Array<{ symbolId: string; change7d: number }>
@@ -264,7 +264,7 @@ export async function tradeStockOnServer(opts: {
   const initData = getInitData()
   if (!initData) return null
   try {
-    const res = await fetch('/api/stocks/trade', {
+    const res = await fetch('/api/stocks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData, action: 'trade', ...opts }),

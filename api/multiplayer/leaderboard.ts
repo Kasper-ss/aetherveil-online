@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getLeaderboardRecords } from '../../server/playerRegistry.js'
+import { getLeaderboardRecords, getMonthlyLeaderboardRecords } from '../../server/playerRegistry.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -7,6 +7,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    if (req.query.scope === 'monthly') {
+      const board = await getMonthlyLeaderboardRecords()
+      return res.status(200).json({ ok: true, ...board })
+    }
+
     const players = await getLeaderboardRecords()
     const entries = players.map((p, index) => ({
       rank: index + 1,
