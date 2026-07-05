@@ -52,9 +52,9 @@ export function getFloorBenchmarkPower(floor: number): number {
   const def = 6 + f * 7
   const hp = 100 + f * 55
   const level = Math.max(1, Math.floor((f - 1) * 2 + 4))
-  const gear = 1 + Math.min(0.55, f * 0.022)
+  const gear = 1 + Math.min(0.6, f * 0.024)
   const statScore = atk * 1.35 + def * 1.1 + (hp + level * 20) * 0.06 + level * 12
-  return statScore * gear
+  return statScore * gear * 1.06
 }
 
 export function getPlayerCombatPower(player: Player): number {
@@ -80,8 +80,8 @@ export function getPlayerCombatEase(player: Player, floor: number): CombatEaseRe
   const ratio = benchmark > 0 ? playerPower / benchmark : 1
   const powerAdvantage = Math.max(0, ratio - 1)
 
-  const playerDamageMult = 1 + Math.min(1, powerAdvantage * 0.5)
-  const enemyPowerMult = Math.max(0.3, 1 - Math.min(0.7, powerAdvantage * 0.4))
+  const playerDamageMult = 1 + Math.min(0.8, powerAdvantage * 0.42)
+  const enemyPowerMult = Math.max(0.38, 1 - Math.min(0.58, powerAdvantage * 0.32))
 
   return {
     playerDamageMult,
@@ -112,7 +112,7 @@ export function scaleEnemyForPlayerPower(
 
 export function formatCombatEaseHint(player: Player, floor: number): string | null {
   const { powerAdvantage, enemyPowerMult } = getPlayerCombatEase(player, floor)
-  if (powerAdvantage < 0.08) return null
+  if (powerAdvantage < 0.12) return null
   const weakenPct = Math.round((1 - enemyPowerMult) * 100)
   if (powerAdvantage >= 0.6) {
     return `Отличная прокачка и экипировка: враги слабее на ~${weakenPct}%`
