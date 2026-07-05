@@ -45,16 +45,16 @@ export function getStatPowerScore(player: Player): number {
     + player.level * 12
 }
 
-/** Baseline power expected for a floor (average progression, basic gear). */
+/** Baseline power expected for a floor (geared progression — mobs stay threatening). */
 export function getFloorBenchmarkPower(floor: number): number {
   const f = Math.max(1, floor)
-  const atk = 12 + f * 14
-  const def = 6 + f * 7
-  const hp = 100 + f * 55
+  const atk = 14 + f * 15
+  const def = 7 + f * 7.5
+  const hp = 110 + f * 58
   const level = Math.max(1, Math.floor((f - 1) * 2 + 4))
-  const gear = 1 + Math.min(0.6, f * 0.024)
+  const gear = 1 + Math.min(0.68, f * 0.028)
   const statScore = atk * 1.35 + def * 1.1 + (hp + level * 20) * 0.06 + level * 12
-  return statScore * gear * 1.09
+  return statScore * gear * 1.28
 }
 
 export function getPlayerCombatPower(player: Player): number {
@@ -64,29 +64,38 @@ export function getPlayerCombatPower(player: Player): number {
 export interface CombatEaseResult {
   playerDamageMult: number
   enemyPowerMult: number
-  /** How much stronger than floor benchmark (0 = on par, 0.5 = 50% stronger). */
+  /** How much stronger than floor benchmark (0 = on par). */
   powerAdvantage: number
+  /** How much weaker than floor benchmark (0 = on par). */
+  powerDisadvantage: number
   playerPower: number
   benchmarkPower: number
 }
 
 /**
- * Dynamic difficulty: stronger stats + better gear (rarity, level, stars)
- * make mobs and bosses easier on the current floor.
+ * Dynamic difficulty: stats + gear vs floor benchmark.
+ * Undergeared players face tougher mobs; overgeared players get only modest relief.
  */
 export function getPlayerCombatEase(player: Player, floor: number): CombatEaseResult {
   const playerPower = getPlayerCombatPower(player)
   const benchmark = getFloorBenchmarkPower(floor)
   const ratio = benchmark > 0 ? playerPower / benchmark : 1
   const powerAdvantage = Math.max(0, ratio - 1)
+  const powerDisadvantage = Math.max(0, 1 - ratio)
 
-  const playerDamageMult = 1 + Math.min(0.7, powerAdvantage * 0.38)
-  const enemyPowerMult = Math.max(0.42, 1 - Math.min(0.52, powerAdvantage * 0.28))
+  const easeDamage = Math.min(0.2, powerAdvantage * 0.1)
+  const easeEnemy = Math.min(0.16, powerAdvantage * 0.08)
+  const penaltyDamage = Math.min(0.35, powerDisadvantage * 0.48)
+  const penaltyEnemy = Math.min(0.42, powerDisadvantage * 0.52)
+
+  const playerDamageMult = Math.max(0.65, 1 + easeDamage - penaltyDamage)
+  const enemyPowerMult = Math.min(1.45, Math.max(0.8, 1 - easeEnemy + penaltyEnemy))
 
   return {
     playerDamageMult,
     enemyPowerMult,
     powerAdvantage,
+    powerDisadvantage,
     playerPower,
     benchmarkPower: benchmark,
   }
@@ -98,7 +107,7 @@ export function scaleEnemyForPlayerPower(
   floor: number,
 ): FloorEnemy {
   const { enemyPowerMult } = getPlayerCombatEase(player, floor)
-  if (enemyPowerMult >= 1) return enemy
+  if (Math.abs(enemyPowerMult - 1) < 0.005) return enemy
   return {
     ...enemy,
     stats: {
@@ -111,16 +120,21 @@ export function scaleEnemyForPlayerPower(
 }
 
 export function formatCombatEaseHint(player: Player, floor: number): string | null {
-  const { powerAdvantage, enemyPowerMult } = getPlayerCombatEase(player, floor)
-  if (powerAdvantage < 0.14) return null
+  const { powerAdvantage, powerDisadvantage, enemyPowerMult } = getPlayerCombatEase(player, floor)
+  if (powerDisadvantage >= 0.12) {
+    const boostPct = Math.round((enemyPowerMult - 1) * 100)
+    if (powerDisadvantage >= 0.35) {
+      return `Слабая прокачка для этажа: враги сильнее на ~${boostPct}%`
+    }
+    return `Этаж тяжёлый для вашего билда: враги сильнее на ~${boostPct}%`
+  }
+  if (powerAdvantage < 0.2) return null
   const weakenPct = Math.round((1 - enemyPowerMult) * 100)
-  if (powerAdvantage >= 0.6) {
-    return `Отличная прокачка и экипировка: враги слабее на ~${weakenPct}%`
+  if (weakenPct <= 2) return null
+  if (powerAdvantage >= 0.55) {
+    return `Отличная экипировка: враги слабее на ~${weakenPct}%`
   }
-  if (powerAdvantage >= 0.3) {
-    return `Сильный билд: враги слабее на ~${weakenPct}%`
-  }
-  return `Экипировка выше нормы этажа: враги слабее на ~${weakenPct}%`
+  return `Хороший билд: враги слабее на ~${weakenPct}%`
 }
 
 /** @deprecated Use getFloorBenchmarkPower — kept for display helpers. */
