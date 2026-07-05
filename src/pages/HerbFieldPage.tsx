@@ -14,7 +14,7 @@ import { HERB_FIELD_LEVELS, getUnlockedHerbFieldLevel } from '@/data/herbField'
 import { getAlchemyRecipesForPlayer, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
-import { isProfessionActive, getProfessionRank, getProfessionExp, getProfessionRankProgress } from '@/lib/professionProgress'
+import { getProfessionRank, getProfessionExp, getProfessionRankProgress } from '@/lib/professionProgress'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { HERB_RESOURCE_IDS } from '@/data/resourceCatalog'
 import type { ResourceId } from '@/types/game'
@@ -33,7 +33,6 @@ export function HerbFieldPage() {
 
   const unlocked = getUnlockedHerbFieldLevel(player.fieldGatherXp ?? 0)
   const hasTool = playerHasTool(player, 'pickaxe') || player.ownedTools?.includes('herbal_sickle')
-  const alchemistActive = isProfessionActive(player, 'alchemist')
   const alchRank = getProfessionRank(getProfessionExp(player, 'alchemist'))
   const alchProgress = getProfessionRankProgress(getProfessionExp(player, 'alchemist'))
   const nextLevel = HERB_FIELD_LEVELS.find((h) => h.level === unlocked + 1)
@@ -90,7 +89,7 @@ export function HerbFieldPage() {
                 </>
               )}
               {!hasTool && <div className="text-red-400">Купите серп травника или кирку</div>}
-              {!alchemistActive && <div className="text-amber-400">Активируйте профессию Алхимик</div>}
+              {!hasTool && <div className="text-red-400">Нужен серп или кирка</div>}
             </CardContent>
           </Card>
 
@@ -125,7 +124,7 @@ export function HerbFieldPage() {
             })}
           </div>
 
-          <Button className="w-full" onClick={handleGather} disabled={!hasTool || !alchemistActive}>
+          <Button className="w-full" onClick={handleGather} disabled={!hasTool}>
             Собрать (ур. {selectedLevel})
           </Button>
         </TabsContent>

@@ -3,6 +3,7 @@ import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { storageGet, storageSet } from '@/lib/utils'
 import { GUILD_QUESTS } from '@/data/quests'
+import { weekKey } from '@/lib/quests'
 
 export const GUILD_MAX_MEMBERS = 10
 export const GUILD_ID = 'guild_tower_1'
@@ -11,6 +12,7 @@ const CHAT_KEY = 'aetherveil_guild_chat'
 const ROSTER_KEY = 'aetherveil_guild_roster'
 const INVITES_KEY = 'aetherveil_guild_invites'
 const GUILD_QUEST_KEY = 'aetherveil_guild_quest_progress'
+const GUILD_QUEST_WEEK_KEY = 'aetherveil_guild_quest_week'
 const ONLINE_TTL_MS = 90_000
 
 export interface GuildRosterEntry {
@@ -218,7 +220,16 @@ export function acceptGuildInvite(
   return true
 }
 
+function ensureGuildQuestWeek(): void {
+  const wk = weekKey()
+  const stored = storageGet<string>(GUILD_QUEST_WEEK_KEY, '')
+  if (stored === wk) return
+  storageSet(GUILD_QUEST_KEY, {})
+  storageSet(GUILD_QUEST_WEEK_KEY, wk)
+}
+
 export function addGuildQuestProgress(event: QuestEvent, amount = 1): void {
+  ensureGuildQuestWeek()
   const progress = storageGet<Record<string, number>>(GUILD_QUEST_KEY, {})
   for (const q of GUILD_QUESTS) {
     if (q.event === event) {
@@ -229,6 +240,7 @@ export function addGuildQuestProgress(event: QuestEvent, amount = 1): void {
 }
 
 export function getGuildQuestProgress(): Record<string, number> {
+  ensureGuildQuestWeek()
   return storageGet<Record<string, number>>(GUILD_QUEST_KEY, {})
 }
 

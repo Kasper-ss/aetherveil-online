@@ -12,7 +12,6 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { MINE_LEVELS, getUnlockedMineLevel } from '@/data/mineLevels'
 import { playerHasTool } from '@/data/tools'
-import { isProfessionActive } from '@/lib/professionProgress'
 import { RESOURCES } from '@/data/classes'
 import { ORE_RESOURCE_IDS } from '@/data/resourceCatalog'
 
@@ -29,7 +28,6 @@ export function MinePage() {
 
   const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
   const hasPick = playerHasTool(player, 'pickaxe')
-  const blacksmithActive = isProfessionActive(player, 'blacksmith')
   const nextLevel = MINE_LEVELS.find((m) => m.level === unlocked + 1)
   const xpToNext = nextLevel ? nextLevel.xpToUnlock - (player.mineDigXp ?? 0) : 0
 
@@ -42,7 +40,7 @@ export function MinePage() {
       else setLastMsg('Руда добыта.')
     } else {
       hapticError()
-      setLastMsg('Нужны кирка, активный Кузнец и энергия.')
+      setLastMsg('Нужны кирка и энергия.')
     }
   }
 
@@ -73,7 +71,7 @@ export function MinePage() {
                 </>
               )}
               {!hasPick && <div className="text-red-400">Купите кирку в магазине</div>}
-              {!blacksmithActive && <div className="text-amber-400">Активируйте профессию Кузнец</div>}
+              {!hasPick && <div className="text-red-400">Нужна кирка</div>}
             </CardContent>
           </Card>
 
@@ -107,7 +105,7 @@ export function MinePage() {
             })}
           </div>
 
-          <Button className="w-full" onClick={handleDig} disabled={!hasPick || !blacksmithActive}>
+          <Button className="w-full" onClick={handleDig} disabled={!hasPick}>
             Копать (ур. {selectedLevel})
           </Button>
         </TabsContent>

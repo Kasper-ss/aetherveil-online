@@ -1,5 +1,6 @@
 import type { Player, ProfessionId } from '@/types/game'
 
+/** Two main professions — full skill tree and mythic upgrades. */
 export const BASE_PROFESSION_SLOTS = 2
 export const MAX_PROFESSION_SLOTS = 5
 
@@ -15,6 +16,16 @@ export function getActiveProfessions(player: Player): ProfessionId[] {
 
 export function isProfessionActive(player: Player, id: ProfessionId): boolean {
   return getActiveProfessions(player).includes(id)
+}
+
+/** Main (active) profession — full skill tree. */
+export function isMainProfession(player: Player, id: ProfessionId): boolean {
+  return isProfessionActive(player, id)
+}
+
+/** Any profession can be used for activities; main slots only gate full skill progression. */
+export function canUseProfession(_player: Player, _id: ProfessionId): boolean {
+  return true
 }
 
 export function getProfessionExp(player: Player, id: ProfessionId): number {
@@ -51,16 +62,16 @@ export function professionRankRequiredForSkill(skillIndex: number): number {
   return skillIndex + 1
 }
 
-/** Inactive professions: only skill 0. Skills 1+ and mythic require active slot. */
+/** Inactive professions: only skill 0. Skills 1+ and mythic require a main slot. */
 export function canUpgradeProfessionSkill(
   player: Player,
   professionId: ProfessionId,
   skillIndex: number,
 ): boolean {
   if (skillIndex === 0) return true
-  return isProfessionActive(player, professionId)
+  return isMainProfession(player, professionId)
 }
 
 export function canUpgradeProfessionMythicSkill(player: Player, professionId: ProfessionId): boolean {
-  return isProfessionActive(player, professionId)
+  return isMainProfession(player, professionId)
 }

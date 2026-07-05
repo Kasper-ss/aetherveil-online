@@ -142,8 +142,12 @@ export function ProfessionsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">{t('professions.title')}</h1>
-        <Badge className="ml-auto text-[10px]">{activeList.length}/{slotLimit} активных</Badge>
+        <Badge className="ml-auto text-[10px]">{activeList.length}/{slotLimit} основных</Badge>
       </div>
+
+      <p className="px-4 pb-2 text-[11px] text-slate-400">
+        Две основные профессии — полное древо навыков. Остальные доступны для фарма, но в них можно прокачать только 1-й навык.
+      </p>
 
       <div className="p-4 grid grid-cols-2 gap-2">
         {PROFESSIONS.map((p) => {
@@ -158,7 +162,7 @@ export function ProfessionsPage() {
                 <div className="text-3xl">{p.icon}</div>
                 <div className="text-xs font-bold text-white mt-1">{profLabel(p.id)}</div>
                 {isActive && (
-                  <div className="text-[9px] text-aether-cyan">★ Активна</div>
+                  <div className="text-[9px] text-aether-cyan">★ Основная</div>
                 )}
                 <Button
                   type="button"
@@ -167,7 +171,7 @@ export function ProfessionsPage() {
                   className="w-full mt-2 h-7 text-[10px]"
                   onClick={(e) => handleToggleActive(p.id, e)}
                 >
-                  {isActive ? 'Снять' : activeList.length >= slotLimit ? 'Слоты заняты' : 'Активировать'}
+                  {isActive ? 'Снять с основных' : activeList.length >= slotLimit ? 'Слоты заняты' : 'Сделать основной'}
                 </Button>
               </CardContent>
             </Card>
@@ -211,7 +215,7 @@ export function ProfessionsPage() {
                     ? player.inventory.filter((i) => i.id === act.consumesItemId).length
                     : 0
                   const baitOk = !act.consumesItemId || baitCount > 0
-                  const canDo = activeList.includes(act.professionId) && rankOk && toolOk && baitOk
+                  const canDo = rankOk && toolOk && baitOk
                   const rewardStr = Object.entries(act.rewards)
                     .filter(([, v]) => v)
                     .map(([rid, v]) => `${RESOURCES[rid as keyof typeof RESOURCES].icon}${v}`)
@@ -275,10 +279,10 @@ export function ProfessionsPage() {
                               <div className="text-[9px] text-amber-400">Ранг профессии {rankReq}+</div>
                             )}
                             {inactiveLocked && (
-                              <div className="text-[9px] text-slate-500">Активируйте профессию для улучшения</div>
+                              <div className="text-[9px] text-slate-500">Только 1-й навык без основной профессии</div>
                             )}
                             {!profActive && idx === 0 && (
-                              <div className="text-[9px] text-aether-cyan">Базовый навык доступен без активации</div>
+                              <div className="text-[9px] text-aether-cyan">1-й навык доступен всегда</div>
                             )}
                           </div>
                           <span className="text-xs text-aether-cyan">Ур.{lvl}/{skill.maxLevel}</span>
@@ -325,7 +329,7 @@ export function ProfessionsPage() {
                                 <div className="text-sm font-medium text-fuchsia-300">{skill.nameRu}</div>
                                 <div className="text-[10px] text-slate-400">{skill.descriptionRu}</div>
                                 {mythicInactive && (
-                                  <div className="text-[9px] text-slate-500">Нужна активная профессия</div>
+                                  <div className="text-[9px] text-slate-500">Нужна основная профессия</div>
                                 )}
                               </div>
                               <span className="text-xs text-fuchsia-400">Ур.{lvl}/{skill.maxLevel}</span>

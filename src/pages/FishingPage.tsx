@@ -13,7 +13,6 @@ import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { FISH_TABLE, RARITY_FISH_COLORS } from '@/data/fishing'
 import { FISHING_SPOTS, getUnlockedFishingSpot } from '@/data/fishingSpots'
 import { playerHasTool } from '@/data/tools'
-import { isProfessionActive } from '@/lib/professionProgress'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { FISH_RESOURCE_IDS } from '@/data/resourceCatalog'
 import { RESOURCES } from '@/data/classes'
@@ -30,7 +29,6 @@ export function FishingPage() {
   if (!player) return null
 
   const hasRod = playerHasTool(player, 'fishing_rod')
-  const hunterActive = isProfessionActive(player, 'hunter')
   const baitCount = player.inventory.filter((i) => i.id === 'fishing_bait').length
   const xp = player.fishingSpotXp ?? 0
   const unlocked = getUnlockedFishingSpot(xp)
@@ -81,7 +79,7 @@ export function FishingPage() {
               <div className="text-slate-400">Наживка: <span className="text-white">×{baitCount}</span></div>
               <div className="text-slate-400">Стоимость: ⚡{spot.energyCost} + 1 наживка</div>
               {!hasRod && <div className="text-red-400">Купите удочку в магазине</div>}
-              {!hunterActive && <div className="text-amber-400">Активируйте профессию Охотник</div>}
+              {!hasRod && <div className="text-red-400">Нужна удочка</div>}
             </CardContent>
           </Card>
 
@@ -112,7 +110,7 @@ export function FishingPage() {
             })}
           </div>
 
-          <Button className="w-full" size="lg" onClick={handleFish} disabled={!hasRod || !hunterActive || baitCount < 1}>
+          <Button className="w-full" size="lg" onClick={handleFish} disabled={!hasRod || baitCount < 1}>
             Забросить (ур. {selectedSpot})
           </Button>
 

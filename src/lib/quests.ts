@@ -47,6 +47,7 @@ export function normalizeQuestState(player: Player): QuestState {
       weeklyKey: wk,
       weeklyProgress: {},
       weeklyClaimed: [],
+      guildClaimed: [],
       weeklyFloorBaseline: player.highestFloor,
     }
   }

@@ -14,7 +14,6 @@ import type { GrindLevel } from '@/lib/professionGrind'
 import { getUnlockedGrindLevel } from '@/lib/professionGrind'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
-import { isProfessionActive } from '@/lib/professionProgress'
 import type { ProfessionId } from '@/types/game'
 import type { ResourceSection } from '@/data/resourceCatalog'
 
@@ -47,7 +46,7 @@ export function ProfessionGrindPage({
   xp,
   selectedLevel,
   onSelectLevel,
-  professionId,
+  professionId: _professionId,
   requiredTool,
   missingToolLabel,
   perform,
@@ -62,7 +61,6 @@ export function ProfessionGrindPage({
   if (!player) return null
 
   const unlocked = getUnlockedGrindLevel(levels, xp)
-  const professionActive = isProfessionActive(player, professionId)
   const hasTool = !requiredTool || playerHasTool(player, requiredTool)
   const nextLevel = levels.find((l) => l.level === unlocked + 1)
   const xpToNext = nextLevel ? nextLevel.xpToUnlock - xp : 0
@@ -77,7 +75,7 @@ export function ProfessionGrindPage({
       else setLastMsg('Успешно.')
     } else {
       hapticError()
-      setLastMsg('Нужна активная профессия, инструмент и энергия.')
+      setLastMsg('Нужны инструмент и энергия.')
     }
   }
 
@@ -110,7 +108,6 @@ export function ProfessionGrindPage({
                 </>
               )}
               {!hasTool && missingToolLabel && <div className="text-red-400">{missingToolLabel}</div>}
-              {!professionActive && <div className="text-amber-400">Активируйте нужную профессию</div>}
             </CardContent>
           </Card>
 
@@ -148,7 +145,7 @@ export function ProfessionGrindPage({
             })}
           </div>
 
-          <Button className="w-full" onClick={handleAction} disabled={!hasTool || !professionActive}>
+          <Button className="w-full" onClick={handleAction} disabled={!hasTool}>
             {actionVerb} (ур. {selectedLevel})
           </Button>
         </TabsContent>

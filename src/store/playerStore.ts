@@ -42,7 +42,7 @@ import { AVATAR_OPTIONS, FRAME_OPTIONS, getCosmeticStarProductId } from '@/data/
 import { addActiveEffect, pruneActiveEffects, EFFECT_PRESETS } from '@/lib/activeEffects'
 import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
-  isProfessionActive, professionRankRequiredForSkill, canUpgradeProfessionSkill,
+  professionRankRequiredForSkill, canUpgradeProfessionSkill,
   canUpgradeProfessionMythicSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
 } from '@/lib/professionProgress'
 import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress } from '@/lib/quests'
@@ -931,9 +931,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const activity = PROFESSION_ACTIVITIES.find((a) => a.id === activityId)
     if (!activity) return false
-    if (!isProfessionActive(player, activity.professionId)) return false
-    const rank = getProfessionRank(getProfessionExp(player, activity.professionId))
-    if (activity.minRank && rank < activity.minRank) return false
+    if (activity.minRank && getProfessionRank(getProfessionExp(player, activity.professionId)) < activity.minRank) return false
     if (activity.requiredTool && !playerHasTool(player, activity.requiredTool)) return false
     if (activity.consumesItemId) {
       const bait = player.inventory.find((i) => i.id === activity.consumesItemId)
@@ -972,7 +970,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performMineDig: (targetLevel) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'blacksmith')) return { ok: false }
     if (!playerHasTool(player, 'pickaxe')) return { ok: false }
 
     const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
@@ -1002,7 +999,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performFishing: (targetSpot) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'hunter')) return { ok: false }
     if (!playerHasTool(player, 'fishing_rod')) return { ok: false }
     const bait = player.inventory.find((i) => i.id === 'fishing_bait')
     if (!bait?.instanceId) return { ok: false }
@@ -1052,7 +1048,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performHunt: (targetLevel) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'hunter')) return { ok: false }
 
     const unlocked = getUnlockedHuntLevel(player.huntXp ?? 0)
     const level = Math.min(targetLevel ?? player.huntLevel ?? 1, unlocked)
@@ -1076,7 +1071,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performGemDig: (targetLevel) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'jeweler')) return { ok: false }
     if (!playerHasTool(player, 'pickaxe')) return { ok: false }
 
     const unlocked = getUnlockedGemSiteLevel(player.gemSiteXp ?? 0)
@@ -1101,7 +1095,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performAetherGather: (targetLevel) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'sorcerer')) return { ok: false }
 
     const unlocked = getUnlockedAetherRiftLevel(player.aetherRiftXp ?? 0)
     const level = Math.min(targetLevel ?? player.aetherRiftLevel ?? 1, unlocked)
@@ -1125,7 +1118,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   performHerbGather: (targetLevel) => {
     const { player } = get()
     if (!player) return { ok: false }
-    if (!isProfessionActive(player, 'alchemist')) return { ok: false }
     const hasTool = playerHasTool(player, 'pickaxe') || player.ownedTools?.includes('herbal_sickle')
     if (!hasTool) return { ok: false }
 
@@ -1255,10 +1247,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const recipe = findCraftRecipe(recipeId, player)
     if (!recipe) return false
-    if (recipe.requiredProfession && !isProfessionActive(player, recipe.requiredProfession)) return false
-    if (recipe.requiredProfessionLevel) {
-      const levels = player.professionLevels[recipe.requiredProfession!] ?? []
-      if (levels.reduce((s, l) => s + l, 0) < recipe.requiredProfessionLevel) return false
+    if (recipe.requiredProfession) {
+      const rank = getProfessionRank(getProfessionExp(player, recipe.requiredProfession))
+      if (rank < (recipe.requiredProfessionLevel ?? 0)) return false
     }
     if (recipe.requiredClass && recipe.requiredClass !== player.classId) return false
 
@@ -1281,7 +1272,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return true
     }
 
-    const scaled = recipe.requiredProfession === 'blacksmith' && isProfessionActive(player, 'blacksmith')
+    const scaled = recipe.requiredProfession === 'blacksmith' && getProfessionRank(getProfessionExp(player, 'blacksmith')) > 0
       ? applyBlacksmithCraftCost(player, recipe)
       : recipe
 
@@ -1378,7 +1369,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return [{ key: 'upgrade', label: 'Нужно 10 ур. и 10★', icon: '⭐', have: 0, need: 1 }]
       }
     }
-    const scaled = recipe.requiredProfession === 'blacksmith' && isProfessionActive(player, 'blacksmith')
+    const scaled = recipe.requiredProfession === 'blacksmith' && getProfessionRank(getProfessionExp(player, 'blacksmith')) > 0
       ? applyBlacksmithCraftCost(player, recipe)
       : recipe
     return getMissingCosts(

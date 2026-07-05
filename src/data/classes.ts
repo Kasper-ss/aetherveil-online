@@ -106,7 +106,7 @@ export const PROFESSIONS: Profession[] = [
       skill('hn_3', 'Critical Hunt', 'Критическая охота', '+2% crit damage', '+2% крит урон', 45, { hide: 2 }),
       skill('hn_4', 'Trap Master', 'Мастер ловушек', '+3% damage vs beasts', '+3% урон по зверям', 50, { hide: 4 }),
       skill('hn_5', 'Rare Prey', 'Редкая добыча', 'Find rare materials', 'Находит редкие материалы', 60, { hide: 3, gem_shard: 1 }),
-      skill('hn_6', 'Swift Pursuit', 'Быстрое преследование', '+2 speed', '+2 скорость', 55, { hide: 2 }),
+      skill('hn_6', 'Keen Instinct', 'Острый инстинкт', '+2% crit', '+2% крит', 55, { hide: 2 }),
       skill('hn_7', 'Monster Lore', 'Знание монстров', 'Reveal enemy weaknesses', 'Показывает слабости врагов', 65, { hide: 4 }),
       skill('hn_8', 'Bounty Hunter', 'Охотник за головами', '+10% gold from kills', '+10% золота за убийства', 80, { hide: 5 }),
       skill('hn_9', 'Apex Predator', 'Верховный хищник', '+5% ATK vs bosses', '+5% ATK против боссов', 95, { hide: 6, gem_shard: 2 }),
@@ -354,7 +354,7 @@ export const MYTHIC_SKILLS: Record<import('@/types/game').ProfessionId, import('
   ],
   hunter: [
     mythicSkill('hn_m1', 'Охота на боссов', '+10% дроп с боссов за уровень', 270, { hide: 10, gem_shard: 2 }),
-    mythicSkill('hn_m2', 'Следопыт', '+3 скорость за уровень', 260, { hide: 8 }),
+    mythicSkill('hn_m2', 'Следопыт', '+3% крит за уровень', 260, { hide: 8 }),
     mythicSkill('hn_m3', 'Смертельный выстрел', '+6% крит урон за уровень', 290, { hide: 8, gem_shard: 3 }),
     mythicSkill('hn_m4', 'Трофейный мастер', '+15% золото с мобов за уровень', 300, { hide: 12, aether_dust: 2 }),
     mythicSkill('hn_m5', 'Легенда охоты', 'Гарантированный редкий дроп', 350, { aether_dust: 5, star_shard: 3 }),

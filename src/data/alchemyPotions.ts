@@ -1,7 +1,6 @@
 import type { ItemRarity, ResourceId } from '@/types/game'
 import type { Player } from '@/types/game'
 import { getProfessionExp, getProfessionRank } from '@/lib/professionProgress'
-import { isProfessionActive } from '@/lib/professionProgress'
 
 export interface AlchemyRecipe {
   id: string
@@ -55,7 +54,7 @@ export const ALCHEMY_RECIPES: AlchemyRecipe[] = [
     id: 'brew_hp_epic',
     resultItemId: 'hp_potion_epic',
     nameRu: 'Эпическое зелье HP',
-    descriptionRu: 'Восстанавливает 80% HP. Нужен активный Алхимик, ранг 12+.',
+    descriptionRu: 'Восстанавливает 80% HP. Нужен ранг Алхимика 12+.',
     rarity: 'epic',
     resources: { herb_lotus: 3, herb_phoenix: 2, mana_crystal: 2 },
     goldCost: 220,
@@ -75,7 +74,6 @@ export const ALCHEMY_RECIPES: AlchemyRecipe[] = [
 
 export function canBrewAlchemyRecipe(player: Player, recipe: AlchemyRecipe): boolean {
   if (recipe.rarity === 'common' || recipe.rarity === 'rare') return true
-  if (!isProfessionActive(player, 'alchemist')) return false
   const rank = getProfessionRank(getProfessionExp(player, 'alchemist'))
   return rank >= (recipe.minAlchemistRank ?? 1)
 }
