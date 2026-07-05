@@ -14,6 +14,7 @@ import { MINE_LEVELS, getUnlockedMineLevel } from '@/data/mineLevels'
 import { playerHasTool } from '@/data/tools'
 import { RESOURCES } from '@/data/classes'
 import { ORE_RESOURCE_IDS } from '@/data/resourceCatalog'
+import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
 
 export function MinePage() {
   const navigate = useNavigate()
@@ -60,6 +61,7 @@ export function MinePage() {
         </TabsList>
 
         <TabsContent value="dig" className="space-y-3 mt-3">
+          <EnergyDrinkQuickBar />
           <Card>
             <CardContent className="p-3 text-xs text-slate-400 space-y-1">
               <div>Опыт шахты: <span className="text-white">{player.mineDigXp ?? 0}</span></div>

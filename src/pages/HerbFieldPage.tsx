@@ -17,6 +17,7 @@ import { playerHasTool } from '@/data/tools'
 import { getProfessionRank, getProfessionExp, getProfessionRankProgress } from '@/lib/professionProgress'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { HERB_RESOURCE_IDS } from '@/data/resourceCatalog'
+import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
 import type { ResourceId } from '@/types/game'
 
 export function HerbFieldPage() {
@@ -77,6 +78,7 @@ export function HerbFieldPage() {
         </TabsList>
 
         <TabsContent value="gather" className="space-y-3 mt-3">
+          <EnergyDrinkQuickBar />
           <Card>
             <CardContent className="p-3 text-xs text-slate-400 space-y-1">
               <div>Опыт поля: <span className="text-white">{player.fieldGatherXp ?? 0}</span></div>

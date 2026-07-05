@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
+import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
 import { usePlayerStore } from '@/store/playerStore'
 import {
   PROFESSIONS,
@@ -204,7 +205,8 @@ export function ProfessionsPage() {
             </TabsList>
 
             <TabsContent value="farm">
-              <div className="space-y-2">
+              <EnergyDrinkQuickBar />
+              <div className="space-y-2 mt-3">
                 {activities.length === 0 && (
                   <p className="text-xs text-slate-500 text-center py-4">Нет доступных активностей</p>
                 )}

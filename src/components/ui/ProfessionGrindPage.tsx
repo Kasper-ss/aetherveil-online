@@ -14,6 +14,7 @@ import type { GrindLevel } from '@/lib/professionGrind'
 import { getUnlockedGrindLevel } from '@/lib/professionGrind'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
+import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
 import type { ProfessionId } from '@/types/game'
 import type { ResourceSection } from '@/data/resourceCatalog'
 
@@ -97,6 +98,7 @@ export function ProfessionGrindPage({
         </TabsList>
 
         <TabsContent value="grind" className="space-y-3 mt-3">
+          <EnergyDrinkQuickBar />
           <Card>
             <CardContent className="p-3 text-xs text-slate-400 space-y-1">
               <div>{xpLabel}: <span className="text-white">{xp}</span></div>

@@ -64,3 +64,7 @@ export function isHpPotion(itemId: string): boolean {
 export function isEnergyDrink(itemId: string): boolean {
   return itemId === 'energy_drink' || itemId === 'energy_drink_rare'
 }
+
+export function getEnergyDrinkStacks(inventory: Item[]): ConsumableStack[] {
+  return groupConsumableStacks(inventory).filter((s) => isEnergyDrink(s.itemId))
+}

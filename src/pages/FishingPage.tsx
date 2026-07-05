@@ -16,6 +16,7 @@ import { playerHasTool } from '@/data/tools'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { FISH_RESOURCE_IDS } from '@/data/resourceCatalog'
 import { RESOURCES } from '@/data/classes'
+import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
 
 export function FishingPage() {
   const navigate = useNavigate()
@@ -45,7 +46,7 @@ export function FishingPage() {
       else setLastCatch(`Поймана: ${result.fishName}!`)
     } else {
       hapticError()
-      setLastCatch('Нужны удочка, наживка, активный Охотник и энергия.')
+      setLastCatch('Нужны удочка, наживка и энергия.')
     }
   }
 
@@ -65,6 +66,7 @@ export function FishingPage() {
         </TabsList>
 
         <TabsContent value="fish" className="space-y-3 mt-3">
+          <EnergyDrinkQuickBar />
           <Card>
             <CardContent className="p-3 text-xs space-y-1">
               <div className="text-slate-400">Опыт рыбалки: <span className="text-white">{xp}</span></div>
