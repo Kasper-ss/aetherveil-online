@@ -27,7 +27,7 @@ export function randomInt(min: number, max: number): number {
 
 /** XP required to reach a given level */
 export function xpForLevel(level: number): number {
-  return Math.floor(100 * Math.pow(level, 1.5))
+  return Math.floor(125 * Math.pow(level, 1.62))
 }
 
 /** Calculate player stats from level + equipment */

@@ -3,6 +3,7 @@ import {
   craftTierForSlot,
   getEpicCraftResources,
   getLegendaryCraftResources,
+  getMythicCraftResources,
   slotFromResultItemId,
 } from '@/data/craftResources'
 
@@ -46,12 +47,12 @@ const EPIC_BEAST: SetPieceCraft[] = [
   { id: 'beast_ring', resultItemId: 'beast_master_ring', name: 'Коготь зверя', description: 'АТК +12, КРИТ +10', goldCost: 1800, requiredProfession: 'jeweler', requiredProfessionLevel: 10 },
 ]
 
-function resourcesForPiece(p: SetPieceCraft, rarity: 'epic' | 'legendary'): Partial<Record<ResourceId, number>> {
+function resourcesForPiece(p: SetPieceCraft, rarity: 'epic' | 'legendary' | 'mythic'): Partial<Record<ResourceId, number>> {
   const slot = slotFromResultItemId(p.resultItemId)
   const tier = craftTierForSlot(slot)
-  return rarity === 'epic'
-    ? getEpicCraftResources(tier)
-    : getLegendaryCraftResources(tier)
+  if (rarity === 'epic') return getEpicCraftResources(tier)
+  if (rarity === 'legendary') return getLegendaryCraftResources(tier)
+  return getMythicCraftResources(tier)
 }
 
 function toEpicRecipes(setName: string, pieces: SetPieceCraft[]): CraftRecipe[] {
@@ -114,14 +115,53 @@ const LEGENDARY_PUNCH: SetPieceCraft[] = [
   { id: 'punch_ring', resultItemId: 'one_punch_ring', name: 'Перчатка Ванпанчмена', description: 'АТК +35, КРИТ +20', goldCost: 5000, requiredProfession: 'jeweler', requiredProfessionLevel: 20 },
 ]
 
+const EPIC_ASSASSIN: SetPieceCraft[] = [
+  { id: 'assassin_helmet', resultItemId: 'assassin_helmet', name: 'Капюшон Ассасина', description: 'АТК +8, КРИТ +10, СКРЫТ +6', goldCost: 2000, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
+  { id: 'assassin_chest', resultItemId: 'assassin_chestplate', name: 'Плащ Ассасина', description: 'АТК +12, КРИТ +8, СКРЫТ +5', goldCost: 3000, requiredProfession: 'blacksmith', requiredProfessionLevel: 13 },
+  { id: 'assassin_weapon', resultItemId: 'assassin_weapon', name: 'Клинок Ассасина', description: 'АТК +42, КРИТ +18, СКРЫТ +10', goldCost: 3800, requiredProfession: 'blacksmith', requiredProfessionLevel: 15 },
+  { id: 'assassin_leggings', resultItemId: 'assassin_leggings', name: 'Поножи Ассасина', description: 'АТК +6, КРИТ +12, СКРЫТ +10', goldCost: 2600, requiredProfession: 'blacksmith', requiredProfessionLevel: 12 },
+  { id: 'assassin_boots', resultItemId: 'assassin_boots', name: 'Сапоги Ассасина', description: 'АТК +8, КРИТ +8, СКРЫТ +12', goldCost: 2200, requiredProfession: 'blacksmith', requiredProfessionLevel: 11 },
+  { id: 'assassin_necklace', resultItemId: 'assassin_necklace', name: 'Амулет тени', description: 'АТК +16, КРИТ +14, СКРЫТ +8', goldCost: 2400, requiredProfession: 'jeweler', requiredProfessionLevel: 12 },
+  { id: 'assassin_ring', resultItemId: 'assassin_ring', name: 'Кольцо убийцы', description: 'АТК +12, КРИТ +16, СКРЫТ +6', goldCost: 2000, requiredProfession: 'jeweler', requiredProfessionLevel: 11 },
+]
+
+const MYTHIC_PENIVISE: SetPieceCraft[] = [
+  { id: 'penivise_helmet', resultItemId: 'penivise_helmet', name: 'Маска Пенивайза', description: 'АТК +22, СКРЫТ +18, КРИТ +12', goldCost: 18000, requiredProfession: 'blacksmith', requiredProfessionLevel: 35 },
+  { id: 'penivise_chest', resultItemId: 'penivise_chestplate', name: 'Мантия Пенивайза', description: 'АТК +28, СКРЫТ +14, HP +120', goldCost: 28000, requiredProfession: 'blacksmith', requiredProfessionLevel: 38 },
+  { id: 'penivise_weapon', resultItemId: 'penivise_weapon', name: 'Клинок Пенивайза', description: 'АТК +95, КРИТ +28, СКРЫТ +22', goldCost: 45000, requiredProfession: 'blacksmith', requiredProfessionLevel: 40 },
+  { id: 'penivise_leggings', resultItemId: 'penivise_leggings', name: 'Поножи Пенивайза', description: 'АТК +18, СКРЫТ +20, КРИТ +10', goldCost: 24000, requiredProfession: 'blacksmith', requiredProfessionLevel: 36 },
+  { id: 'penivise_boots', resultItemId: 'penivise_boots', name: 'Сапоги Пенивайза', description: 'АТК +16, СКРЫТ +24, КРИТ +12', goldCost: 20000, requiredProfession: 'blacksmith', requiredProfessionLevel: 35 },
+  { id: 'penivise_necklace', resultItemId: 'penivise_necklace', name: 'Око Пенивайза', description: 'АТК +32, КРИТ +20, СКРЫТ +16', goldCost: 22000, requiredProfession: 'jeweler', requiredProfessionLevel: 36 },
+  { id: 'penivise_ring', resultItemId: 'penivise_ring', name: 'Печать Пенивайза', description: 'АТК +28, КРИТ +22, СКРЫТ +14', goldCost: 18000, requiredProfession: 'jeweler', requiredProfessionLevel: 35 },
+]
+
+function toMythicRecipes(setName: string, pieces: SetPieceCraft[]): CraftRecipe[] {
+  return pieces.map((p) => ({
+    id: `craft_mythic_${p.id}`,
+    resultItemId: p.resultItemId,
+    name: p.name,
+    description: `Мифический сет «${setName}». ${p.description}`,
+    resources: resourcesForPiece(p, 'mythic'),
+    goldCost: p.goldCost,
+    requiredProfession: p.requiredProfession,
+    requiredProfessionLevel: p.requiredProfessionLevel,
+    isSetCraft: true,
+    setCraftRarity: 'mythic' as const,
+  }))
+}
 export const EPIC_SET_CRAFT_RECIPES: CraftRecipe[] = [
   ...toEpicRecipes('Громобой', EPIC_STORM),
   ...toEpicRecipes('Кристальный Страж', EPIC_CRYSTAL),
   ...toEpicRecipes('Повелитель Зверей', EPIC_BEAST),
+  ...toEpicRecipes('Ассасин', EPIC_ASSASSIN),
 ]
 
 export const LEGENDARY_SET_CRAFT_RECIPES: CraftRecipe[] = [
   ...toLegendaryRecipes(LEGENDARY_SHADOW),
   ...toLegendaryRecipes(LEGENDARY_SOLO),
   ...toLegendaryRecipes(LEGENDARY_PUNCH),
+]
+
+export const MYTHIC_SET_CRAFT_RECIPES: CraftRecipe[] = [
+  ...toMythicRecipes('Пенивайз', MYTHIC_PENIVISE),
 ]

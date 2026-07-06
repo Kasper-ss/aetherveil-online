@@ -66,7 +66,7 @@ export interface CraftRecipe {
   isSetCraft?: boolean
   isMythicCraft?: boolean
   requiresMaxUpgrade?: boolean
-  setCraftRarity?: 'epic' | 'legendary' | 'lucky'
+  setCraftRarity?: 'epic' | 'legendary' | 'lucky' | 'mythic'
   sourceInstanceId?: string
   requiredClass?: PlayerClass
 }
@@ -108,6 +108,7 @@ export interface Stats {
   hp: number
   crit: number
   speed: number
+  stealth?: number
 }
 
 export interface ClassData {

@@ -18,6 +18,7 @@ import { handleBossDefeated } from '@/lib/bossPhases'
 import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked } from '@/data/worldBoss'
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
+import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
 
 /** Global boost to player outgoing damage in combat. */
 const PLAYER_DAMAGE_MULT = 1.12
@@ -48,7 +49,11 @@ function logEntry(text: string, type: CombatLogEntry['type']): CombatLogEntry {
   return { text, type }
 }
 
-function applyDamageToEnemy(combat: CombatState, rawDmg: number): {
+function applyDamageToEnemy(
+  combat: CombatState,
+  rawDmg: number,
+  fearChance = 0,
+): {
   enemyHp: number
   enemyCombat: CombatState['enemyCombat']
   logs: CombatLogEntry[]
@@ -58,9 +63,14 @@ function applyDamageToEnemy(combat: CombatState, rawDmg: number): {
   if (shielded.absorbed > 0) {
     logs.push(logEntry(`🛡️ Щит поглотил ${shielded.absorbed} урона`, 'system'))
   }
+  let enemyCombat = shielded.state
+  if (fearChance > 0 && Math.random() < fearChance) {
+    enemyCombat = { ...enemyCombat, fearedTurns: 3 }
+    logs.push(logEntry(`😨 ${combat.enemy.name} охвачен страхом!`, 'system'))
+  }
   return {
     enemyHp: combat.enemyHp - shielded.damage,
-    enemyCombat: shielded.state,
+    enemyCombat,
     logs,
   }
 }
@@ -255,13 +265,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (!player) return
 
     const stats = getEffectiveStats(player)
+    const setEffects = getSetCombatEffects(player)
     const comboBonus = 1 + combat.combo * 0.04
-    const isCrit = rollCrit(stats.crit, player.classId)
+    const isCrit = rollCrit(Math.floor(stats.crit * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
     const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT
     const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * ENEMY_DEF_MITIGATION)
-    const finalDmg = Math.max(1, rawDmg)
-    const hit = applyDamageToEnemy(combat, finalDmg)
+    const finalDmg = applySetDamageMultipliers(rawDmg, stats, setEffects)
+    const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
     const newEnemyHp = hit.enemyHp
     const newCombo = combat.combo + 1
     const logs = [...combat.combatLog, ...hit.logs]
@@ -354,14 +365,15 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const stats = getEffectiveStats(player)
-    const isCrit = rollCrit(stats.crit + 10, player.classId)
+    const setEffects = getSetCombatEffects(player)
+    const isCrit = rollCrit(Math.floor((stats.crit + 10) * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
     let damage = Math.floor(
       stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * (isCrit ? 2 : 1)
       - combat.enemy.stats.def * ENEMY_DEF_MITIGATION,
     )
-    const finalDmg = Math.max(1, damage)
-    const hit = applyDamageToEnemy(combat, finalDmg)
+    const finalDmg = applySetDamageMultipliers(damage, stats, setEffects)
+    const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
     logs.push(...hit.logs)
     const newEnemyHp = hit.enemyHp
     let playerHpAfter = combat.playerHp

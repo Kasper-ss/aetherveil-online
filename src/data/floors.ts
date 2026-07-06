@@ -1,7 +1,7 @@
 import type { FloorData, FloorEnemy } from '@/types/game'
 import { getMobsRequiredForFloor } from '@/data/items'
 
-export const MAX_FLOOR = 50
+export const MAX_FLOOR = 100
 
 const PATTERNS: FloorEnemy['pattern'][] = ['aggressive', 'defensive', 'berserker']
 
@@ -28,6 +28,16 @@ const ZONE_NAMES: { from: number; name: string; desc: string; theme: string }[] 
   { from: 36, name: 'Звёздный цитадель', desc: 'Космическая энергия пронизывает этажи.', theme: '#1a1a4a' },
   { from: 41, name: 'Эфирный шпиль', desc: 'Последние испытания перед вершиной.', theme: '#2a1a4a' },
   { from: 46, name: 'Вершина Эфира', desc: 'Финальные хранители Башни.', theme: '#3a1a5a' },
+  { from: 51, name: 'Рубеж Пустоты', desc: 'За пределами привычной Башни реальность истончается.', theme: '#2a1040' },
+  { from: 56, name: 'Хрустальные Врата', desc: 'Пространство раскалывается кристаллами чистой маны.', theme: '#1a2848' },
+  { from: 61, name: 'Теневой Разлом', desc: 'Тени обретают форму и охотятся на смельчаков.', theme: '#1a1028' },
+  { from: 66, name: 'Пылающий Шпиль', desc: 'Вечное пламя выжигает слабых.', theme: '#3a1810' },
+  { from: 71, name: 'Ледяная Бездна', desc: 'Мороз, способный заморозить душу.', theme: '#102030' },
+  { from: 76, name: 'Грозовой Престол', desc: 'Молнии бьют без остановки.', theme: '#202048' },
+  { from: 81, name: 'Астральный Предел', desc: 'Звёздная пыль сгущается в живых стражей.', theme: '#181838' },
+  { from: 86, name: 'Коридор Вечности', desc: 'Время течёт иначе на этих ярусах.', theme: '#281838' },
+  { from: 91, name: 'Трон Бездны', desc: 'Древние сущности правят отсюда.', theme: '#301028' },
+  { from: 96, name: 'Сотый Рубеж', desc: 'Легендарный предел Башни — испытание для богов.', theme: '#401050' },
 ]
 
 function zoneForFloor(floor: number) {
@@ -38,15 +48,23 @@ function zoneForFloor(floor: number) {
   return z
 }
 
+/** Extra scaling after floor 50. */
+function getPostFloor50Mult(floor: number): number {
+  if (floor <= 50) return 1
+  return 1 + (floor - 50) * 0.035
+}
+
 /** Difficulty multiplier — grows faster on higher floors */
 export function getFloorDifficultyMult(floor: number): number {
-  return 1 + (floor - 1) * 0.12 + Math.pow(floor, 1.35) * 0.075
+  const base = 1 + (floor - 1) * 0.12 + Math.pow(floor, 1.35) * 0.075
+  return base * getPostFloor50Mult(floor)
 }
 
 /** Extra challenge from floor 3 — moderate gear check. */
 export function getFloorChallengeMult(floor: number): number {
   if (floor <= 2) return 1
-  return 1 + (floor - 2) * 0.20 + Math.pow(floor - 2, 1.5) * 0.09
+  const base = 1 + (floor - 2) * 0.20 + Math.pow(floor - 2, 1.5) * 0.09
+  return base * getPostFloor50Mult(floor)
 }
 
 /** Reward scaling — higher floors yield more gold and EXP, especially bosses */
@@ -54,10 +72,10 @@ function getFloorRewardScale(floor: number): number {
   return 1 + (floor - 1) * 0.14 + Math.pow(floor, 1.2) * 0.055
 }
 
-/** Global mob/boss combat stat tuning — HP and ATK tuned separately. */
-const MOB_HP_MULT = 0.80
-const MOB_ATK_MULT = 0.66
-const MOB_DEF_MULT = 0.78
+/** Global mob/boss combat stat tuning — HP and ATK tuned separately (+3% vs prior balance). */
+const MOB_HP_MULT = 0.824
+const MOB_ATK_MULT = 0.6798
+const MOB_DEF_MULT = 0.8034
 
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)

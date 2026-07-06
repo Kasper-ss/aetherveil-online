@@ -4,6 +4,7 @@ import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
+import { getSetCombatEffects } from '@/lib/setCombatEffects'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -82,8 +83,9 @@ export function getMaxEnergy(player: Player): number {
 export function getEnergyRegenIntervalMs(player: Player): number {
   const end = getAllocatedStats(player).endurance
   const base = Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
-  const prop = getPropertyMultipliers(player).energyRegen
-  return Math.max(5_000, Math.floor(base / prop))
+  const setEffects = getSetCombatEffects(player)
+  const propEnergy = getPropertyMultipliers(player).energyRegen
+  return Math.max(5_000, Math.floor(base / (propEnergy * setEffects.energyRegenMult)))
 }
 
 export function getHpRegenIntervalMs(player: Player): number {
@@ -134,7 +136,7 @@ export function formatDuration(ms: number): string {
 export function getEffectiveStats(player: Player): EffectiveStats {
   const alloc = getAllocatedStats(player)
   const base = { ...player.stats }
-  const totals = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0 }
+  const totals = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0, stealth: 0 }
 
   for (const slot of EQUIP_SLOTS) {
     const item = player.equipped[slot]
@@ -145,6 +147,7 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     totals.hp += s.hp ?? 0
     totals.crit += s.crit ?? 0
     totals.speed += s.speed ?? 0
+    totals.stealth += s.stealth ?? 0
   }
 
   const effectMult = (stat: import('@/types/game').EffectStat) =>
@@ -159,7 +162,7 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     hp: Math.floor((base.hp + totals.hp + alloc.hp * 18) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
     crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
     speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),
-    stealth: alloc.stealth,
+    stealth: alloc.stealth + totals.stealth,
     endurance: alloc.endurance,
   })
   return { ...withSets, crit: capCritChance(withSets.crit, player.classId) }

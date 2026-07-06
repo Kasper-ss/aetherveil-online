@@ -1,7 +1,7 @@
 import type { CraftRecipe, ShopItem } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 import { ALL_ITEMS } from '@/data/items'
-import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
+import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 
 export interface SetScrollProduct {
   scrollId: string
@@ -10,7 +10,7 @@ export interface SetScrollProduct {
   descriptionRu: string
   goldPrice: number
   gemsPrice?: number
-  rarity: 'epic' | 'legendary'
+  rarity: 'epic' | 'legendary' | 'mythic'
   setId: string
   setName: string
   slot: EquipSlot
@@ -24,6 +24,8 @@ const EPIC_PIECE_GOLD = 100_000
 const EPIC_PIECE_GEMS = 15
 const LEGENDARY_PIECE_GOLD = 400_000
 const LEGENDARY_PIECE_GEMS = 35
+const MYTHIC_PIECE_GOLD = 1_500_000
+const MYTHIC_PIECE_GEMS = 65
 
 /** Old full-set scroll IDs → per-piece scroll IDs (save migration). */
 const LEGACY_SCROLL_EXPANSION: Record<string, string[]> = {
@@ -49,15 +51,15 @@ const LEGACY_SCROLL_EXPANSION: Record<string, string[]> = {
 
 function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
   const rarity = recipe.setCraftRarity
-  if (rarity !== 'epic' && rarity !== 'legendary') return null
+  if (rarity !== 'epic' && rarity !== 'legendary' && rarity !== 'mythic') return null
   const item = ALL_ITEMS[recipe.resultItemId]
   return {
     scrollId: `scroll_${recipe.id}`,
     recipeId: recipe.id,
     nameRu: `Свиток: ${recipe.name}`,
     descriptionRu: `Открывает рецепт «${recipe.name}» в Кузнице.`,
-    goldPrice: rarity === 'legendary' ? LEGENDARY_PIECE_GOLD : EPIC_PIECE_GOLD,
-    gemsPrice: rarity === 'legendary' ? LEGENDARY_PIECE_GEMS : EPIC_PIECE_GEMS,
+    goldPrice: rarity === 'mythic' ? MYTHIC_PIECE_GOLD : rarity === 'legendary' ? LEGENDARY_PIECE_GOLD : EPIC_PIECE_GOLD,
+    gemsPrice: rarity === 'mythic' ? MYTHIC_PIECE_GEMS : rarity === 'legendary' ? LEGENDARY_PIECE_GEMS : EPIC_PIECE_GEMS,
     rarity,
     setId: item?.setId ?? 'unknown',
     setName: item?.setName ?? 'Сет',
@@ -67,7 +69,9 @@ function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
 
 function sortScrolls(products: SetScrollProduct[]): SetScrollProduct[] {
   return [...products].sort((a, b) => {
-    const rarityOrder = a.rarity === b.rarity ? 0 : a.rarity === 'epic' ? -1 : 1
+    const rarityOrder = a.rarity === b.rarity ? 0 : (
+      a.rarity === 'epic' ? -1 : b.rarity === 'epic' ? 1 : a.rarity === 'legendary' ? -1 : 1
+    )
     if (rarityOrder !== 0) return rarityOrder
     const setCmp = a.setName.localeCompare(b.setName, 'ru')
     if (setCmp !== 0) return setCmp
@@ -78,6 +82,7 @@ function sortScrolls(products: SetScrollProduct[]): SetScrollProduct[] {
 export const SET_SCROLL_PRODUCTS: SetScrollProduct[] = sortScrolls([
   ...EPIC_SET_CRAFT_RECIPES.map(recipeToScroll).filter((s): s is SetScrollProduct => !!s),
   ...LEGENDARY_SET_CRAFT_RECIPES.map(recipeToScroll).filter((s): s is SetScrollProduct => !!s),
+  ...MYTHIC_SET_CRAFT_RECIPES.map(recipeToScroll).filter((s): s is SetScrollProduct => !!s),
 ])
 
 export const SCROLL_SHOP_ITEMS: ShopItem[] = SET_SCROLL_PRODUCTS.map((s) => ({
@@ -114,9 +119,9 @@ export function getUnlockedScrollRecipeIds(unlockedScrolls: string[] | undefined
   return ids
 }
 
-export function getScrollSetFilters(): { id: string; name: string; rarity: 'epic' | 'legendary' }[] {
+export function getScrollSetFilters(): { id: string; name: string; rarity: 'epic' | 'legendary' | 'mythic' }[] {
   const seen = new Set<string>()
-  const result: { id: string; name: string; rarity: 'epic' | 'legendary' }[] = []
+  const result: { id: string; name: string; rarity: 'epic' | 'legendary' | 'mythic' }[] = []
   for (const s of SET_SCROLL_PRODUCTS) {
     if (!seen.has(s.setId)) {
       seen.add(s.setId)

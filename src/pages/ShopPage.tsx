@@ -46,7 +46,7 @@ const RESOURCE_NPC = SHOP_ITEMS.filter((i) => i.type === 'resource' || i.id === 
 const SCROLL_NPC = SHOP_ITEMS.filter((i) => i.type === 'scroll')
 const EQUIP_NPC = SHOP_ITEMS.filter((i) => i.type === 'equipment')
 
-type ScrollRarityFilter = 'all' | 'epic' | 'legendary'
+type ScrollRarityFilter = 'all' | 'epic' | 'legendary' | 'mythic'
 
 export function ShopPage() {
   const navigate = useNavigate()
@@ -364,6 +364,7 @@ export function ShopPage() {
                     ['all', 'Все'] as const,
                     ['epic', 'Эпик'] as const,
                     ['legendary', 'Легенда'] as const,
+                    ['mythic', 'Мифик'] as const,
                   ]).map(([id, label]) => (
                     <Button
                       key={id}

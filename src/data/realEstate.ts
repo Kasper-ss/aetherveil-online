@@ -27,7 +27,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Надёжные стены и кладовая для добычи с этажей.',
     icon: '🏠',
     unlockLevel: 10,
-    goldCost: 250_000,
+    goldCost: 250_000 * 3,
     bonusLabelRu: '+10% к золоту с мобов',
   },
   {
@@ -36,7 +36,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Бронированные ворота и сторожевая башня.',
     icon: '🏡',
     unlockLevel: 15,
-    goldCost: 400_000,
+    goldCost: 400_000 * 3,
     bonusLabelRu: '+8% к защите',
   },
   {
@@ -45,7 +45,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Вид на всю башню — опыт растёт быстрее.',
     icon: '🗼',
     unlockLevel: 20,
-    goldCost: 600_000,
+    goldCost: 600_000 * 3,
     bonusLabelRu: '+12% к опыту с этажей',
   },
   {
@@ -54,7 +54,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Охотничьи угодья и сад с редкими травами.',
     icon: '🏹',
     unlockLevel: 25,
-    goldCost: 850_000,
+    goldCost: 850_000 * 3,
     bonusLabelRu: '+15% к ресурсам с рыбалки и сбора трав',
   },
   {
@@ -63,7 +63,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Мастерская и кузница под одной крышей.',
     icon: '🏛️',
     unlockLevel: 30,
-    goldCost: 1_150_000,
+    goldCost: 1_150_000 * 3,
     bonusLabelRu: '+10% к успеху крафта и улучшений в Кузнице',
   },
   {
@@ -72,7 +72,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Коллекция трофеев и охота за редким лутом.',
     icon: '🏰',
     unlockLevel: 35,
-    goldCost: 1_500_000,
+    goldCost: 1_500_000 * 3,
     bonusLabelRu: '+20% к шансу редких предметов',
   },
   {
@@ -81,7 +81,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Панорамный вид и запас энергии для героев.',
     icon: '🌆',
     unlockLevel: 40,
-    goldCost: 1_900_000,
+    goldCost: 1_900_000 * 3,
     bonusLabelRu: '+15% к макс. энергии и быстрее восстановление',
   },
   {
@@ -90,7 +90,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Легендарная цитадель усиливает все статы.',
     icon: '⚔️',
     unlockLevel: 45,
-    goldCost: 2_400_000,
+    goldCost: 2_400_000 * 3,
     bonusLabelRu: '+12% ко всем характеристикам',
   },
   {
@@ -99,7 +99,7 @@ export const REAL_ESTATE_PROPERTIES: PropertyDef[] = [
     descriptionRu: 'Резиденция для тех, кто покорил вершины.',
     icon: '✨',
     unlockLevel: 50,
-    goldCost: 3_000_000,
+    goldCost: 3_000_000 * 3,
     bonusLabelRu: '+25% ко всем наградам + эксклюзивный титул',
     exclusiveTitleId: 'ascension_homeowner',
   },

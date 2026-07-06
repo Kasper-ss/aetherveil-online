@@ -108,7 +108,7 @@ function buildItem(slot: EquipSlot, tier: number): Item {
   const stats = slotStats(slot, tier)
   const name = SLOT_NAMES_RU[slot][tier]
   const statDesc = Object.entries(stats).map(([k, v]) => {
-    const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+    const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
     return `${labels[k] ?? k} +${v}`
   }).join(', ')
 
@@ -240,13 +240,44 @@ const EPIC_SETS = [
       { slot: 'weapon' as EquipSlot, name: 'Копьё повелителя', icon: '🐺', stats: { atk: 34, crit: 12, speed: 8 } },
     ],
   },
+  {
+    id: 'assassin',
+    name: 'Ассасин',
+    bonus: 'Полный сет: +35% к шансу крита и +20% к урону от скрытых атак',
+    pieces: [
+      { slot: 'helmet' as EquipSlot, name: 'Капюшон Ассасина', icon: '🗡️', stats: { def: 14, atk: 8, crit: 10, stealth: 6 } },
+      { slot: 'chestplate' as EquipSlot, name: 'Плащ Ассасина', icon: '🗡️', stats: { def: 20, atk: 12, crit: 8, stealth: 5 } },
+      { slot: 'leggings' as EquipSlot, name: 'Поножи Ассасина', icon: '🗡️', stats: { def: 12, atk: 6, crit: 12, stealth: 10 } },
+      { slot: 'boots' as EquipSlot, name: 'Сапоги Ассасина', icon: '🗡️', stats: { speed: 16, atk: 8, crit: 8, stealth: 12 } },
+      { slot: 'necklace' as EquipSlot, name: 'Амулет тени', icon: '🗡️', stats: { atk: 16, crit: 14, stealth: 8 } },
+      { slot: 'ring' as EquipSlot, name: 'Кольцо убийцы', icon: '🗡️', stats: { atk: 12, crit: 16, stealth: 6 } },
+      { slot: 'weapon' as EquipSlot, name: 'Клинок Ассасина', icon: '🗡️', stats: { atk: 42, crit: 18, stealth: 10 } },
+    ],
+  },
+]
+
+const MYTHIC_SETS = [
+  {
+    id: 'penivise',
+    name: 'Пенивайз',
+    bonus: 'Полный сет: +50% урон по одной цели, +25% восстановление энергии, страх на врагов',
+    pieces: [
+      { slot: 'helmet' as EquipSlot, name: 'Маска Пенивайза', icon: '👁️', stats: { def: 32, atk: 22, stealth: 18, crit: 12 } },
+      { slot: 'chestplate' as EquipSlot, name: 'Мантия Пенивайза', icon: '👁️', stats: { def: 48, atk: 28, stealth: 14, hp: 120 } },
+      { slot: 'leggings' as EquipSlot, name: 'Поножи Пенивайза', icon: '👁️', stats: { def: 26, atk: 18, stealth: 20, crit: 10 } },
+      { slot: 'boots' as EquipSlot, name: 'Сапоги Пенивайза', icon: '👁️', stats: { speed: 22, atk: 16, stealth: 24, crit: 12 } },
+      { slot: 'necklace' as EquipSlot, name: 'Око Пенивайза', icon: '👁️', stats: { atk: 32, crit: 20, stealth: 16 } },
+      { slot: 'ring' as EquipSlot, name: 'Печать Пенивайза', icon: '👁️', stats: { atk: 28, crit: 22, stealth: 14 } },
+      { slot: 'weapon' as EquipSlot, name: 'Клинок Пенивайза', icon: '👁️', stats: { atk: 95, crit: 28, stealth: 22 } },
+    ],
+  },
 ]
 
 for (const set of SETS) {
   for (const piece of set.pieces) {
     const id = `${set.id}_${piece.slot}`
     const statDesc = Object.entries(piece.stats).map(([k, v]) => {
-      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
       return `${labels[k] ?? k} +${v}`
     }).join(', ')
     generated[id] = {
@@ -270,7 +301,7 @@ for (const set of EPIC_SETS) {
   for (const piece of set.pieces) {
     const id = `${set.id}_${piece.slot}`
     const statDesc = Object.entries(piece.stats).map(([k, v]) => {
-      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
       return `${labels[k] ?? k} +${v}`
     }).join(', ')
     generated[id] = {
@@ -290,11 +321,35 @@ for (const set of EPIC_SETS) {
   }
 }
 
+for (const set of MYTHIC_SETS) {
+  for (const piece of set.pieces) {
+    const id = `${set.id}_${piece.slot}`
+    const statDesc = Object.entries(piece.stats).map(([k, v]) => {
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
+      return `${labels[k] ?? k} +${v}`
+    }).join(', ')
+    generated[id] = {
+      id,
+      name: piece.name,
+      description: `Мифический сет «${set.name}». ${statDesc}. ${set.bonus}`,
+      slot: piece.slot,
+      rarity: 'mythic',
+      stats: piece.stats,
+      icon: piece.icon,
+      sellPrice: 5000,
+      setId: set.id,
+      setName: set.name,
+      upgradeLevel: 1,
+      starLevel: 0,
+    }
+  }
+}
+
 for (const set of LUCKY_SETS) {
   for (const piece of set.pieces) {
     const id = `${set.id}_${piece.slot}`
     const statDesc = Object.entries(piece.stats).map(([k, v]) => {
-      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
       return `${labels[k] ?? k} +${v}`
     }).join(', ')
     generated[id] = {
@@ -314,7 +369,7 @@ for (const set of LUCKY_SETS) {
   }
 }
 
-export const SET_DATA = [...SETS, ...EPIC_SETS, ...LUCKY_SETS]
+export const SET_DATA = [...SETS, ...EPIC_SETS, ...MYTHIC_SETS, ...LUCKY_SETS]
 
 export const CONSUMABLES: Record<string, Item> = {
   hp_potion: {
@@ -471,7 +526,7 @@ export function getItemStatDeltaPreview(item: Item, kind: 'level' | 'star'): Par
 }
 
 export function formatStatDelta(delta: Partial<Stats>): string {
-  const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+  const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
   const parts = Object.entries(delta)
     .filter(([, v]) => v && v > 0)
     .map(([k, v]) => `+${v} ${labels[k] ?? k}`)
@@ -495,7 +550,7 @@ export function getEffectiveItemStats(item: Item): Partial<Stats> {
 
 export function formatItemStats(item: Item): string {
   const stats = getEffectiveItemStats(item)
-  const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР' }
+  const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
   return Object.entries(stats).map(([k, v]) => `${labels[k] ?? k} +${v}`).join(' · ')
 }
 

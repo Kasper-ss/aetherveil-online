@@ -14,6 +14,7 @@ export interface EnemyCombatState {
   enraged: boolean
   dotTurns: number
   dotDamage: number
+  fearedTurns?: number
 }
 
 export function createEnemyCombatState(): EnemyCombatState {
@@ -141,6 +142,12 @@ export function executeEnemyAttack(
   let lifeDrain = false
   let enemyHeal = 0
   const isBoss = !!enemy.isBoss
+
+  if (state.fearedTurns && state.fearedTurns > 0) {
+    atkMult *= 0.72
+    state = { ...state, fearedTurns: state.fearedTurns - 1 }
+    logs.push(log(`😨 ${enemy.name} дрожит от страха`, 'system'))
+  }
 
   if (abilities.some((a) => a.id === 'blood_frenzy') && combat.enemyHp <= combat.enemyMaxHp * 0.5) {
     if (!state.enraged) {

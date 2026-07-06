@@ -43,6 +43,18 @@ function countEquipped(player: Player) {
   return { total: items.length, byRarity, bySetId }
 }
 
+function namedSetPieceStats(setId: string, isLucky: boolean): Partial<Stats> {
+  if (isLucky) return { crit: 8, speed: 6, atk: 6, def: 4, hp: 30 }
+  switch (setId) {
+    case 'assassin':
+      return { atk: 14, crit: 20, stealth: 12, speed: 6 }
+    case 'penivise':
+      return { atk: 28, crit: 18, stealth: 20, speed: 8, hp: 60 }
+    default:
+      return { crit: 12, speed: 8, atk: 10, def: 6, hp: 40 }
+  }
+}
+
 export function getActiveSetBonuses(player: Player): ActiveSetBonus[] {
   const { byRarity, bySetId } = countEquipped(player)
   const bonuses: ActiveSetBonus[] = []
@@ -55,9 +67,7 @@ export function getActiveSetBonuses(player: Player): ActiveSetBonus[] {
         id: set.id,
         name: isLucky ? `Lucky «${'classLabel' in set ? (set as { classLabel: string }).classLabel : set.name}»` : `Сет «${set.name}»`,
         description: set.bonus,
-        stats: isLucky
-          ? { crit: 8, speed: 6, atk: 6, def: 4, hp: 30 }
-          : { crit: 12, speed: 8, atk: 10, def: 6, hp: 40 },
+        stats: namedSetPieceStats(set.id, isLucky),
       })
     }
   }
@@ -75,13 +85,14 @@ export function getActiveSetBonuses(player: Player): ActiveSetBonus[] {
 
 export function applySetBonuses(player: Player, base: EffectiveStats): EffectiveStats {
   const bonuses = getActiveSetBonuses(player)
-  const extra = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0 }
+  const extra = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0, stealth: 0 }
   for (const b of bonuses) {
     extra.atk += b.stats.atk ?? 0
     extra.def += b.stats.def ?? 0
     extra.hp += b.stats.hp ?? 0
     extra.crit += b.stats.crit ?? 0
     extra.speed += b.stats.speed ?? 0
+    extra.stealth += b.stats.stealth ?? 0
   }
   return {
     ...base,
@@ -90,5 +101,6 @@ export function applySetBonuses(player: Player, base: EffectiveStats): Effective
     hp: base.hp + extra.hp,
     crit: base.crit + extra.crit,
     speed: base.speed + extra.speed,
+    stealth: base.stealth + extra.stealth,
   }
 }

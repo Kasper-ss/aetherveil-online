@@ -136,6 +136,20 @@ export function getLegendaryCraftResources(tier: EpicCraftTier): Partial<Record<
   return scaled
 }
 
+export function getMythicCraftResources(tier: EpicCraftTier): Partial<Record<ResourceId, number>> {
+  const legendary = getLegendaryCraftResources(tier)
+  const scaled: Partial<Record<ResourceId, number>> = {}
+  for (const [k, v] of Object.entries(legendary)) {
+    if (!v) continue
+    const id = k as ResourceId
+    const extra = id === 'star_shard' || id === 'aether_dust' || id === 'adamantite' ? 12 : 0
+    scaled[id] = Math.ceil(v * 2.2) + extra
+  }
+  scaled.star_shard = (scaled.star_shard ?? 0) + 18
+  scaled.aether_dust = (scaled.aether_dust ?? 0) + 22
+  return scaled
+}
+
 /** Слот → тир ресурсов для эпик/легендарных сетов */
 export function craftTierForSlot(slot: string): EpicCraftTier {
   switch (slot) {

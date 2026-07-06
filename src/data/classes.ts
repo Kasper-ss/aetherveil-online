@@ -1,5 +1,5 @@
 import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item } from '@/types/game'
-import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
+import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
 import { applyClassCraftModifier } from '@/lib/classCraft'
@@ -315,7 +315,7 @@ export function getDynamicMythicCraftRecipes(player: Player): CraftRecipe[] {
 
 export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
   const unlockedScrollIds = new Set(getUnlockedScrollRecipeIds(player?.unlockedSetScrolls))
-  const scrollRecipes = [...EPIC_SET_CRAFT_RECIPES, ...LEGENDARY_SET_CRAFT_RECIPES]
+  const scrollRecipes = [...EPIC_SET_CRAFT_RECIPES, ...LEGENDARY_SET_CRAFT_RECIPES, ...MYTHIC_SET_CRAFT_RECIPES]
     .filter((r) => unlockedScrollIds.has(r.id))
   const base = player
     ? [...CRAFT_RECIPES, ...scrollRecipes, ...getDynamicMythicCraftRecipes(player)]
