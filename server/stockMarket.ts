@@ -126,9 +126,25 @@ async function loadStateFromDb(): Promise<void> {
   const { data } = await supabase.from('stock_market_state').select('*')
   for (const row of data ?? []) {
     const r = row as { symbol_id: string; price: number; last_tick_at: string; history: unknown; price_7d_ago: number }
+    const sym = STOCK_SYMBOLS.find((s) => s.id === r.symbol_id)
+    let price = Number(r.price)
+    const now = new Date().toISOString()
+    if (sym && price < sym.basePrice * 0.25) {
+      price = sym.basePrice
+      const migrated: SymbolState = {
+        symbolId: r.symbol_id,
+        price,
+        lastTickAt: now,
+        history: [{ price, at: now }],
+        price7dAgo: price,
+      }
+      stateMap().set(r.symbol_id, migrated)
+      await persistState(migrated)
+      continue
+    }
     stateMap().set(r.symbol_id, {
       symbolId: r.symbol_id,
-      price: Number(r.price),
+      price,
       lastTickAt: r.last_tick_at,
       history: Array.isArray(r.history) ? r.history as Array<{ price: number; at: string }> : [],
       price7dAgo: Number(r.price_7d_ago ?? r.price),
@@ -163,6 +179,13 @@ async function ensureMarketTicked(): Promise<void> {
         price7dAgo: sym.basePrice,
       }
       map.set(sym.id, state)
+    } else if (state.price < sym.basePrice * 0.25) {
+      const nowIso = new Date().toISOString()
+      state.price = sym.basePrice
+      state.lastTickAt = nowIso
+      state.history = [{ price: sym.basePrice, at: nowIso }]
+      state.price7dAgo = sym.basePrice
+      await persistState(state)
     }
     const lastTick = new Date(state.lastTickAt).getTime()
     const dayMs = 24 * 60 * 60 * 1000

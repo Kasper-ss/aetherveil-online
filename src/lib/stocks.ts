@@ -1,6 +1,17 @@
 import type { Player, StockQuote } from '@/types/game'
 import { getStockDailyDividendRate, STOCK_SYMBOLS } from '@/data/stocks'
 
+export function buildDefaultStockQuotes(): StockQuote[] {
+  return STOCK_SYMBOLS.map((sym) => ({
+    symbolId: sym.id,
+    price: sym.basePrice,
+    change24h: 0,
+    change7d: 0,
+    history7d: Array.from({ length: 7 }, () => sym.basePrice),
+    dividendRateDaily: (sym.dividendMin + sym.dividendMax) / 2,
+  }))
+}
+
 export function getPortfolioValue(player: Player, quotes: StockQuote[]): number {
   const portfolio = player.stockPortfolio ?? {}
   let total = 0

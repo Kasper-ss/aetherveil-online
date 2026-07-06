@@ -73,9 +73,9 @@ function getFloorRewardScale(floor: number): number {
 }
 
 /** Global mob/boss combat stat tuning — HP and ATK tuned separately (+3% vs prior balance). */
-const MOB_HP_MULT = 0.824
-const MOB_ATK_MULT = 0.6798
-const MOB_DEF_MULT = 0.8034
+const MOB_HP_MULT = 0.87344
+const MOB_ATK_MULT = 0.720588
+const MOB_DEF_MULT = 0.851604
 
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)

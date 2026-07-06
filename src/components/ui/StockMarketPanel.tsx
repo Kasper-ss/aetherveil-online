@@ -8,6 +8,7 @@ import { STOCK_SYMBOLS, STOCKS_UNLOCK_FLOOR, getStockSymbol } from '@/data/stock
 import { fetchStockQuotes, tradeStockOnServer } from '@/lib/multiplayerSync'
 import { formatNumber } from '@/lib/utils'
 import {
+  buildDefaultStockQuotes,
   formatStockChange,
   formatStockPrice,
   getPortfolioValue,
@@ -58,11 +59,11 @@ export function StockMarketPanel({ player }: { player: Player }) {
 
   const loadQuotes = useCallback(async () => {
     const data = await fetchStockQuotes()
-    if (!data) return
-    setQuotes(data.quotes)
-    setTopGainers(data.topGainers)
-    if (data.quotes.length && !selectedId) setSelectedId(data.quotes[0].symbolId)
-    accrueStockDividendsStore(data.quotes)
+    const quotes = data?.quotes?.length ? data.quotes : buildDefaultStockQuotes()
+    setQuotes(quotes)
+    setTopGainers(data?.topGainers ?? [])
+    if (quotes.length && !selectedId) setSelectedId(quotes[0].symbolId)
+    accrueStockDividendsStore(quotes)
   }, [accrueStockDividendsStore, selectedId])
 
   useEffect(() => {
