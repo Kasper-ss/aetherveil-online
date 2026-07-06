@@ -16,7 +16,7 @@ import { InviteFriendDialog } from '@/components/InviteFriendDialog'
 import { playSfx } from '@/lib/audio'
 import { getFloorData } from '@/data/gameData'
 import { getMobsRequiredForFloor } from '@/data/items'
-import { getCombatMaxHp, getPlayerCurrentHp } from '@/lib/playerStats'
+import { getCombatMaxHp, getPlayerCurrentHp, getMaxEnergy } from '@/lib/playerStats'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { ManaTimer } from '@/components/ui/ManaTimer'
 import { useT } from '@/hooks/useT'
@@ -66,6 +66,7 @@ export function HomePage() {
   const xpPct = (player.exp / xpNeeded) * 100
   const maxHp = getCombatMaxHp(player)
   const currentHp = getPlayerCurrentHp(player)
+  const maxEnergy = getMaxEnergy(player)
   const maxMana = usesMana(player) ? getMaxMana(player) : 0
   const currentMana = usesMana(player) ? getPlayerCurrentMana(player) : 0
   const classData = player.classId ? CLASSES.find((c) => c.id === player.classId) : null
@@ -195,7 +196,7 @@ export function HomePage() {
         <CardContent className="p-3 pt-3">
           <PlayerStatsPanel
             hp={currentHp} maxHp={maxHp}
-            energy={player.energy} maxEnergy={player.maxEnergy}
+            energy={player.energy} maxEnergy={maxEnergy}
             mana={currentMana} maxMana={maxMana}
             atk={stats.atk} def={stats.def}
             compact

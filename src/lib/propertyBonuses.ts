@@ -27,6 +27,7 @@ const NEUTRAL: PropertyMultipliers = {
   allRewards: 1,
 }
 
+/** Permanent home bonuses — must match labels in realEstate.ts */
 const BONUS_BY_PROPERTY: Record<string, Partial<PropertyMultipliers>> = {
   forest_hut: { energyRegen: 1.05 },
   stone_cottage: { mobGold: 1.1 },
@@ -43,8 +44,7 @@ const BONUS_BY_PROPERTY: Record<string, Partial<PropertyMultipliers>> = {
 export function getPropertyMultipliers(player: Player): PropertyMultipliers {
   const id = player.ownedPropertyId
   if (!id) return NEUTRAL
-  const def = getPropertyById(id)
-  if (!def) return NEUTRAL
+  if (!getPropertyById(id)) return NEUTRAL
   return { ...NEUTRAL, ...BONUS_BY_PROPERTY[id] }
 }
 
@@ -52,4 +52,52 @@ export function getOwnedPropertyTitleId(player: Player): string | undefined {
   const id = player.ownedPropertyId
   if (!id) return undefined
   return getPropertyById(id)?.exclusiveTitleId
+}
+
+export interface ActivePropertyInfo {
+  propertyId: string
+  nameRu: string
+  icon: string
+  bonusLabelRu: string
+  detailLines: string[]
+}
+
+function pct(mult: number): string {
+  return `+${Math.round((mult - 1) * 100)}%`
+}
+
+/** Human-readable breakdown of active numeric bonuses. */
+export function getPropertyBonusDetailLines(player: Player): string[] {
+  const m = getPropertyMultipliers(player)
+  const lines: string[] = []
+  if (m.energyRegen > 1) lines.push(`${pct(m.energyRegen)} к скорости восстановления энергии`)
+  if (m.maxEnergy > 1) lines.push(`${pct(m.maxEnergy)} к макс. энергии`)
+  if (m.mobGold > 1) lines.push(`${pct(m.mobGold)} к золоту с мобов`)
+  if (m.def > 1) lines.push(`${pct(m.def)} к защите`)
+  if (m.exp > 1) lines.push(`${pct(m.exp)} к опыту с этажей`)
+  if (m.gatherResources > 1) lines.push(`${pct(m.gatherResources)} к ресурсам с рыбалки и сбора`)
+  if (m.craftSuccess > 1) lines.push(`${pct(m.craftSuccess)} к крафту и улучшениям в Кузнице`)
+  if (m.rareLoot > 1) lines.push(`${pct(m.rareLoot)} к шансу редкого лута`)
+  if (m.allStats > 1) lines.push(`${pct(m.allStats)} ко всем характеристикам`)
+  if (m.allRewards > 1) lines.push(`${pct(m.allRewards)} ко всем наградам`)
+  return lines
+}
+
+export function getActivePropertyInfo(player: Player): ActivePropertyInfo | null {
+  const id = player.ownedPropertyId
+  if (!id) return null
+  const def = getPropertyById(id)
+  if (!def) return null
+  const detailLines = getPropertyBonusDetailLines(player)
+  return {
+    propertyId: id,
+    nameRu: def.nameRu,
+    icon: def.icon,
+    bonusLabelRu: def.bonusLabelRu,
+    detailLines: detailLines.length > 0 ? detailLines : [def.bonusLabelRu],
+  }
+}
+
+export function hasActiveProperty(player: Player): boolean {
+  return !!player.ownedPropertyId && !!getPropertyById(player.ownedPropertyId)
 }

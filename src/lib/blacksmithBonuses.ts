@@ -69,7 +69,8 @@ export function applyBlacksmithCraftBonuses(player: Player, item: Item): Item {
   if (item.slot === 'consumable') return item
 
   let result = { ...item }
-  const allMult = 1 + bsLevel(player, 9) * 0.05
+  const craftMult = getCraftSuccessMultiplier(player)
+  const allMult = (1 + bsLevel(player, 9) * 0.05) * craftMult
   const weaponAtkBonus = bsLevel(player, 0) * 0.02
   const armorDefBonus = bsLevel(player, 3) * 0.02
   const flatAtk = bsLevel(player, 6)

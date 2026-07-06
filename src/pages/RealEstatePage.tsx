@@ -17,6 +17,8 @@ import {
   PROPERTY_SELL_REFUND_RATE,
   UNLIMITED_PROPERTY_ID,
 } from '@/data/realEstate'
+import { PropertyBonusesPanel } from '@/components/ui/PropertyBonusesPanel'
+import { getActivePropertyInfo } from '@/lib/propertyBonuses'
 
 export function RealEstatePage() {
   const navigate = useNavigate()
@@ -65,6 +67,7 @@ export function RealEstatePage() {
 
   const ownedId = player.ownedPropertyId
   const owned = ownedId ? getPropertyById(ownedId) : undefined
+  const propertyInfo = getActivePropertyInfo(player)
   const sellRefund = owned
     ? getPropertySellPrice(player.propertyPurchasePrice ?? owned.goldCost)
     : 0
@@ -76,7 +79,7 @@ export function RealEstatePage() {
     setBusyId(null)
     if (result.ok) {
       hapticSuccess()
-      setMessage('Дом успешно куплен!')
+      setMessage('Дом куплен! Бонусы уже действуют.')
       await refresh()
     } else {
       hapticError()
@@ -91,7 +94,7 @@ export function RealEstatePage() {
     setBusyId(null)
     if (result.ok) {
       hapticSuccess()
-      setMessage(`Дом продан. Возврат: ${formatNumber(result.refund ?? 0)} 🪙`)
+      setMessage(`Дом продан. Бонусы сняты. Возврат: ${formatNumber(result.refund ?? 0)} 🪙`)
       await refresh()
     } else {
       hapticError()
@@ -125,6 +128,10 @@ export function RealEstatePage() {
             )}
           </CardContent>
         </Card>
+
+        {propertyInfo && (
+          <PropertyBonusesPanel player={player} compact />
+        )}
 
         {owned && (
           <Card className="border-aether-cyan/40">

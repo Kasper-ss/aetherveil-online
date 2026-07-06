@@ -240,6 +240,32 @@ function syncEnergyFields(player: Player): Partial<Player> {
   return { maxEnergy: getMaxEnergy(player) }
 }
 
+function applyPropertyOwnershipChange(player: Player, merged: Player): Partial<Player> {
+  const oldMaxEnergy = getMaxEnergy(player)
+  const newMaxEnergy = getMaxEnergy(merged)
+  const oldMaxHp = getCombatMaxHp(player)
+  const newMaxHp = getCombatMaxHp(merged)
+
+  const updates: Partial<Player> = {
+    maxEnergy: newMaxEnergy,
+  }
+
+  if (newMaxEnergy > oldMaxEnergy) {
+    updates.energy = Math.min(newMaxEnergy, player.energy + (newMaxEnergy - oldMaxEnergy))
+  } else if (player.energy > newMaxEnergy) {
+    updates.energy = newMaxEnergy
+  }
+
+  const currentHp = player.currentHp ?? oldMaxHp
+  if (newMaxHp > oldMaxHp && oldMaxHp > 0) {
+    updates.currentHp = Math.min(newMaxHp, Math.floor(currentHp * (newMaxHp / oldMaxHp)))
+  } else {
+    updates.currentHp = Math.min(newMaxHp, currentHp)
+  }
+
+  return updates
+}
+
 function getEquipSlotForItem(item: Item, _classId?: PlayerClass): keyof Player['equipped'] | null {
   if (item.slot === 'consumable') return null
   if (item.slot === 'pet') return 'pet'
@@ -312,6 +338,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       merged.lifetimeGoldEarned = (player.lifetimeGoldEarned ?? 0) + (partial.gold - player.gold)
     }
     merged.activeEffects = pruneActiveEffects(merged.activeEffects)
+    if ('ownedPropertyId' in partial || 'propertyPurchasePrice' in partial) {
+      Object.assign(merged, applyPropertyOwnershipChange(player, merged))
+    }
     const maxHp = getCombatMaxHp(merged)
     if (merged.currentHp != null) {
       merged.currentHp = Math.min(maxHp, Math.max(0, merged.currentHp))

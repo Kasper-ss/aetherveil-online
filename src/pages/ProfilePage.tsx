@@ -24,6 +24,9 @@ import { normalizeMonthlyStats } from '@/lib/monthlyStats'
 import { getTitleLabel, getTitleColorClass } from '@/data/achievementTitles'
 import { ACHIEVEMENTS, countClaimedAchievements, canClaimAchievement } from '@/data/achievements'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
+import { PropertyBonusesPanel } from '@/components/ui/PropertyBonusesPanel'
+import { getActivePropertyInfo } from '@/lib/propertyBonuses'
+import { isRealEstateUnlocked } from '@/data/realEstate'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -65,6 +68,8 @@ export function ProfilePage() {
   const achReady = ACHIEVEMENTS.filter((a) => canClaimAchievement(player, a.id)).length
   const achBonuses = getAchievementMultipliers(player)
   const hasAchBonuses = achBonuses.exp > 1 || achBonuses.gold > 1 || achBonuses.loot > 1 || achBonuses.allStats > 1
+  const propertyInfo = getActivePropertyInfo(player)
+  const realEstateUnlocked = isRealEstateUnlocked(player)
   const trophyCount = (player.bossTrophies ?? []).length
 
   function handleExpClick() {
@@ -171,6 +176,11 @@ export function ProfilePage() {
           <TabsTrigger value="trophies" className="flex-1 text-xs">
             Трофеи {trophyCount > 0 && <span className="text-aether-gold ml-0.5">{trophyCount}</span>}
           </TabsTrigger>
+          {realEstateUnlocked && (
+            <TabsTrigger value="property" className="flex-1 text-xs">
+              Дом{propertyInfo ? ' ✓' : ''}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile" className="mt-0">
@@ -254,6 +264,11 @@ export function ProfilePage() {
           {hasAchBonuses && (
             <p className="text-[10px] text-center text-fuchsia-400">
               Бонусы достижений: EXP +{Math.round((achBonuses.exp - 1) * 100)}% · Gold +{Math.round((achBonuses.gold - 1) * 100)}% · Лут +{Math.round((achBonuses.loot - 1) * 100)}% · Статы +{Math.round((achBonuses.allStats - 1) * 100)}%
+            </p>
+          )}
+          {propertyInfo && (
+            <p className="text-[10px] text-center text-aether-gold">
+              {propertyInfo.icon} {propertyInfo.nameRu}: {propertyInfo.bonusLabelRu}
             </p>
           )}
         </CardContent>
@@ -412,6 +427,15 @@ export function ProfilePage() {
         <TabsContent value="trophies" className="mt-0">
           <TrophiesPanel />
         </TabsContent>
+
+        {realEstateUnlocked && (
+          <TabsContent value="property" className="mt-0">
+            <PropertyBonusesPanel
+              player={player}
+              onOpenRealEstate={() => navigate('/real-estate')}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={showUnderwearEgg} onOpenChange={setShowUnderwearEgg}>
