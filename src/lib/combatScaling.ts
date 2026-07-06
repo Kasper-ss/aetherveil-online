@@ -83,8 +83,8 @@ export function getPlayerCombatEase(player: Player, floor: number): CombatEaseRe
   const powerAdvantage = Math.max(0, ratio - 1)
   const powerDisadvantage = Math.max(0, 1 - ratio)
 
-  const easeDamage = Math.min(0.28, powerAdvantage * 0.14)
-  const easeEnemy = Math.min(0.28, powerAdvantage * 0.14)
+  const easeDamage = Math.min(0.26, powerAdvantage * 0.13)
+  const easeEnemy = Math.min(0.24, powerAdvantage * 0.12)
   const penaltyDamage = Math.min(0.16, powerDisadvantage * 0.22)
   const penaltyEnemy = Math.min(0.18, powerDisadvantage * 0.24)
 

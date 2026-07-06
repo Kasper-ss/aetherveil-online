@@ -95,7 +95,7 @@ export interface EnemyAttackResult {
 
 const PHASE2_DEBUFF_MS = 3 * 60_000
 /** Cap stacked ability multipliers so bosses cannot one-shot from ability chains. */
-const BOSS_ATK_MULT_CAP = 2.0
+const BOSS_ATK_MULT_CAP = 2.3
 
 function applyAtkMult(current: number, factor: number, isBoss: boolean): number {
   const next = current * factor
@@ -167,7 +167,7 @@ export function executeEnemyAttack(
         }
         break
       case 'flame_burst':
-        atkMult = applyAtkMult(atkMult, 1.4, isBoss)
+        atkMult = applyAtkMult(atkMult, 1.45, isBoss)
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
         break
@@ -210,7 +210,7 @@ export function executeEnemyAttack(
 
     switch (ability.id) {
       case 'molten_curse':
-        atkMult = applyAtkMult(atkMult, 1.1, isBoss)
+        atkMult = applyAtkMult(atkMult, 1.12, isBoss)
         debuffPresets.push({ preset: 'boss_atk_down', durationMs: PHASE2_DEBUFF_MS })
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu} (−атака)`, 'enemy'))
@@ -222,7 +222,7 @@ export function executeEnemyAttack(
         logs.push(log(`💥 ${enemy.name}: ${ability.nameRu} (−защита)`, 'enemy'))
         break
       case 'inferno_wave':
-        atkMult = applyAtkMult(atkMult, 1.22, isBoss)
+        atkMult = applyAtkMult(atkMult, 1.28, isBoss)
         debuffPresets.push({ preset: 'boss_burn', durationMs: PHASE2_DEBUFF_MS })
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
