@@ -2104,13 +2104,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const dupes = countDuplicateItems(
       [...player.inventory, ...(Object.values(player.equipped).filter(Boolean) as Item[])],
       item.id,
+      item.rarity,
       item.instanceId,
     )
     const missing: MissingCost[] = []
     if (dupes < RARITY_DUPLICATES_REQUIRED) {
       missing.push({
         key: 'duplicates',
-        label: `Копии предмета`,
+        label: `Копии предмета (та же редкость)`,
         icon: '📦',
         have: dupes,
         need: RARITY_DUPLICATES_REQUIRED,
@@ -2130,7 +2131,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       ...(Object.values(player.equipped).filter(Boolean) as Item[]),
     ]
     const dupes = allItems.filter(
-      (i) => i.id === item.id && i.instanceId !== item.instanceId && i.slot !== 'consumable',
+      (i) =>
+        i.id === item.id
+        && i.rarity === item.rarity
+        && i.instanceId !== item.instanceId
+        && i.slot !== 'consumable',
     )
     const cost = getRarityUpgradeCost(item)
     if (!get().spendGold(cost.gold)) return null

@@ -10,7 +10,8 @@ import { usePlayerStore } from '@/store/playerStore'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
-  canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
+  canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
+  RARITY_ITEMS_TOTAL_REQUIRED,
 } from '@/lib/rarityUpgrade'
 import {
   ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, sortGearItems,
@@ -453,7 +454,7 @@ export function ForgePage() {
 
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
-            Повысьте редкость: нужно {RARITY_DUPLICATES_REQUIRED} копии + ресурсы. Можно улучшать надетые предметы.
+            Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы. Можно улучшать надетые предметы.
           </p>
           <div className="flex gap-2 mb-2">
             <Button
@@ -509,7 +510,7 @@ export function ForgePage() {
                       <div className="text-xs text-white truncate">{item.name}</div>
                       <ItemSummary item={item} />
                       <p className="text-[9px] text-slate-500">
-                        Копий: {countDuplicateItems(allGear, item.id, item.instanceId)}/{RARITY_DUPLICATES_REQUIRED}
+                        Пар: {1 + countDuplicateItems(allGear, item.id, item.rarity, item.instanceId)}/{RARITY_ITEMS_TOTAL_REQUIRED}
                       </p>
                     </div>
                   </div>
@@ -534,7 +535,7 @@ export function ForgePage() {
                   return (
                     <p className="text-[10px] text-slate-500">
                       🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
-                      · Копий: {countDuplicateItems(allGear, selectedRarityItem.id, selectedRarityItem.instanceId)}/{RARITY_DUPLICATES_REQUIRED}
+                      · Пар: {1 + countDuplicateItems(allGear, selectedRarityItem.id, selectedRarityItem.rarity, selectedRarityItem.instanceId)}/{RARITY_ITEMS_TOTAL_REQUIRED}
                     </p>
                   )
                 })()}

@@ -8,7 +8,9 @@ export function getNextRarity(rarity: ItemRarity): ItemRarity | null {
   return RARITY_CHAIN[idx + 1]
 }
 
-export const RARITY_DUPLICATES_REQUIRED = 2
+/** Extra copies besides the selected item (2 identical items of same rarity → 1 upgraded). */
+export const RARITY_DUPLICATES_REQUIRED = 1
+export const RARITY_ITEMS_TOTAL_REQUIRED = RARITY_DUPLICATES_REQUIRED + 1
 
 export function getRarityUpgradeCost(item: Item): {
   gold: number
@@ -37,9 +39,18 @@ export function canUpgradeRarity(item: Item): boolean {
   return item.slot !== 'consumable' && getNextRarity(item.rarity) !== null
 }
 
-export function countDuplicateItems(items: Item[], templateId: string, excludeInstanceId?: string): number {
+export function countDuplicateItems(
+  items: Item[],
+  templateId: string,
+  rarity: ItemRarity,
+  excludeInstanceId?: string,
+): number {
   return items.filter(
-    (i) => i.id === templateId && i.slot !== 'consumable' && i.instanceId !== excludeInstanceId,
+    (i) =>
+      i.id === templateId
+      && i.rarity === rarity
+      && i.slot !== 'consumable'
+      && i.instanceId !== excludeInstanceId,
   ).length
 }
 
