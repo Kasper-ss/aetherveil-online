@@ -148,6 +148,17 @@ function migrateBossTrophies(player: import('@/types/game').Player): string[] {
   return [...earned]
 }
 
+function migrateResources(
+  resources: Partial<Record<import('@/types/game').ResourceId, number>> | undefined,
+): Partial<Record<import('@/types/game').ResourceId, number>> {
+  const merged: Record<string, number> = {
+    iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1,
+    ...resources,
+  }
+  delete merged.bone
+  return merged as Partial<Record<import('@/types/game').ResourceId, number>>
+}
+
 export function migratePlayer(player: import('@/types/game').Player): import('@/types/game').Player {
   const synced = syncPlayerSkills(
     player.classId,
@@ -176,11 +187,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     hpLastRegenAt: player.hpLastRegenAt ?? new Date().toISOString(),
     currentHp: player.currentHp,
     maxEnergy: getMaxEnergy({ ...player, allocatedStats: { ...EMPTY_ALLOCATED, ...player.allocatedStats } }),
-    resources: {
-      iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1,
-      ...player.resources,
-    },
-    marketListings: player.marketListings ?? [],
+    resources: migrateResources(player.resources),
+    marketListings: (player.marketListings ?? []).filter((l) => (l.resourceId as string | undefined) !== 'bone'),
     expEasterEggClaimed: player.expEasterEggClaimed ?? false,
     underwearEasterEggClaimed: player.underwearEasterEggClaimed ?? false,
     bankBalance: player.bankBalance ?? 0,

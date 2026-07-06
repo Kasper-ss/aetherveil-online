@@ -39,7 +39,7 @@ export const LUCKY_CRAFT_RESOURCE_IDS: ResourceId[] = [
   'adamantite',
   'mithril_ore',
   'meat',
-  'bone',
+  'hide',
   'gem_shard',
   'aether_dust',
 ]

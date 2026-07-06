@@ -22,7 +22,7 @@ export function HuntPage() {
       onSelectLevel={setSelectedLevel}
       professionId="hunter"
       perform={performHunt}
-      stockSections={[{ id: 'hunt', titleRu: 'Трофеи', resourceIds: BASIC_RESOURCE_IDS.filter((id) => ['hide', 'meat', 'bone', 'gem_shard', 'rare_spice', 'abyssal_pearl', 'star_shard', 'aether_dust'].includes(id)) }]}
+      stockSections={[{ id: 'hunt', titleRu: 'Трофеи', resourceIds: BASIC_RESOURCE_IDS.filter((id) => ['hide', 'meat', 'gem_shard', 'rare_spice', 'abyssal_pearl', 'star_shard', 'aether_dust'].includes(id)) }]}
     />
   )
 }

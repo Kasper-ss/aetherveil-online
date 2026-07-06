@@ -15,7 +15,7 @@ export type EnemyPattern = 'aggressive' | 'defensive' | 'berserker' | 'boss'
 export type PlayerClass = 'warrior' | 'archer' | 'mage' | 'summoner' | 'assassin' | 'knight'
 export type ProfessionId = 'blacksmith' | 'alchemist' | 'hunter' | 'jeweler' | 'sorcerer'
 export type ResourceId =
-  | 'iron_ore' | 'herb' | 'hide' | 'meat' | 'bone' | 'gem_shard' | 'mana_crystal'
+  | 'iron_ore' | 'herb' | 'hide' | 'meat' | 'gem_shard' | 'mana_crystal'
   | 'aether_dust' | 'star_shard' | 'upgrade_core'
   | 'stone_chunk' | 'gold_ore' | 'raw_diamond' | 'mithril_ore' | 'adamantite'
   | 'sulfur' | 'rare_spice' | 'abyssal_pearl'

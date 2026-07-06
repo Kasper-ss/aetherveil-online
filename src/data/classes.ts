@@ -13,7 +13,6 @@ export const RESOURCES: Record<ResourceId, Resource> = {
   herb_void: { id: 'herb_void', name: 'Void Herb', nameRu: 'Трава Пустоты', icon: '🌑' },
   hide: { id: 'hide', name: 'Monster Hide', nameRu: 'Шкура монстра', icon: '🦴' },
   meat: { id: 'meat', name: 'Monster Meat', nameRu: 'Мясо монстра', icon: '🥩' },
-  bone: { id: 'bone', name: 'Monster Bones', nameRu: 'Кости', icon: '💀' },
   gem_shard: { id: 'gem_shard', name: 'Gem Shard', nameRu: 'Осколок кристалла', icon: '💠' },
   mana_crystal: { id: 'mana_crystal', name: 'Mana Crystal', nameRu: 'Кристалл маны', icon: '🔮' },
   aether_dust: { id: 'aether_dust', name: 'Aether Dust', nameRu: 'Пыль Эфира', icon: '✨' },
