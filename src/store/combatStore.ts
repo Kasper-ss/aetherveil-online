@@ -19,6 +19,10 @@ import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldB
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
 
+/** Global boost to player outgoing damage in combat. */
+const PLAYER_DAMAGE_MULT = 1.12
+const ENEMY_DEF_MITIGATION = 0.34
+
 interface CombatStore {
   combat: CombatState | null
   isActive: boolean
@@ -254,8 +258,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const comboBonus = 1 + combat.combo * 0.04
     const isCrit = rollCrit(stats.crit, player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
-    const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult
-    const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * 0.4)
+    const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT
+    const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * ENEMY_DEF_MITIGATION)
     const finalDmg = Math.max(1, rawDmg)
     const hit = applyDamageToEnemy(combat, finalDmg)
     const newEnemyHp = hit.enemyHp
@@ -353,8 +357,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const isCrit = rollCrit(stats.crit + 10, player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
     let damage = Math.floor(
-      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * (isCrit ? 2 : 1)
-      - combat.enemy.stats.def * 0.3,
+      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * (isCrit ? 2 : 1)
+      - combat.enemy.stats.def * ENEMY_DEF_MITIGATION,
     )
     const finalDmg = Math.max(1, damage)
     const hit = applyDamageToEnemy(combat, finalDmg)

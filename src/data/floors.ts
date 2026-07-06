@@ -54,6 +54,9 @@ function getFloorRewardScale(floor: number): number {
   return 1 + (floor - 1) * 0.14 + Math.pow(floor, 1.2) * 0.055
 }
 
+/** Global mob/boss combat stat reduction for more comfortable pacing. */
+const MOB_COMBAT_STAT_MULT = 0.875
+
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)
   const challenge = getFloorChallengeMult(floor)
@@ -61,8 +64,8 @@ export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['patt
   const floorPower = floor >= 2 ? 1.5 : 1
   const bossMult = isBoss ? 5 : 1
   const statMult = challenge * (isBoss ? 1.35 : 1)
-  const baseHp = Math.floor((200 + floor * 105) * diff * bossMult * floorPower * statMult)
-  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.55 : 1) * floorPower * statMult)
+  const baseHp = Math.floor((200 + floor * 105) * diff * bossMult * floorPower * statMult * MOB_COMBAT_STAT_MULT)
+  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.55 : 1) * floorPower * statMult * MOB_COMBAT_STAT_MULT)
   const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2.2 : 1) * floorPower * statMult)
   const crit = isBoss ? Math.min(25, 8 + Math.floor(floor / 4)) : Math.min(15, 3 + Math.floor(floor / 6))
   const speed = isBoss ? Math.min(20, 6 + Math.floor(floor / 5)) : Math.min(18, 4 + Math.floor(floor / 4))

@@ -154,9 +154,9 @@ export function getEffectiveStats(player: Player): EffectiveStats {
   const propMult = getPropertyMultipliers(player).allStats
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult),
-    def: Math.floor((base.def + totals.def + alloc.def * 2) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * 15) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2.5) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult),
+    def: Math.floor((base.def + totals.def + alloc.def * 2.5) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * 18) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
     crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
     speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),
     stealth: alloc.stealth,

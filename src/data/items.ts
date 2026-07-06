@@ -426,15 +426,15 @@ export function createItemInstance(templateId: string): Item | null {
 }
 
 export function getUpgradeLevelStepPercent(level: number): number {
-  if (level <= 3) return 6
-  if (level <= 7) return 10
-  return 14
+  if (level <= 3) return 7
+  if (level <= 7) return 11
+  return 15
 }
 
 export function getStarStepPercent(star: number): number {
-  if (star <= 4) return 7
-  if (star <= 7) return 9
-  return 12
+  if (star <= 4) return 8
+  if (star <= 7) return 10
+  return 13
 }
 
 export function getUpgradeLevelStatBonus(level: number): number {

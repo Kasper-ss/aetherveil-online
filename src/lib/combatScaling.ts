@@ -48,13 +48,13 @@ export function getStatPowerScore(player: Player): number {
 /** Baseline power expected for a floor (aligned with recommended ATK/DEF). */
 export function getFloorBenchmarkPower(floor: number): number {
   const f = Math.max(1, floor)
-  const atk = f * 12 + 40
-  const def = f * 9 + 30
-  const hp = 80 + f * 45
+  const atk = f * 9 + 30
+  const def = f * 7 + 20
+  const hp = 70 + f * 40
   const level = Math.max(1, Math.floor((f - 1) * 2 + 4))
-  const gear = 1 + Math.min(0.45, f * 0.02)
+  const gear = 1 + Math.min(0.4, f * 0.018)
   const statScore = atk * 1.35 + def * 1.1 + (hp + level * 20) * 0.06 + level * 12
-  return statScore * gear * 1.05
+  return statScore * gear * 1.02
 }
 
 export function getPlayerCombatPower(player: Player): number {
@@ -83,13 +83,13 @@ export function getPlayerCombatEase(player: Player, floor: number): CombatEaseRe
   const powerAdvantage = Math.max(0, ratio - 1)
   const powerDisadvantage = Math.max(0, 1 - ratio)
 
-  const easeDamage = Math.min(0.16, powerAdvantage * 0.08)
-  const easeEnemy = Math.min(0.12, powerAdvantage * 0.06)
+  const easeDamage = Math.min(0.22, powerAdvantage * 0.11)
+  const easeEnemy = Math.min(0.18, powerAdvantage * 0.09)
   const penaltyDamage = Math.min(0.20, powerDisadvantage * 0.28)
   const penaltyEnemy = Math.min(0.22, powerDisadvantage * 0.30)
 
   const playerDamageMult = Math.max(0.78, 1 + easeDamage - penaltyDamage)
-  const enemyPowerMult = Math.min(1.22, Math.max(0.88, 1 - easeEnemy + penaltyEnemy))
+  const enemyPowerMult = Math.min(1.22, Math.max(0.82, 1 - easeEnemy + penaltyEnemy))
 
   return {
     playerDamageMult,
@@ -153,9 +153,9 @@ export interface FloorStatRequirements {
 export function getFloorStatRequirements(floor: number): FloorStatRequirements {
   const f = Math.max(1, floor)
   return {
-    minAtk: f * 8 + 20,
-    minDef: f * 6 + 15,
-    recommendedAtk: f * 12 + 40,
-    recommendedDef: f * 9 + 30,
+    minAtk: f * 6 + 18,
+    minDef: f * 5 + 12,
+    recommendedAtk: f * 9 + 30,
+    recommendedDef: f * 7 + 20,
   }
 }
