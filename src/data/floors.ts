@@ -43,10 +43,10 @@ export function getFloorDifficultyMult(floor: number): number {
   return 1 + (floor - 1) * 0.12 + Math.pow(floor, 1.35) * 0.075
 }
 
-/** Extra challenge from floor 3 — forces gear progression */
+/** Extra challenge from floor 3 — forces gear progression (softened). */
 export function getFloorChallengeMult(floor: number): number {
   if (floor <= 2) return 1
-  return 1 + (floor - 2) * 0.28 + Math.pow(floor - 2, 1.5) * 0.14
+  return 1 + (floor - 2) * 0.18 + Math.pow(floor - 2, 1.5) * 0.08
 }
 
 /** Reward scaling — higher floors yield more gold and EXP, especially bosses */
@@ -54,19 +54,21 @@ function getFloorRewardScale(floor: number): number {
   return 1 + (floor - 1) * 0.14 + Math.pow(floor, 1.2) * 0.055
 }
 
-/** Global mob/boss combat stat reduction for more comfortable pacing. */
-const MOB_COMBAT_STAT_MULT = 0.875
+/** Global mob/boss combat stat reduction — HP and ATK tuned separately. */
+const MOB_HP_MULT = 0.70
+const MOB_ATK_MULT = 0.55
+const MOB_DEF_MULT = 0.75
 
 export function makeEnemy(floor: number, name: string, pattern: FloorEnemy['pattern'], isBoss = false): FloorEnemy {
   const diff = getFloorDifficultyMult(floor)
   const challenge = getFloorChallengeMult(floor)
   const rewardScale = getFloorRewardScale(floor)
-  const floorPower = floor >= 2 ? 1.5 : 1
-  const bossMult = isBoss ? 5 : 1
-  const statMult = challenge * (isBoss ? 1.35 : 1)
-  const baseHp = Math.floor((200 + floor * 105) * diff * bossMult * floorPower * statMult * MOB_COMBAT_STAT_MULT)
-  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.55 : 1) * floorPower * statMult * MOB_COMBAT_STAT_MULT)
-  const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2.2 : 1) * floorPower * statMult)
+  const floorPower = floor >= 2 ? 1.2 : 1
+  const bossMult = isBoss ? 4.2 : 1
+  const statMult = challenge * (isBoss ? 1.15 : 1)
+  const baseHp = Math.floor((200 + floor * 105) * diff * bossMult * floorPower * statMult * MOB_HP_MULT)
+  const baseAtk = Math.floor((8 + floor * 4) * diff * (isBoss ? 1.2 : 1) * floorPower * statMult * MOB_ATK_MULT)
+  const baseDef = Math.floor((4 + floor * 2) * diff * (isBoss ? 2.0 : 1) * floorPower * statMult * MOB_DEF_MULT)
   const crit = isBoss ? Math.min(25, 8 + Math.floor(floor / 4)) : Math.min(15, 3 + Math.floor(floor / 6))
   const speed = isBoss ? Math.min(20, 6 + Math.floor(floor / 5)) : Math.min(18, 4 + Math.floor(floor / 4))
   const expBase = Math.floor((35 + floor * 28) * diff * rewardScale)

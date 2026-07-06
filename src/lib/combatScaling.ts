@@ -83,13 +83,13 @@ export function getPlayerCombatEase(player: Player, floor: number): CombatEaseRe
   const powerAdvantage = Math.max(0, ratio - 1)
   const powerDisadvantage = Math.max(0, 1 - ratio)
 
-  const easeDamage = Math.min(0.22, powerAdvantage * 0.11)
-  const easeEnemy = Math.min(0.18, powerAdvantage * 0.09)
-  const penaltyDamage = Math.min(0.20, powerDisadvantage * 0.28)
-  const penaltyEnemy = Math.min(0.22, powerDisadvantage * 0.30)
+  const easeDamage = Math.min(0.28, powerAdvantage * 0.14)
+  const easeEnemy = Math.min(0.28, powerAdvantage * 0.14)
+  const penaltyDamage = Math.min(0.16, powerDisadvantage * 0.22)
+  const penaltyEnemy = Math.min(0.18, powerDisadvantage * 0.24)
 
-  const playerDamageMult = Math.max(0.78, 1 + easeDamage - penaltyDamage)
-  const enemyPowerMult = Math.min(1.22, Math.max(0.82, 1 - easeEnemy + penaltyEnemy))
+  const playerDamageMult = Math.max(0.82, 1 + easeDamage - penaltyDamage)
+  const enemyPowerMult = Math.min(1.18, Math.max(0.72, 1 - easeEnemy + penaltyEnemy))
 
   return {
     playerDamageMult,

@@ -13,7 +13,7 @@ export function tryBeginBossPhase2(combat: CombatState): CombatState | null {
   if (!shouldUseBossPhases(combat) || combat.bossPhase === 2) return null
 
   const phase2MaxHp = Math.floor(combat.enemyMaxHp * (combat.isWorldBoss ? 0.65 : 0.55))
-  const mult = combat.isWorldBoss ? 1.45 : 1.35
+  const mult = combat.isWorldBoss ? 1.25 : 1.08
 
   const buffedEnemy = {
     ...combat.enemy,

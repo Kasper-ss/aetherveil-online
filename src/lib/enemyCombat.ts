@@ -94,6 +94,13 @@ export interface EnemyAttackResult {
 }
 
 const PHASE2_DEBUFF_MS = 3 * 60_000
+/** Cap stacked ability multipliers so bosses cannot one-shot from ability chains. */
+const BOSS_ATK_MULT_CAP = 2.0
+
+function applyAtkMult(current: number, factor: number, isBoss: boolean): number {
+  const next = current * factor
+  return isBoss ? Math.min(next, BOSS_ATK_MULT_CAP) : next
+}
 
 function getPhase2Abilities(floor: number): EnemyAbility[] {
   const abilities: EnemyAbility[] = [
@@ -133,6 +140,7 @@ export function executeEnemyAttack(
   let atkMult = 1
   let lifeDrain = false
   let enemyHeal = 0
+  const isBoss = !!enemy.isBoss
 
   if (abilities.some((a) => a.id === 'blood_frenzy') && combat.enemyHp <= combat.enemyMaxHp * 0.5) {
     if (!state.enraged) {
@@ -147,7 +155,7 @@ export function executeEnemyAttack(
 
     switch (ability.id) {
       case 'rage_strike':
-        atkMult *= 1.65
+        atkMult = applyAtkMult(atkMult, 1.35, isBoss)
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`⚡ ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
         break
@@ -159,7 +167,7 @@ export function executeEnemyAttack(
         }
         break
       case 'flame_burst':
-        atkMult *= 1.75
+        atkMult = applyAtkMult(atkMult, 1.4, isBoss)
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
         break
@@ -183,12 +191,12 @@ export function executeEnemyAttack(
         logs.push(log(`🩸 ${enemy.name}: ${ability.nameRu}`, 'enemy'))
         break
       case 'shadow_strike':
-        atkMult *= 2.1
+        atkMult = applyAtkMult(atkMult, 1.5, isBoss)
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`👤 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
         break
       case 'crippling_strike':
-        atkMult *= 1.35
+        atkMult = applyAtkMult(atkMult, 1.25, isBoss)
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🗡️ ${enemy.name}: ${ability.nameRu}`, 'enemy'))
         break
@@ -202,7 +210,7 @@ export function executeEnemyAttack(
 
     switch (ability.id) {
       case 'molten_curse':
-        atkMult *= 1.2
+        atkMult = applyAtkMult(atkMult, 1.1, isBoss)
         debuffPresets.push({ preset: 'boss_atk_down', durationMs: PHASE2_DEBUFF_MS })
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu} (−атака)`, 'enemy'))
@@ -214,7 +222,7 @@ export function executeEnemyAttack(
         logs.push(log(`💥 ${enemy.name}: ${ability.nameRu} (−защита)`, 'enemy'))
         break
       case 'inferno_wave':
-        atkMult *= 1.55
+        atkMult = applyAtkMult(atkMult, 1.22, isBoss)
         debuffPresets.push({ preset: 'boss_burn', durationMs: PHASE2_DEBUFF_MS })
         state = setCooldown(state, ability.id, ability.cooldown)
         logs.push(log(`🔥 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
@@ -241,7 +249,7 @@ export function executeEnemyAttack(
         logs.push(log(`☠️ ${enemy.name}: ${ability.nameRu} (яд 4 хода)`, 'enemy'))
         break
       case 'void_rage':
-        atkMult *= 1.85
+        atkMult = applyAtkMult(atkMult, 1.35, isBoss)
         state = { ...setCooldown(state, ability.id, ability.cooldown), enraged: true }
         logs.push(log(`🌑 ${enemy.name}: ${ability.nameRu}!`, 'enemy'))
         break
