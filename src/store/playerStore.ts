@@ -90,6 +90,12 @@ import {
 import { useUIStore } from '@/store/uiStore'
 import type { NotificationSettings } from '@/types/game'
 
+export interface DismantleSummary {
+  count: number
+  gold: number
+  resources: Partial<Record<ResourceId, number>>
+}
+
 interface PlayerState {
   player: Player | null
   isLoading: boolean
@@ -157,7 +163,7 @@ interface PlayerState {
   claimUnderwearEasterEgg: () => boolean
   claimAchievement: (achievementId: string) => boolean
   setProfileTitle: (titleId: string | null) => boolean
-  dismantleAllCommonItems: () => number
+  dismantleAllCommonItems: () => DismantleSummary
   accrueBankInterest: () => void
   collectBankInterest: () => boolean
   depositToBank: (amount: number) => boolean
@@ -1700,7 +1706,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   dismantleAllCommonItems: () => {
     const { player } = get()
-    if (!player) return 0
+    const empty: DismantleSummary = { count: 0, gold: 0, resources: {} }
+    if (!player) return empty
     const equippedIds = new Set(
       Object.values(player.equipped).map((i) => i?.instanceId).filter(Boolean) as string[],
     )
@@ -1715,10 +1722,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         && !listedIds.has(i.instanceId),
     )
     let count = 0
+    let gold = 0
+    const resources: Partial<Record<ResourceId, number>> = {}
     for (const item of commons) {
-      if (get().dismantleItem(item)) count++
+      const yield_ = getDismantleYield(item)
+      if (get().dismantleItem(item)) {
+        count++
+        gold += yield_.gold
+        for (const [key, amount] of Object.entries(yield_.resources)) {
+          if (!amount) continue
+          const id = key as ResourceId
+          resources[id] = (resources[id] ?? 0) + amount
+        }
+      }
     }
-    return count
+    return { count, gold, resources }
   },
 
   buyMarketListing: async (listing) => {

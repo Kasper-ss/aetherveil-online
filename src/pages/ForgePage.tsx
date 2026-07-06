@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
-import { usePlayerStore } from '@/store/playerStore'
+import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
+import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
@@ -55,6 +56,7 @@ export function ForgePage() {
   const [raritySort, setRaritySort] = useState<GearSortMode>('type')
   const [upgradeSource, setUpgradeSource] = useState<'inventory' | 'equipped'>('inventory')
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
+  const [dismantleSummary, setDismantleSummary] = useState<DismantleSummary | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
@@ -145,11 +147,12 @@ export function ForgePage() {
   }
 
   function handleDismantleAllCommon() {
-    const count = dismantleAllCommonItems()
-    if (count > 0) {
+    const summary = dismantleAllCommonItems()
+    if (summary.count > 0) {
       if (selectedItem && !player!.inventory.some((i) => i.instanceId === selectedItem.instanceId)) {
         setSelectedItem(null)
       }
+      setDismantleSummary(summary)
       hapticSuccess()
     } else {
       hapticError()
@@ -195,6 +198,11 @@ export function ForgePage() {
         onClose={() => setMissingModal(null)}
         title={missingModal?.title ?? ''}
         missing={missingModal?.missing ?? []}
+      />
+      <DismantleRewardModal
+        open={!!dismantleSummary}
+        onClose={() => setDismantleSummary(null)}
+        summary={dismantleSummary}
       />
 
       <div className="flex items-center gap-3 p-4 border-b border-aether-border">
