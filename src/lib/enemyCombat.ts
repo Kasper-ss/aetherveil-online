@@ -1,5 +1,6 @@
 import type { CombatLogEntry, CombatState, FloorEnemy } from '@/types/game'
 import { rollDodge, type EffectiveStats } from '@/lib/playerStats'
+import { calcMitigatedDamage, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 import type { EFFECT_PRESETS } from '@/lib/activeEffects'
 
 export interface EnemyAbility {
@@ -266,7 +267,11 @@ export function executeEnemyAttack(
   }
 
   const effectiveDef = Math.floor(playerStats.def * (1 - defIgnore))
-  const enemyDmg = Math.max(1, Math.floor(enemy.stats.atk * atkMult * dmgMult - effectiveDef * 0.35))
+  const enemyDmg = calcMitigatedDamage(
+    enemy.stats.atk * atkMult * dmgMult,
+    effectiveDef,
+    PLAYER_DEF_MITIGATION,
+  )
 
   const dodge = rollDodge(playerStats)
 

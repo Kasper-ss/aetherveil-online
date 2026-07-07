@@ -19,10 +19,10 @@ import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldB
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
+import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
 /** Global boost to player outgoing damage in combat. */
 const PLAYER_DAMAGE_MULT = 1.12
-const ENEMY_DEF_MITIGATION = 0.34
 
 interface CombatStore {
   combat: CombatState | null
@@ -82,7 +82,7 @@ function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffec
   logs: CombatLogEntry[]
 } {
   if (combat.isPvp) {
-    const enemyDmg = Math.max(1, Math.floor(combat.enemy.stats.atk - stats.def * 0.35))
+    const enemyDmg = calcMitigatedDamage(combat.enemy.stats.atk, stats.def, PLAYER_DEF_MITIGATION)
     const dodge = rollDodge(stats)
     if (dodge) {
       return {
@@ -270,7 +270,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const isCrit = rollCrit(Math.floor(stats.crit * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
     const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT
-    const rawDmg = Math.floor(baseDmg * (isCrit ? 2.2 : 1) - combat.enemy.stats.def * ENEMY_DEF_MITIGATION)
+    const rawDmg = calcMitigatedDamage(
+      baseDmg * (isCrit ? 2.2 : 1),
+      combat.enemy.stats.def,
+      ENEMY_DEF_MITIGATION,
+    )
     const finalDmg = applySetDamageMultipliers(rawDmg, stats, setEffects)
     const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
     const newEnemyHp = hit.enemyHp
@@ -368,9 +372,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const setEffects = getSetCombatEffects(player)
     const isCrit = rollCrit(Math.floor((stats.crit + 10) * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
-    let damage = Math.floor(
-      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * (isCrit ? 2 : 1)
-      - combat.enemy.stats.def * ENEMY_DEF_MITIGATION,
+    let damage = calcMitigatedDamage(
+      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * (isCrit ? 2 : 1),
+      combat.enemy.stats.def,
+      ENEMY_DEF_MITIGATION,
     )
     const finalDmg = applySetDamageMultipliers(damage, stats, setEffects)
     const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
