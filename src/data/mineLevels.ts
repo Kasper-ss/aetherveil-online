@@ -1,5 +1,6 @@
 import type { ResourceId } from '@/types/game'
 import { rollJewelLoot } from '@/lib/jewelResources'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 
 export interface MineLevel {
   level: number
@@ -118,7 +119,7 @@ export function getMineLevelData(level: number): MineLevel {
 export function getUnlockedMineLevel(xp: number): number {
   let unlocked = 1
   for (const m of MINE_LEVELS) {
-    if (xp >= m.xpToUnlock) unlocked = m.level
+    if (xp >= getGrindLocationXpToUnlock(m.level)) unlocked = m.level
   }
   return unlocked
 }

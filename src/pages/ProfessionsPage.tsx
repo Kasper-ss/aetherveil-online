@@ -407,7 +407,7 @@ export function ProfessionsPage() {
       <Card className="mx-4 mb-2 border-aether-cyan/30">
         <CardContent className="p-3 text-[10px] text-slate-400 space-y-1">
           <p className="text-xs font-medium text-aether-cyan">Как прокачивать профессии</p>
-          <p>1. <span className="text-slate-300">XP ранга</span> — добывайте в точках сбора: шахта, поле трав, рыбалка, охота, рудники.</p>
+          <p>1. <span className="text-slate-300">XP ранга</span> — добывайте в точках сбора. На низких уровнях нужно мало XP, дальше — больше.</p>
           <p>2. <span className="text-slate-300">Навыки</span> — откройте профессию → «Прокачка» → улучшайте за золото и ресурсы.</p>
           <p>3. <span className="text-slate-300">Основные слоты</span> — назначьте до {slotLimit} профессий основными, чтобы открыть все навыки и мифические ветки.</p>
         </CardContent>

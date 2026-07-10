@@ -3,6 +3,7 @@ import type { Player, ProfessionId } from '@/types/game'
 /** Three main professions — full skill tree and mythic upgrades. */
 export const BASE_PROFESSION_SLOTS = 3
 export const MAX_PROFESSION_SLOTS = 5
+export const MAX_PROFESSION_RANK = 30
 
 export function getProfessionSlotLimit(player: Player): number {
   return Math.min(MAX_PROFESSION_SLOTS, player.professionSlotLimit ?? BASE_PROFESSION_SLOTS)
@@ -32,16 +33,33 @@ export function getProfessionExp(player: Player, id: ProfessionId): number {
   return player.professionExp?.[id] ?? 0
 }
 
-/** Profession rank from grind XP (0–30) */
+/** XP to unlock grind location tier (1 = always open). Low tiers cheap, high tiers costly. */
+export function getGrindLocationXpToUnlock(level: number): number {
+  if (level <= 1) return 0
+  return Math.floor(28 * Math.pow(level - 1, 1.5) + (level - 1) * 20)
+}
+
+/** Profession / location XP per one gather action — grows with location tier. */
+export function getGrindProfessionXp(grindLevel: number): number {
+  return Math.max(1, Math.floor(2 + grindLevel * 1.5 + Math.pow(grindLevel, 1.12) * 0.9))
+}
+
+/** XP required to advance from rank → rank+1. */
+export function getProfessionRankXpRequired(rank: number): number {
+  if (rank >= MAX_PROFESSION_RANK) return 0
+  if (rank <= 0) return 18
+  return Math.floor(18 + rank * 7 + Math.pow(rank, 1.42) * 5)
+}
+
+/** Profession rank from grind XP (0–30). */
 export function getProfessionRank(exp: number): number {
   let rank = 0
   let total = 0
-  let step = 80
-  while (rank < 30) {
+  while (rank < MAX_PROFESSION_RANK) {
+    const step = getProfessionRankXpRequired(rank)
     if (total + step > exp) break
     total += step
     rank++
-    step = Math.floor(80 + rank * 25)
   }
   return rank
 }
@@ -49,13 +67,11 @@ export function getProfessionRank(exp: number): number {
 export function getProfessionRankProgress(exp: number): { rank: number; intoRank: number; needed: number } {
   const rank = getProfessionRank(exp)
   let spent = 0
-  let step = 80
   for (let r = 0; r < rank; r++) {
-    spent += step
-    step = Math.floor(80 + (r + 1) * 25)
+    spent += getProfessionRankXpRequired(r)
   }
-  const needed = Math.floor(80 + rank * 25)
-  return { rank, intoRank: exp - spent, needed }
+  const needed = getProfessionRankXpRequired(rank)
+  return { rank, intoRank: exp - spent, needed: needed || 1 }
 }
 
 export function professionRankRequiredForSkill(skillIndex: number): number {

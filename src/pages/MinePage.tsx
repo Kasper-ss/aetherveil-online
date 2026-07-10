@@ -11,6 +11,7 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { MINE_LEVELS, getUnlockedMineLevel } from '@/data/mineLevels'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 import { playerHasTool } from '@/data/tools'
 import { RESOURCES } from '@/data/classes'
 import { ORE_RESOURCE_IDS } from '@/data/resourceCatalog'
@@ -30,7 +31,8 @@ export function MinePage() {
   const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
   const hasPick = playerHasTool(player, 'pickaxe')
   const nextLevel = MINE_LEVELS.find((m) => m.level === unlocked + 1)
-  const xpToNext = nextLevel ? nextLevel.xpToUnlock - (player.mineDigXp ?? 0) : 0
+  const nextUnlockXp = nextLevel ? getGrindLocationXpToUnlock(nextLevel.level) : 0
+  const xpToNext = nextLevel ? Math.max(0, nextUnlockXp - (player.mineDigXp ?? 0)) : 0
 
   function handleDig() {
     const result = performMineDig(selectedLevel)
@@ -68,7 +70,7 @@ export function MinePage() {
               <div>Разблокировано уровней: <span className="text-aether-cyan">{unlocked}/6</span></div>
               {nextLevel && xpToNext > 0 && (
                 <>
-                  <Progress value={((player.mineDigXp ?? 0) / nextLevel.xpToUnlock) * 100} className="mt-2" />
+                  <Progress value={nextUnlockXp > 0 ? ((player.mineDigXp ?? 0) / nextUnlockXp) * 100 : 0} className="mt-2" />
                   <div>До «{nextLevel.nameRu}»: {xpToNext} XP</div>
                 </>
               )}
@@ -100,7 +102,7 @@ export function MinePage() {
                     <div className="text-[10px] text-aether-cyan mt-1">
                       {RESOURCES[mine.primaryResource].icon} {RESOURCES[mine.primaryResource].nameRu}
                     </div>
-                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {mine.xpToUnlock} XP шахты</div>}
+                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getGrindLocationXpToUnlock(mine.level)} XP шахты</div>}
                   </CardContent>
                 </Card>
               )

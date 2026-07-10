@@ -12,6 +12,7 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { GrindLevel } from '@/lib/professionGrind'
 import { getUnlockedGrindLevel } from '@/lib/professionGrind'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
 import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
@@ -64,7 +65,8 @@ export function ProfessionGrindPage({
   const unlocked = getUnlockedGrindLevel(levels, xp)
   const hasTool = !requiredTool || playerHasTool(player, requiredTool)
   const nextLevel = levels.find((l) => l.level === unlocked + 1)
-  const xpToNext = nextLevel ? nextLevel.xpToUnlock - xp : 0
+  const nextUnlockXp = nextLevel ? getGrindLocationXpToUnlock(nextLevel.level) : 0
+  const xpToNext = nextLevel ? Math.max(0, nextUnlockXp - xp) : 0
   const selected = levels.find((l) => l.level === selectedLevel) ?? levels[0]
 
   function handleAction() {
@@ -105,7 +107,7 @@ export function ProfessionGrindPage({
               <div>Разблокировано уровней: <span className="text-aether-cyan">{unlocked}/{levels.length}</span></div>
               {nextLevel && xpToNext > 0 && (
                 <>
-                  <Progress value={(xp / nextLevel.xpToUnlock) * 100} className="mt-2" />
+                  <Progress value={nextUnlockXp > 0 ? (xp / nextUnlockXp) * 100 : 0} className="mt-2" />
                   <div>До «{nextLevel.nameRu}»: {xpToNext} XP</div>
                 </>
               )}
@@ -140,7 +142,7 @@ export function ProfessionGrindPage({
                         {lvl.drops.length > 1 && ` +${lvl.drops.length - 1}`}
                       </div>
                     )}
-                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {lvl.xpToUnlock} XP</div>}
+                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getGrindLocationXpToUnlock(lvl.level)} XP</div>}
                   </CardContent>
                 </Card>
               )

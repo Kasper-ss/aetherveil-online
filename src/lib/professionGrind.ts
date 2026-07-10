@@ -1,4 +1,5 @@
 import type { ResourceId } from '@/types/game'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 
 export interface GrindDrop {
   resource: ResourceId
@@ -25,7 +26,7 @@ export function getGrindLevelData(levels: GrindLevel[], level: number): GrindLev
 export function getUnlockedGrindLevel(levels: GrindLevel[], xp: number): number {
   let unlocked = 1
   for (const l of levels) {
-    if (xp >= l.xpToUnlock) unlocked = l.level
+    if (xp >= getGrindLocationXpToUnlock(l.level)) unlocked = l.level
   }
   return unlocked
 }

@@ -12,6 +12,7 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { FISH_TABLE, RARITY_FISH_COLORS } from '@/data/fishing'
 import { FISHING_SPOTS, getUnlockedFishingSpot } from '@/data/fishingSpots'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 import { playerHasTool } from '@/data/tools'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { FISH_RESOURCE_IDS } from '@/data/resourceCatalog'
@@ -34,7 +35,8 @@ export function FishingPage() {
   const xp = player.fishingSpotXp ?? 0
   const unlocked = getUnlockedFishingSpot(xp)
   const nextSpot = FISHING_SPOTS.find((s) => s.level === unlocked + 1)
-  const xpToNext = nextSpot ? nextSpot.xpToUnlock - xp : 0
+  const nextUnlockXp = nextSpot ? getGrindLocationXpToUnlock(nextSpot.level) : 0
+  const xpToNext = nextSpot ? Math.max(0, nextUnlockXp - xp) : 0
   const spot = FISHING_SPOTS.find((s) => s.level === selectedSpot) ?? FISHING_SPOTS[0]
 
   function handleFish() {
@@ -74,7 +76,7 @@ export function FishingPage() {
               <div className="text-slate-400">Разблокировано мест: <span className="text-aether-cyan">{unlocked}/{FISHING_SPOTS.length}</span></div>
               {nextSpot && xpToNext > 0 && (
                 <>
-                  <Progress value={(xp / nextSpot.xpToUnlock) * 100} className="mt-2" />
+                  <Progress value={nextUnlockXp > 0 ? (xp / nextUnlockXp) * 100 : 0} className="mt-2" />
                   <div className="text-slate-400">До «{nextSpot.nameRu}»: {xpToNext} XP</div>
                 </>
               )}
@@ -105,7 +107,7 @@ export function FishingPage() {
                     <div className="text-[10px] text-slate-400">
                       ⚡{s.energyCost} · мусор ~{Math.round(s.junkWeight)}% · трофей {Math.round(s.trophyChance * 100)}%
                     </div>
-                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {s.xpToUnlock} XP</div>}
+                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getGrindLocationXpToUnlock(s.level)} XP</div>}
                   </CardContent>
                 </Card>
               )

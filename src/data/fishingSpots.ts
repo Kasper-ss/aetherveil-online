@@ -1,5 +1,6 @@
 import type { ResourceId } from '@/types/game'
 import { FISH_TABLE, type FishEntry } from '@/data/fishing'
+import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 
 export interface FishingSpot {
   level: number
@@ -78,7 +79,7 @@ export function getFishingSpotData(level: number): FishingSpot {
 export function getUnlockedFishingSpot(xp: number): number {
   let unlocked = 1
   for (const s of FISHING_SPOTS) {
-    if (xp >= s.xpToUnlock) unlocked = s.level
+    if (xp >= getGrindLocationXpToUnlock(s.level)) unlocked = s.level
   }
   return unlocked
 }

@@ -49,6 +49,7 @@ import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
   professionRankRequiredForSkill, canUpgradeProfessionSkill,
   canUpgradeProfessionMythicSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
+  getGrindProfessionXp,
 } from '@/lib/professionProgress'
 import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress } from '@/lib/quests'
 import { DAILY_QUESTS, WEEKLY_QUESTS, GUILD_QUESTS } from '@/data/quests'
@@ -1174,13 +1175,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isVein } = rollMineRewards(mineWithBonus)
     get().addResources(resources)
-    const newXp = (player.mineDigXp ?? 0) + mine.xpPerDig
+    const xpGain = getGrindProfessionXp(level)
+    const newXp = (player.mineDigXp ?? 0) + xpGain
     get().updatePlayer({
       mineDigXp: newXp,
       mineLevel: level,
       professionExp: {
         ...player.professionExp,
-        blacksmith: getProfessionExp(player, 'blacksmith') + mine.xpPerDig,
+        blacksmith: getProfessionExp(player, 'blacksmith') + xpGain,
       },
     })
     applyQuestTracking(get, 'mine', 1)
@@ -1204,7 +1206,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (junk) {
       get().addResources({ fishing_junk: 1 })
-      const newXp = (player.fishingSpotXp ?? 0) + spot.xpPerCast
+      const xpGain = getGrindProfessionXp(spotLevel)
+      const newXp = (player.fishingSpotXp ?? 0) + xpGain
       get().updatePlayer({
         fishingSpotXp: newXp,
         fishingSpotLevel: spotLevel,
@@ -1218,8 +1221,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (gatherMult > 1 && Math.random() < gatherMult - 1) {
         get().addResources({ [fish.id]: 1 })
       }
-      const profXp = spot.xpPerCast + (fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0)
-      const newXp = (player.fishingSpotXp ?? 0) + spot.xpPerCast
+      const xpGain = getGrindProfessionXp(spotLevel)
+      const fishBonus = fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0
+      const profXp = xpGain + fishBonus
+      const newXp = (player.fishingSpotXp ?? 0) + xpGain
       get().updatePlayer({
         fishCaughtTotal: (player.fishCaughtTotal ?? 0) + 1,
         fishingSpotXp: newXp,
@@ -1247,13 +1252,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollHuntRewards(hunt)
     get().addResources(resources)
-    const newXp = (player.huntXp ?? 0) + hunt.xpPerAction
+    const xpGain = getGrindProfessionXp(level)
+    const newXp = (player.huntXp ?? 0) + xpGain
     get().updatePlayer({
       huntXp: newXp,
       huntLevel: level,
       professionExp: {
         ...player.professionExp,
-        hunter: getProfessionExp(player, 'hunter') + hunt.xpPerAction,
+        hunter: getProfessionExp(player, 'hunter') + xpGain,
       },
     })
     return { ok: true, isDouble, isSpecial }
@@ -1271,13 +1277,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollGemSiteRewards(site)
     get().addResources(resources)
-    const newXp = (player.gemSiteXp ?? 0) + site.xpPerAction
+    const xpGain = getGrindProfessionXp(level)
+    const newXp = (player.gemSiteXp ?? 0) + xpGain
     get().updatePlayer({
       gemSiteXp: newXp,
       gemSiteLevel: level,
       professionExp: {
         ...player.professionExp,
-        jeweler: getProfessionExp(player, 'jeweler') + site.xpPerAction,
+        jeweler: getProfessionExp(player, 'jeweler') + xpGain,
       },
     })
     return { ok: true, isDouble, isSpecial }
@@ -1294,13 +1301,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollAetherRiftRewards(rift)
     get().addResources(resources)
-    const newXp = (player.aetherRiftXp ?? 0) + rift.xpPerAction
+    const xpGain = getGrindProfessionXp(level)
+    const newXp = (player.aetherRiftXp ?? 0) + xpGain
     get().updatePlayer({
       aetherRiftXp: newXp,
       aetherRiftLevel: level,
       professionExp: {
         ...player.professionExp,
-        sorcerer: getProfessionExp(player, 'sorcerer') + rift.xpPerAction,
+        sorcerer: getProfessionExp(player, 'sorcerer') + xpGain,
       },
     })
     return { ok: true, isDouble, isSpecial }
@@ -1324,13 +1332,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       resources[primary] = (resources[primary] ?? 0) + bonus
     }
     get().addResources(resources)
-    const newXp = (player.fieldGatherXp ?? 0) + field.xpPerGather
+    const xpGain = getGrindProfessionXp(level)
+    const newXp = (player.fieldGatherXp ?? 0) + xpGain
     get().updatePlayer({
       fieldGatherXp: newXp,
       fieldLevel: level,
       professionExp: {
         ...player.professionExp,
-        alchemist: getProfessionExp(player, 'alchemist') + field.xpPerGather,
+        alchemist: getProfessionExp(player, 'alchemist') + xpGain,
       },
     })
     return { ok: true, isBonus }

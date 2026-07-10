@@ -15,7 +15,7 @@ import { getAlchemyRecipesForPlayer, canBrewAlchemyRecipe, getVisibleHerbalismRe
 import { isHerbalismActive } from '@/lib/professionBonuses'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
-import { getProfessionRank, getProfessionExp, getProfessionRankProgress } from '@/lib/professionProgress'
+import { getProfessionRank, getProfessionExp, getProfessionRankProgress, getGrindLocationXpToUnlock } from '@/lib/professionProgress'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { HERB_RESOURCE_IDS } from '@/data/resourceCatalog'
 import { EnergyDrinkQuickBar } from '@/components/ui/EnergyDrinkQuickBar'
@@ -39,7 +39,8 @@ export function HerbFieldPage() {
   const alchRank = getProfessionRank(getProfessionExp(player, 'alchemist'))
   const alchProgress = getProfessionRankProgress(getProfessionExp(player, 'alchemist'))
   const nextLevel = HERB_FIELD_LEVELS.find((h) => h.level === unlocked + 1)
-  const xpToNext = nextLevel ? nextLevel.xpToUnlock - (player.fieldGatherXp ?? 0) : 0
+  const nextUnlockXp = nextLevel ? getGrindLocationXpToUnlock(nextLevel.level) : 0
+  const xpToNext = nextLevel ? Math.max(0, nextUnlockXp - (player.fieldGatherXp ?? 0)) : 0
   const recipes = getAlchemyRecipesForPlayer(player)
   const herbalRecipes = getVisibleHerbalismRecipes(player)
   const pendingBrews = getPendingBrews(player)
@@ -99,7 +100,7 @@ export function HerbFieldPage() {
               <div>Ранг алхимика: <span className="text-white">{alchRank}</span> ({alchProgress.intoRank}/{alchProgress.needed} XP)</div>
               {nextLevel && xpToNext > 0 && (
                 <>
-                  <Progress value={((player.fieldGatherXp ?? 0) / nextLevel.xpToUnlock) * 100} className="mt-2" />
+                  <Progress value={nextUnlockXp > 0 ? ((player.fieldGatherXp ?? 0) / nextUnlockXp) * 100 : 0} className="mt-2" />
                   <div>До «{nextLevel.nameRu}»: {xpToNext} XP</div>
                 </>
               )}
@@ -132,7 +133,7 @@ export function HerbFieldPage() {
                     <div className="text-[10px] text-aether-cyan mt-1">
                       {herb.icon} {herb.nameRu}
                     </div>
-                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {field.xpToUnlock} XP поля</div>}
+                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getGrindLocationXpToUnlock(field.level)} XP поля</div>}
                   </CardContent>
                 </Card>
               )
