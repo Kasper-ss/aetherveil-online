@@ -50,9 +50,9 @@ export const MONTHLY_CATEGORIES = [
 ] as const
 
 export const MONTHLY_RANK_REWARDS: Record<1 | 2 | 3, { gold: number; gems: number }> = {
-  1: { gold: 5000, gems: 30 },
-  2: { gold: 3000, gems: 15 },
-  3: { gold: 1500, gems: 8 },
+  1: { gold: 100_000, gems: 30 },
+  2: { gold: 60_000, gems: 20 },
+  3: { gold: 30_000, gems: 10 },
 }
 
 export const MONTHLY_LIVE_TOP_COUNT = 5

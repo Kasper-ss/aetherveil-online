@@ -18,6 +18,7 @@ import { handleBossDefeated } from '@/lib/bossPhases'
 import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked } from '@/data/worldBoss'
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
+import { applyCombatRewardEase } from '@/lib/combatRewards'
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
@@ -562,9 +563,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         if (sword && !hasSword) loot.push(sword)
         resources = { ...WORLD_BOSS_REWARDS.resources }
       } else {
-        exp = combat.enemy.expReward
-        gold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
         const pvePlayer = usePlayerStore.getState().player
+        const rawExp = combat.enemy.expReward
+        const rawGold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
+        const eased = pvePlayer
+          ? applyCombatRewardEase(rawExp, rawGold, pvePlayer.level, combat.floor)
+          : { exp: rawExp, gold: rawGold }
+        exp = eased.exp
+        gold = eased.gold
         const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
         const isEpic = !!combat.enemy.isEpic
         const isMiniBoss = !!combat.enemy.isMiniBoss

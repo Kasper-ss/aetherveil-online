@@ -1,7 +1,7 @@
 import type { Player } from '@/types/game'
 
-export const REFERRAL_SIGNUP_GOLD = 500
-export const REFERRAL_SIGNUP_GEMS = 5
+export const REFERRAL_SIGNUP_GOLD = 30_000
+export const REFERRAL_SIGNUP_GEMS = 10
 export const REFERRAL_MILESTONE_THRESHOLD = 100_000
 export const REFERRAL_MILESTONE_GOLD = 1_000
 

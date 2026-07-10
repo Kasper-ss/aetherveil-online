@@ -130,8 +130,14 @@ export function FairPage() {
               return (
                 <Button
                   key={color}
-                  variant={selected ? 'default' : 'secondary'}
-                  className={`h-20 flex-col gap-1 ${color === 'red' ? 'border-red-500/50' : ''} ${color === 'black' ? 'border-slate-500/50' : ''} ${color === 'green' ? 'border-green-500/50' : ''}`}
+                  variant={selected ? (color === 'green' ? 'secondary' : 'default') : 'secondary'}
+                  className={`h-20 flex-col gap-1 ${
+                    selected && color === 'red' ? 'bg-red-600/80 border-red-400' : ''
+                  } ${selected && color === 'black' ? 'bg-slate-700 border-slate-400' : ''} ${
+                    selected && color === 'green' ? 'bg-green-700/90 border-green-400 glow-cyan' : ''
+                  } ${!selected && color === 'red' ? 'border-red-500/50' : ''} ${
+                    !selected && color === 'black' ? 'border-slate-500/50' : ''
+                  } ${!selected && color === 'green' ? 'border-green-500/50' : ''}`}
                   onClick={() => setPick(color)}
                 >
                   <span className="text-2xl">{meta.emoji}</span>

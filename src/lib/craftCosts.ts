@@ -1,5 +1,6 @@
 import type { Player, ResourceId, CraftRecipe } from '@/types/game'
 import { RESOURCES } from '@/data/classes'
+import { getProfessionExp, getProfessionRank } from '@/lib/professionProgress'
 
 export interface MissingCost {
   key: string
@@ -27,24 +28,14 @@ export function getMissingCosts(
       missing.push({ key: rid, label: res.nameRu, icon: res.icon, have, need })
     }
   }
-  if (recipe?.requiredProfession && player.profession !== recipe.requiredProfession) {
-    missing.push({
-      key: 'profession',
-      label: 'Профессия',
-      icon: '🔨',
-      have: 0,
-      need: 1,
-    })
-  }
-  if (recipe?.requiredProfessionLevel) {
-    const levels = player.professionLevels[recipe.requiredProfession!] ?? []
-    const total = levels.reduce((s, l) => s + l, 0)
-    if (total < recipe.requiredProfessionLevel) {
+  if (recipe?.requiredProfession && recipe.requiredProfessionLevel) {
+    const rank = getProfessionRank(getProfessionExp(player, recipe.requiredProfession))
+    if (rank < recipe.requiredProfessionLevel) {
       missing.push({
         key: 'profLevel',
-        label: 'Уровень профессии',
+        label: 'Ранг профессии',
         icon: '📈',
-        have: total,
+        have: rank,
         need: recipe.requiredProfessionLevel,
       })
     }

@@ -22,6 +22,11 @@ export const STOCK_SYMBOLS: StockSymbolDef[] = [
   { id: 'pet_paradise', nameRu: 'Pet Paradise', descriptionRu: 'Питомцы', icon: '🐾', basePrice: 10_300, dividendMin: 0.008, dividendMax: 0.013, volatility: 'medium' },
   { id: 'boss_hunter', nameRu: 'Boss Hunter Union', descriptionRu: 'Охота на боссов', icon: '👹', basePrice: 10_700, dividendMin: 0.01, dividendMax: 0.017, volatility: 'high' },
   { id: 'golden_vault', nameRu: 'Golden Vault', descriptionRu: 'Стабильный банк', icon: '🏦', basePrice: 9_500, dividendMin: 0.005, dividendMax: 0.009, volatility: 'very_low' },
+  { id: 'dragon_slayer', nameRu: 'Dragon Slayer Inc.', descriptionRu: 'Охота на драконов и рейды', icon: '🐉', basePrice: 10_600, dividendMin: 0.009, dividendMax: 0.014, volatility: 'high' },
+  { id: 'mana_towers', nameRu: 'Mana Towers', descriptionRu: 'Магические башни и мана', icon: '🗼', basePrice: 10_150, dividendMin: 0.007, dividendMax: 0.012, volatility: 'medium' },
+  { id: 'alchemy_union', nameRu: 'Alchemy Union', descriptionRu: 'Алхимия и зелья', icon: '⚗️', basePrice: 10_550, dividendMin: 0.008, dividendMax: 0.013, volatility: 'medium' },
+  { id: 'enchant_hall', nameRu: 'Enchant Hall', descriptionRu: 'Чары и зачарования', icon: '✨', basePrice: 10_900, dividendMin: 0.01, dividendMax: 0.015, volatility: 'high' },
+  { id: 'guild_treasury', nameRu: 'Guild Treasury', descriptionRu: 'Казна гильдий', icon: '🏛️', basePrice: 9_900, dividendMin: 0.006, dividendMax: 0.01, volatility: 'low' },
 ]
 
 export const VOLATILITY_SWING: Record<StockVolatility, [number, number]> = {

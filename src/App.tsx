@@ -64,6 +64,7 @@ function AppRoutes() {
           <Route path="/player/:id" element={<PlayerViewPage />} />
           <Route path="/arena" element={<Navigate to="/" replace />} />
           <Route path="/professions" element={<ProfessionsPage />} />
+          <Route path="/professions/:professionId" element={<ProfessionsPage />} />
           <Route path="/forge" element={<ForgePage />} />
           <Route path="/bank" element={<BankPage />} />
           <Route path="/skills" element={<SkillsPage />} />

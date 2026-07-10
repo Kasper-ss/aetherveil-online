@@ -1,6 +1,11 @@
-import type { Item, ItemRarity, ResourceId, Stats } from '@/types/game'
+import type { Item, ItemRarity, Player, ResourceId, Stats } from '@/types/game'
+import { getProfessionExp, getProfessionRank } from '@/lib/professionProgress'
 
 const RARITY_CHAIN: ItemRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
+
+export const RARITY_LEVEL_GATE = 60
+export const RARITY_BLACKSMITH_RANK_LEGENDARY = 10
+export const RARITY_BLACKSMITH_RANK_MYTHIC = 20
 
 export function getNextRarity(rarity: ItemRarity): ItemRarity | null {
   const idx = RARITY_CHAIN.indexOf(rarity)
@@ -37,6 +42,26 @@ export function getRarityUpgradeCost(item: Item): {
 
 export function canUpgradeRarity(item: Item): boolean {
   return item.slot !== 'consumable' && getNextRarity(item.rarity) !== null
+}
+
+export function getRarityUpgradeBlockReason(item: Item, player: Player): string | null {
+  const next = getNextRarity(item.rarity)
+  if (!next) return null
+  if ((next === 'legendary' || next === 'mythic') && player.level < RARITY_LEVEL_GATE) {
+    return `Легендарная и мифическая редкость доступны с ${RARITY_LEVEL_GATE} уровня`
+  }
+  if (next === 'legendary' || next === 'mythic') {
+    const rank = getProfessionRank(getProfessionExp(player, 'blacksmith'))
+    const need = next === 'legendary' ? RARITY_BLACKSMITH_RANK_LEGENDARY : RARITY_BLACKSMITH_RANK_MYTHIC
+    if (rank < need) {
+      return `Нужен ранг кузнеца ${need}+ (сейчас ${rank})`
+    }
+  }
+  return null
+}
+
+export function canUpgradeRarityForPlayer(item: Item, player: Player): boolean {
+  return canUpgradeRarity(item) && getRarityUpgradeBlockReason(item, player) === null
 }
 
 export function countDuplicateItems(

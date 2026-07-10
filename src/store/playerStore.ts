@@ -19,8 +19,8 @@ import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta } from '
 import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import {
-  applyRarityUpgrade, canUpgradeRarity, countDuplicateItems,
-  getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
+  applyRarityUpgrade, canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems,
+  getRarityUpgradeBlockReason, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
 } from '@/lib/rarityUpgrade'
 import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMaxHp, getHpRegenIntervalMs, getPlayerCurrentHp, BASE_MAX_ENERGY, EMPTY_ALLOCATED } from '@/lib/playerStats'
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
@@ -2119,6 +2119,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player || !canUpgradeRarity(item)) {
       return [{ key: 'rarity', label: 'Максимальная редкость', icon: '✦', have: 0, need: 1 }]
     }
+    const block = getRarityUpgradeBlockReason(item, player)
+    if (block) {
+      return [{ key: 'gate', label: block, icon: '🔒', have: 0, need: 1 }]
+    }
     const dupes = countDuplicateItems(
       [...player.inventory, ...(Object.values(player.equipped).filter(Boolean) as Item[])],
       item.id,
@@ -2142,7 +2146,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   upgradeItemRarity: (item) => {
     const { player } = get()
-    if (!player || !item.instanceId || !canUpgradeRarity(item)) return null
+    if (!player || !item.instanceId || !canUpgradeRarityForPlayer(item, player)) return null
     if (get().getRarityUpgradeMissing(item).length > 0) return null
     const allItems = [
       ...player.inventory,

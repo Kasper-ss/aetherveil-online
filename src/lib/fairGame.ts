@@ -6,11 +6,11 @@ export const FAIR_PAYOUTS: Record<FairColor, number> = {
   green: 7,
 }
 
-/** Weighted spin: red 42%, black 42%, green 16% */
+/** Weighted spin: red 45%, black 45%, green 10% */
 export function spinFairWheel(): FairColor {
   const r = Math.random()
-  if (r < 0.42) return 'red'
-  if (r < 0.84) return 'black'
+  if (r < 0.45) return 'red'
+  if (r < 0.90) return 'black'
   return 'green'
 }
 

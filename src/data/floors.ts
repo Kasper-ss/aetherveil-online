@@ -67,9 +67,9 @@ export function getFloorChallengeMult(floor: number): number {
   return base * getPostFloor50Mult(floor)
 }
 
-/** Reward scaling — higher floors yield more gold and EXP, especially bosses */
+/** Reward scaling — tuned for staged WoW-like progression */
 function getFloorRewardScale(floor: number): number {
-  return 1 + (floor - 1) * 0.14 + Math.pow(floor, 1.2) * 0.055
+  return 0.88 * (1 + (floor - 1) * 0.11 + Math.pow(floor, 1.15) * 0.045)
 }
 
 /** Global mob/boss combat stat tuning — HP and ATK tuned separately (+3% vs prior balance). */

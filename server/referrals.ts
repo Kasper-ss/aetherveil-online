@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { sendMessage } from './telegram.js'
 
-const REFERRAL_SIGNUP_GOLD = 500
-const REFERRAL_SIGNUP_GEMS = 5
+const REFERRAL_SIGNUP_GOLD = 30_000
+const REFERRAL_SIGNUP_GEMS = 10
 const REFERRAL_MILESTONE_THRESHOLD = 100_000
 const REFERRAL_MILESTONE_GOLD = 1_000
 

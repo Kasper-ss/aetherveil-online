@@ -11,7 +11,8 @@ import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
-  canUpgradeRarity, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
+  canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
+  getRarityUpgradeBlockReason,
   RARITY_ITEMS_TOTAL_REQUIRED,
 } from '@/lib/rarityUpgrade'
 import {
@@ -462,7 +463,8 @@ export function ForgePage() {
 
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
-            Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы. Можно улучшать надетые предметы.
+            Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы.
+            Легендарная и мифическая редкость — с 60 уровня и ранга кузнеца.
           </p>
           <div className="flex gap-2 mb-2">
             <Button
@@ -539,15 +541,27 @@ export function ForgePage() {
                   {RARITY_LABELS_RU[getNextRarity(selectedRarityItem.rarity)!]}
                 </Badge>
                 {(() => {
+                  const block = getRarityUpgradeBlockReason(selectedRarityItem, player)
                   const c = getRarityUpgradeCost(selectedRarityItem)
                   return (
-                    <p className="text-[10px] text-slate-500">
-                      🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
-                      · Пар: {1 + countDuplicateItems(allGear, selectedRarityItem.id, selectedRarityItem.rarity, selectedRarityItem.instanceId)}/{RARITY_ITEMS_TOTAL_REQUIRED}
-                    </p>
+                    <>
+                      {block && (
+                        <p className="text-[10px] text-amber-400">🔒 {block}</p>
+                      )}
+                      <p className="text-[10px] text-slate-500">
+                        🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
+                        · Пар: {1 + countDuplicateItems(allGear, selectedRarityItem.id, selectedRarityItem.rarity, selectedRarityItem.instanceId)}/{RARITY_ITEMS_TOTAL_REQUIRED}
+                      </p>
+                    </>
                   )
                 })()}
-                <Button className="w-full" onClick={handleRarityUpgrade}>Повысить редкость</Button>
+                <Button
+                  className="w-full"
+                  disabled={!canUpgradeRarityForPlayer(selectedRarityItem, player)}
+                  onClick={handleRarityUpgrade}
+                >
+                  Повысить редкость
+                </Button>
               </CardContent>
             </Card>
           )}
