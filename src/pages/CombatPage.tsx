@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LootScreen } from '@/pages/LootScreen'
+import { RaidCompleteScreen } from '@/pages/RaidCompleteScreen'
 import { useCombatStore } from '@/store/combatStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -37,6 +38,9 @@ export function CombatPage() {
   const combat = useCombatStore((s) => s.combat)
   const result = useCombatStore((s) => s.result)
   const showLootScreen = useCombatStore((s) => s.showLootScreen)
+  const showRaidComplete = useCombatStore((s) => s.showRaidComplete)
+  const raidStepComplete = useCombatStore((s) => s.raidStepComplete)
+  const clearRaidStep = useCombatStore((s) => s.clearRaidStep)
   const playerAttack = useCombatStore((s) => s.playerAttack)
   const playerWeakSpot = useCombatStore((s) => s.playerWeakSpot)
   const playerSkill = useCombatStore((s) => s.playerSkill)
@@ -49,20 +53,24 @@ export function CombatPage() {
   const logRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => {
-    if (!useCombatStore.getState().isActive && !showLootScreen) {
+    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete) {
       clearCombat()
-      navigate('/tower')
+      navigate(combat?.isRaid ? '/raids' : '/tower')
     }
-  }, !useCombatStore.getState().isActive && !showLootScreen)
+  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete)
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [combat?.combatLog.length])
 
   if (!combat) {
-    navigate('/tower')
+    navigate('/')
     return null
   }
+
+  const isRaidCombat = combat.isRaid
+
+  if (showRaidComplete && result?.victory) return <RaidCompleteScreen />
 
   if (showLootScreen && result?.victory) return <LootScreen />
 
@@ -106,12 +114,18 @@ export function CombatPage() {
 
   function handleFledContinue() {
     clearCombat()
-    navigate('/tower')
+    navigate(isRaidCombat ? '/raids' : '/tower')
   }
 
   function handleDefeatContinue() {
     clearCombat()
-    navigate('/tower')
+    navigate(isRaidCombat ? '/raids' : '/tower')
+  }
+
+  function handleRaidStepContinue() {
+    clearRaidStep()
+    clearCombat()
+    navigate('/raids')
   }
 
   return (
@@ -122,7 +136,9 @@ export function CombatPage() {
           <div>
             <h2 className="text-sm font-bold text-red-400">{combat.enemy.name}</h2>
             <p className="text-[10px] text-slate-500">
-              {combat.isWorldBoss
+              {combat.isRaid
+                ? `🏰 Рейд · ${combat.isBoss ? 'Босс' : 'Моб'}`
+                : combat.isWorldBoss
                 ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
                 : combat.isBoss
                   ? `👑 ${t('combat.boss')}${combat.bossPhase === 2 ? ' · фаза 2' : combat.bossPhase === 1 && combat.floor >= 5 ? ' · фаза 1' : ''}`
@@ -317,13 +333,34 @@ export function CombatPage() {
             {result.killedBy && (
               <p className="text-sm text-red-400 font-medium">Вас убил {result.killedBy}</p>
             )}
-            <p className="text-sm text-slate-400">
-              Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.
-            </p>
+            {combat.isRaid ? (
+              <p className="text-sm text-red-400">
+                Рейд провален. Прогресс сброшен — повтор через 1 час.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400">
+                Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.
+              </p>
+            )}
             {player && hasDeathDebuff(player) && (
               <p className="text-xs text-amber-500">Дебафф смерти активен (−30% к статам)</p>
             )}
             <Button onClick={handleDefeatContinue} className="w-full">{t('combat.continue')}</Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {raidStepComplete && result?.victory && (
+        <Dialog open onOpenChange={handleRaidStepContinue}>
+          <DialogContent className="text-center">
+            <DialogHeader>
+              <DialogTitle className="text-aether-cyan">Победа в рейде</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-300">
+              +{result.exp} EXP · +{result.gold} 🪙
+            </p>
+            <p className="text-xs text-slate-400">Лут добавлен в сундук рейда. Продолжайте зачистку!</p>
+            <Button onClick={handleRaidStepContinue} className="w-full">К рейду</Button>
           </DialogContent>
         </Dialog>
       )}

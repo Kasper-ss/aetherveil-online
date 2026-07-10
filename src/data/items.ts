@@ -618,7 +618,6 @@ export function getEquipSlotsForClass(_classId?: string): EquipSlot[] {
   return [...base, 'weapon', 'pet']
 }
 
-export function getMobsRequiredForFloor(floor: number): number {
-  if (floor <= 1) return 100
-  return 200
+export function getMobsRequiredForFloor(_floor: number): number {
+  return 100
 }

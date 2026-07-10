@@ -22,6 +22,15 @@ import { applyCombatRewardEase } from '@/lib/combatRewards'
 import { applyRacialAbility, canUseRacialAbility, rollDwarfTreasureFind, tickRacialCombatState } from '@/lib/racialAbilities'
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
 import { rollSecretCaveAfterVictory } from '@/data/secretCave'
+import {
+  buildRaidEnemy,
+  generateRaidLoot,
+  generateRaidResources,
+  RAID_BOSS_ENERGY,
+  RAID_MOB_ENERGY,
+  type RaidDefinition,
+} from '@/data/raids'
+import { getRaidFightType, getRaidProgress } from '@/lib/raidProgress'
 import { getWeakSpotDamageMultiplier, canUseWeakSpot } from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
@@ -33,9 +42,12 @@ interface CombatStore {
   isActive: boolean
   result: CombatResult | null
   showLootScreen: boolean
+  showRaidComplete: boolean
+  raidStepComplete: boolean
   tickInterval: ReturnType<typeof setInterval> | null
 
   startCombat: (enemy: FloorEnemy, floor: number, isBoss?: boolean) => void
+  startRaidCombat: (def: RaidDefinition) => boolean
   startWorldBossCombat: () => boolean
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
   playerAttack: () => void
@@ -47,6 +59,8 @@ interface CombatStore {
   fleeCombat: () => void
   endCombat: (victory: boolean) => void
   claimLoot: () => void
+  claimRaidComplete: () => void
+  clearRaidStep: () => void
   clearCombat: () => void
   tickCooldowns: () => void
 }
@@ -127,6 +141,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   isActive: false,
   result: null,
   showLootScreen: false,
+  showRaidComplete: false,
+  raidStepComplete: false,
   tickInterval: null,
 
   startCombat: (enemy, floor, isBoss = false) => {
@@ -176,7 +192,66 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+  },
+
+  startRaidCombat: (def) => {
+    const playerStore = usePlayerStore.getState()
+    const player = playerStore.player
+    if (!player) return false
+    if (getPlayerCurrentHp(player) < 1) return false
+
+    if (!playerStore.beginRaid(def)) return false
+
+    const freshPlayer = playerStore.player!
+    const current = getRaidProgress(freshPlayer, def.id)
+    if (!current) return false
+
+    const fightType = getRaidFightType(current)
+    if (fightType === 'done') return false
+
+    const isBoss = fightType === 'boss'
+    const energyCost = isBoss ? RAID_BOSS_ENERGY : RAID_MOB_ENERGY
+    if (!playerStore.spendEnergy(energyCost)) return false
+
+    const enemy = buildRaidEnemy(def.floor, def.index, isBoss)
+    const maxHp = getCombatMaxHp(freshPlayer)
+    const startHp = Math.max(1, getPlayerCurrentHp(freshPlayer))
+
+    const scaledEnemy = scaleEnemyForPlayerPower(enemy, freshPlayer, def.floor)
+    const startLogs: CombatLogEntry[] = [
+      logEntry(`🏰 Рейд: ${def.nameRu}`, 'system'),
+      logEntry(
+        isBoss
+          ? `👑 Финальный босс рейда!`
+          : `⚔️ Моб рейда · ${current.mobsKilled + 1}/50`,
+        'system',
+      ),
+    ]
+    const abilityHint = formatEnemyAbilityHint(scaledEnemy, def.floor)
+    if (abilityHint) startLogs.push(logEntry(`⚠️ Способности: ${abilityHint}`, 'system'))
+
+    const combat: CombatState = {
+      enemy: scaledEnemy,
+      playerHp: startHp,
+      playerMaxHp: maxHp,
+      enemyHp: scaledEnemy.stats.hp,
+      enemyMaxHp: scaledEnemy.stats.hp,
+      combo: 0,
+      skillCooldowns: {},
+      isBoss,
+      isRaid: true,
+      raidId: def.id,
+      floor: def.floor,
+      bossPhase: isBoss && def.floor >= 5 ? 1 : undefined,
+      enemyCombat: createEnemyCombatState(),
+      combatLog: startLogs,
+      turn: 1,
+    }
+
+    const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+    return true
   },
 
   startWorldBossCombat: () => {
@@ -216,7 +291,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
     return true
   },
 
@@ -260,7 +335,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
   },
 
   playerAttack: () => {
@@ -580,7 +655,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   fleeCombat: () => {
     const { combat, isActive, tickInterval } = get()
-    if (!combat || !isActive || combat.isPvp || combat.isBoss || combat.isWorldBoss) return
+    if (!combat || !isActive || combat.isPvp || combat.isWorldBoss) return
+    if (combat.isBoss && !combat.isRaid) return
+    if (combat.isRaid && combat.isBoss) return
     if (tickInterval) clearInterval(tickInterval)
 
     const playerStore = usePlayerStore.getState()
@@ -633,6 +710,18 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         )
         if (sword && !hasSword) loot.push(sword)
         resources = getWorldBossRewardResources()
+      } else if (combat.isRaid && combat.raidId) {
+        const pvePlayer = usePlayerStore.getState().player
+        const isBoss = combat.isBoss
+        const rawExp = combat.enemy.expReward
+        const rawGold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
+        const eased = pvePlayer
+          ? applyCombatRewardEase(rawExp, rawGold, pvePlayer.level, combat.floor)
+          : { exp: rawExp, gold: rawGold }
+        exp = eased.exp
+        gold = eased.gold
+        loot.push(...generateRaidLoot(combat.floor, isBoss))
+        resources = generateRaidResources(combat.floor, isBoss)
       } else {
         const pvePlayer = usePlayerStore.getState().player
         const rawExp = combat.enemy.expReward
@@ -657,23 +746,39 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       if (p) usePlayerStore.getState().updatePlayer({ pvpLosses: p.pvpLosses + 1 })
     }
 
+    let raidComplete = false
+    if (victory && combat.isRaid && combat.raidId) {
+      raidComplete = usePlayerStore.getState().recordRaidFightVictory(combat.raidId, {
+        exp, gold, loot, resources, isBoss: !!combat.isBoss,
+      })
+    }
+
     const result: CombatResult = {
       victory, exp, gold, loot, resources,
       comboMax: combat.combo,
       isBoss: combat.isBoss,
       isWorldBoss: combat.isWorldBoss,
+      isRaid: combat.isRaid,
+      raidId: combat.raidId,
+      raidComplete,
       lootClaimed: combat.isPvp ? true : false,
-      mobKilled: victory && !combat.isBoss && !combat.isPvp,
+      mobKilled: victory && !combat.isBoss && !combat.isPvp && !combat.isRaid,
       killedBy: !victory ? combat.enemy.name : undefined,
       isEpic: combat.isEpic,
       isMiniBoss: combat.isMiniBoss,
     }
 
-    if (!victory && !combat.isPvp) {
+    if (!victory && combat.isRaid && combat.raidId) {
+      usePlayerStore.getState().failRaid(combat.raidId)
+    }
+
+    if (!victory && !combat.isPvp && !combat.isRaid) {
+      usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
+    } else if (!victory && !combat.isPvp && combat.isRaid) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
     }
 
-    if (victory && !combat.isPvp && !combat.isBoss) {
+    if (victory && !combat.isPvp && !combat.isBoss && !combat.isRaid) {
       const p = usePlayerStore.getState().player
       if (p) {
         const racialTick = tickRacialCombatState(p)
@@ -704,9 +809,19 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
     // Death penalty handler sets full HP respawn
 
-    set({ isActive: false, result, showLootScreen: victory && !combat.isPvp, tickInterval: null })
+    const showRaidComplete = victory && !!combat.isRaid && raidComplete
+    const raidStepComplete = victory && !!combat.isRaid && !raidComplete
 
-    if (victory && !combat.isPvp) {
+    set({
+      isActive: false,
+      result,
+      showLootScreen: victory && !combat.isPvp && !combat.isRaid,
+      showRaidComplete,
+      raidStepComplete,
+      tickInterval: null,
+    })
+
+    if (victory && !combat.isPvp && !combat.isRaid) {
       const cave = rollSecretCaveAfterVictory(combat.floor, combat.isBoss)
       if (cave) {
         usePlayerStore.getState().updatePlayer({
@@ -743,10 +858,25 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     set({ result: { ...result, lootClaimed: true }, showLootScreen: false })
   },
 
+  claimRaidComplete: () => {
+    const { result } = get()
+    if (!result?.victory || !result.raidComplete || !result.raidId || result.lootClaimed) return
+    usePlayerStore.getState().claimRaidRewards(result.raidId)
+    set({ result: { ...result, lootClaimed: true }, showRaidComplete: false })
+  },
+
+  clearRaidStep: () => {
+    set({ raidStepComplete: false, result: null })
+  },
+
   clearCombat: () => {
     const { tickInterval } = get()
     if (tickInterval) clearInterval(tickInterval)
-    set({ combat: null, isActive: false, result: null, showLootScreen: false, tickInterval: null })
+    set({
+      combat: null, isActive: false, result: null,
+      showLootScreen: false, showRaidComplete: false, raidStepComplete: false,
+      tickInterval: null,
+    })
   },
 
   tickCooldowns: () => {

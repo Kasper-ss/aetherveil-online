@@ -82,6 +82,14 @@ import { getNextVipLevel } from '@/data/vipTiers'
 import { getCombineCost, getUpgradeCost, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
 import { jewelResourceId } from '@/lib/jewelResources'
 import { getWorldBossSchedule } from '@/lib/worldBossSchedule'
+import {
+  createRaidProgress, getRaidProgress, isRaidComplete, mergeResources,
+} from '@/lib/raidProgress'
+import {
+  getRaidCompletionBonus,
+  type RaidDefinition,
+} from '@/data/raids'
+import { RAID_DEATH_COOLDOWN_MS } from '@/data/raids'
 import { canSocketGem } from '@/lib/gemSockets'
 import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
@@ -135,6 +143,14 @@ interface PlayerState {
   advanceFloor: (clearedFloor: number) => void
   awardBossTrophy: (floor: number) => void
   applyWorldBossVictory: () => void
+  beginRaid: (def: RaidDefinition) => boolean
+  failRaid: (raidId: string) => void
+  abandonRaid: (raidId: string) => void
+  recordRaidFightVictory: (
+    raidId: string,
+    payload: { exp: number; gold: number; loot: import('@/types/game').Item[]; resources: Partial<Record<ResourceId, number>>; isBoss: boolean },
+  ) => boolean
+  claimRaidRewards: (raidId: string) => void
   applyCombatResult: (result: CombatResult) => void
   applyDeathPenalty: (killerName?: string) => void
   claimIdleRewards: () => void
@@ -563,6 +579,100 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       unlockedTitles: newTitles,
       gems: player.gems + WORLD_BOSS_REWARDS.gems,
     })
+  },
+
+  beginRaid: (def) => {
+    const { player } = get()
+    if (!player) return false
+    let progress = getRaidProgress(player, def.id)
+    if (!progress || isRaidComplete(progress)) {
+      progress = createRaidProgress(def)
+    }
+    get().updatePlayer({
+      activeRaidId: def.id,
+      raidProgress: { ...(player.raidProgress ?? {}), [def.id]: progress },
+    })
+    return true
+  },
+
+  failRaid: (raidId) => {
+    const { player } = get()
+    if (!player) return
+    const cooldowns = { ...(player.raidDeathCooldowns ?? {}) }
+    cooldowns[raidId] = new Date(Date.now() + RAID_DEATH_COOLDOWN_MS).toISOString()
+    const raidProgress = { ...(player.raidProgress ?? {}) }
+    delete raidProgress[raidId]
+    get().updatePlayer({
+      raidDeathCooldowns: cooldowns,
+      raidProgress,
+      activeRaidId: player.activeRaidId === raidId ? null : player.activeRaidId,
+    })
+  },
+
+  abandonRaid: (raidId) => {
+    const { player } = get()
+    if (!player) return
+    const raidProgress = { ...(player.raidProgress ?? {}) }
+    delete raidProgress[raidId]
+    get().updatePlayer({
+      raidProgress,
+      activeRaidId: player.activeRaidId === raidId ? null : player.activeRaidId,
+    })
+  },
+
+  recordRaidFightVictory: (raidId, payload) => {
+    const { player } = get()
+    if (!player) return false
+    const progress = getRaidProgress(player, raidId)
+    if (!progress) return false
+
+    const updated = {
+      ...progress,
+      accumulatedExp: progress.accumulatedExp + payload.exp,
+      accumulatedGold: progress.accumulatedGold + payload.gold,
+      accumulatedLoot: [...progress.accumulatedLoot, ...payload.loot],
+      accumulatedResources: mergeResources(progress.accumulatedResources, payload.resources),
+      mobsKilled: payload.isBoss ? progress.mobsKilled : progress.mobsKilled + 1,
+      bossDefeated: payload.isBoss ? true : progress.bossDefeated,
+    }
+
+    const complete = isRaidComplete(updated)
+    if (complete) {
+      const bonus = getRaidCompletionBonus(progress.floor)
+      updated.accumulatedGold += bonus.gold
+    }
+
+    const completedRaids = player.completedRaids ?? []
+    const newCompleted = complete && !completedRaids.includes(raidId)
+      ? [...completedRaids, raidId]
+      : completedRaids
+
+    get().updatePlayer({
+      raidProgress: { ...(player.raidProgress ?? {}), [raidId]: updated },
+      completedRaids: newCompleted,
+      activeRaidId: complete ? null : raidId,
+      gems: complete ? player.gems + getRaidCompletionBonus(progress.floor).gems : player.gems,
+    })
+    return complete
+  },
+
+  claimRaidRewards: (raidId) => {
+    const { player } = get()
+    if (!player) return
+    const progress = getRaidProgress(player, raidId)
+    if (!progress || !isRaidComplete(progress)) return
+
+    get().addExp(progress.accumulatedExp)
+    get().addGold(progress.accumulatedGold)
+    progress.accumulatedLoot.forEach((item) => get().addItem(item))
+    if (Object.keys(progress.accumulatedResources).length) {
+      get().addResources(progress.accumulatedResources)
+    }
+    applyQuestTracking(get, 'win_combat', 1)
+
+    const raidProgress = { ...(player.raidProgress ?? {}) }
+    delete raidProgress[raidId]
+    get().updatePlayer({ raidProgress, activeRaidId: null })
   },
 
   applyCombatResult: (result) => {

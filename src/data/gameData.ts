@@ -278,6 +278,10 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     socketGemLevels: base.socketGemLevels ?? {},
     activeBrews: base.activeBrews ?? [],
     pendingSecretCave: base.pendingSecretCave ?? null,
+    activeRaidId: base.activeRaidId ?? null,
+    raidProgress: base.raidProgress ?? {},
+    raidDeathCooldowns: base.raidDeathCooldowns ?? {},
+    completedRaids: base.completedRaids ?? [],
     fairStats: base.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
     saveVersion: SAVE_VERSION,
   }

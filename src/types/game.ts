@@ -364,6 +364,10 @@ export interface Player {
   socketGemLevels?: Partial<Record<SocketGemId, number>>
   activeBrews?: ActiveBrew[]
   pendingSecretCave?: SecretCaveState | null
+  activeRaidId?: string | null
+  raidProgress?: Record<string, import('@/lib/raidProgress').RaidProgress>
+  raidDeathCooldowns?: Record<string, string>
+  completedRaids?: string[]
   saveVersion?: number
 }
 
@@ -497,6 +501,8 @@ export interface CombatState {
   isMiniBoss?: boolean
   bossPhase?: 1 | 2
   isWorldBoss?: boolean
+  isRaid?: boolean
+  raidId?: string
   weakSpotUsed?: boolean
 }
 
@@ -515,6 +521,9 @@ export interface CombatResult {
   isEpic?: boolean
   isMiniBoss?: boolean
   isWorldBoss?: boolean
+  isRaid?: boolean
+  raidId?: string
+  raidComplete?: boolean
 }
 
 export interface GuildMember {

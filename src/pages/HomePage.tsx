@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -126,6 +126,7 @@ export function HomePage() {
     },
     { icon: Pickaxe, label: 'Шахта', path: '/mine', variant: 'gold' as const },
     { icon: Leaf, label: 'Поле трав', path: '/field', variant: 'secondary' as const },
+    { icon: Shield, label: 'Рейды', path: '/raids', variant: 'purple' as const, primary: false },
     { icon: Users, label: t('hub.guild'), path: '/guild', variant: 'secondary' as const },
     { icon: Package, label: t('hub.inventory'), path: '/inventory', variant: 'secondary' as const },
     { icon: ShoppingBag, label: t('hub.shop'), path: '/shop', variant: 'purple' as const },
