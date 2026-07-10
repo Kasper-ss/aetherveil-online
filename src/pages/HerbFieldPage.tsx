@@ -11,7 +11,8 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { HERB_FIELD_LEVELS, getUnlockedHerbFieldLevel } from '@/data/herbField'
-import { getAlchemyRecipesForPlayer, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
+import { getAlchemyRecipesForPlayer, canBrewAlchemyRecipe, getVisibleHerbalismRecipes, getPendingBrews, needsBrewTimer, findAlchemyRecipe } from '@/data/alchemyPotions'
+import { isHerbalismActive } from '@/lib/professionBonuses'
 import { RESOURCES } from '@/data/classes'
 import { playerHasTool } from '@/data/tools'
 import { getProfessionRank, getProfessionExp, getProfessionRankProgress } from '@/lib/professionProgress'
@@ -25,6 +26,7 @@ export function HerbFieldPage() {
   const player = usePlayerStore((s) => s.player)
   const performHerbGather = usePlayerStore((s) => s.performHerbGather)
   const brewPotion = usePlayerStore((s) => s.brewPotion)
+  const collectReadyBrews = usePlayerStore((s) => s.collectReadyBrews)
   const [selectedLevel, setSelectedLevel] = useState(player?.fieldLevel ?? 1)
   const [lastMsg, setLastMsg] = useState<string | null>(null)
 
@@ -39,6 +41,8 @@ export function HerbFieldPage() {
   const nextLevel = HERB_FIELD_LEVELS.find((h) => h.level === unlocked + 1)
   const xpToNext = nextLevel ? nextLevel.xpToUnlock - (player.fieldGatherXp ?? 0) : 0
   const recipes = getAlchemyRecipesForPlayer(player)
+  const herbalRecipes = getVisibleHerbalismRecipes(player)
+  const pendingBrews = getPendingBrews(player)
 
   function handleGather() {
     const result = performHerbGather(selectedLevel)
@@ -52,12 +56,21 @@ export function HerbFieldPage() {
   }
 
   function handleBrew(recipeId: string) {
+    const recipe = findAlchemyRecipe(recipeId)
     if (brewPotion(recipeId)) {
       hapticSuccess()
-      setLastMsg('Зелье сварено!')
+      setLastMsg(needsBrewTimer(recipe!) ? 'Варка началась — зелье будет готово через несколько минут.' : 'Зелье сварено!')
     } else {
       hapticError()
       setLastMsg('Не хватает ресурсов, золота или ранга алхимика.')
+    }
+  }
+
+  function handleCollectBrews() {
+    const n = collectReadyBrews()
+    if (n > 0) {
+      hapticSuccess()
+      setLastMsg(`Собрано зелий: ${n}`)
     }
   }
 
@@ -133,8 +146,41 @@ export function HerbFieldPage() {
 
         <TabsContent value="alchemy" className="space-y-3 mt-3">
           <p className="text-[10px] text-slate-500">
-            Обычные и редкие зелья доступны всем. Эпические и легендарные — только с активным Алхимиком и высоким рангом.
+            HP и энергетики варятся мгновенно. Остальные зелья — с таймером. Редкие рецепты травника видны при активном Травничестве.
           </p>
+          {pendingBrews.length > 0 && (
+            <Card className="border-amber-500/30">
+              <CardContent className="p-3 text-xs space-y-2">
+                <p className="text-amber-400">Варится: {pendingBrews.length}</p>
+                {pendingBrews.map((b) => {
+                  const r = findAlchemyRecipe(b.recipeId)
+                  const ms = new Date(b.readyAt).getTime() - Date.now()
+                  return (
+                    <p key={b.recipeId + b.readyAt} className="text-slate-400">
+                      {r?.nameRu} — {ms > 0 ? `${Math.ceil(ms / 60000)} мин.` : 'готово!'}
+                    </p>
+                  )
+                })}
+                <Button size="sm" className="w-full" onClick={handleCollectBrews}>Собрать готовые</Button>
+              </CardContent>
+            </Card>
+          )}
+          {isHerbalismActive(player) && herbalRecipes.length > 0 && (
+            <>
+              <p className="text-[10px] text-aether-cyan font-medium">Рецепты травника</p>
+              {herbalRecipes.map((recipe) => (
+                <Card key={recipe.id} className="border-aether-cyan/30">
+                  <CardContent className="p-3">
+                    <div className="text-sm font-medium text-white">{recipe.nameRu}</div>
+                    <p className="text-[10px] text-slate-400 mb-2">{recipe.descriptionRu}</p>
+                    <Button size="sm" className="w-full" disabled={!canBrewAlchemyRecipe(player, recipe)} onClick={() => handleBrew(recipe.id)}>
+                      Сварить {recipe.brewTimeMs ? `(${Math.round(recipe.brewTimeMs / 60000)} мин.)` : ''}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
           {recipes.map((recipe) => {
             const locked = !canBrewAlchemyRecipe(player, recipe)
             return (
@@ -159,7 +205,7 @@ export function HerbFieldPage() {
                     <p className="text-[9px] text-amber-400 mb-2">Нужен алхимик ранг {recipe.minAlchemistRank}+</p>
                   )}
                   <Button size="sm" className="w-full" disabled={locked} onClick={() => handleBrew(recipe.id)}>
-                    Сварить
+                    {recipe.brewTimeMs ? `Варить (${Math.round(recipe.brewTimeMs / 60000)} мин.)` : 'Сварить'}
                   </Button>
                 </CardContent>
               </Card>

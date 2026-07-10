@@ -19,6 +19,8 @@ import { useT } from '@/hooks/useT'
 import { createItemInstance } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
 import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
+import { getVipTier, getNextVipLevel, getVipUpgradeStars } from '@/data/vipTiers'
+import { getVipMultipliers } from '@/lib/vipBonuses'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { getActiveBuffs, formatBuffRemaining } from '@/lib/playerBuffs'
 import type { StarProductId } from '@/data/starShop'
@@ -446,17 +448,49 @@ export function ShopPage() {
             </div>
           )}
 
+          {player.vipLevel && player.vipLevel > 0 && (
+            <Card className="mb-3 border-aether-purple/40">
+              <CardContent className="p-3 text-xs">
+                <p className="text-aether-purple font-medium">
+                  {getVipTier(player.vipLevel)?.labelRu ?? `VIP ${player.vipLevel}`}
+                </p>
+                <p className="text-slate-400 mt-1">
+                  EXP +{Math.round(getVipMultipliers(player).exp * 100 - 100)}% ·
+                  Дроп +{Math.round(getVipMultipliers(player).loot * 100 - 100)}% ·
+                  Gold +{Math.round(getVipMultipliers(player).gold * 100 - 100)}%
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <h3 className="text-sm font-medium text-white mb-2">Купить</h3>
           <div className="space-y-3 max-h-[62vh] overflow-y-auto">
-            {STAR_SHOP_PRODUCTS.map((product) => (
+            {STAR_SHOP_PRODUCTS.filter((product) => {
+              if (product.id !== 'vip_upgrade') return true
+              return getNextVipLevel(player.vipLevel ?? 0) !== null
+            }).map((product) => {
+              const vipStars = product.id === 'vip_upgrade'
+                ? getVipUpgradeStars(player.vipLevel ?? 0, getNextVipLevel(player.vipLevel ?? 0)!)
+                : product.stars
+              const nextVip = product.id === 'vip_upgrade' ? getNextVipLevel(player.vipLevel ?? 0) : null
+              const nextTier = nextVip ? getVipTier(nextVip) : null
+              return (
               <Card key={product.id}>
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className="text-3xl">{product.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white">{product.nameRu}</div>
-                    <div className="text-[10px] text-slate-400">{product.descriptionRu}</div>
+                    <div className="text-sm font-medium text-white">
+                      {product.id === 'vip_upgrade' && nextTier
+                        ? `${product.nameRu} → ${nextTier.labelRu}`
+                        : product.nameRu}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {product.id === 'vip_upgrade' && nextTier
+                        ? `+${Math.round(nextTier.expPct * 100)}% EXP · +${Math.round(nextTier.lootPct * 100)}% дроп · +${Math.round(nextTier.goldPct * 100)}% gold`
+                        : product.descriptionRu}
+                    </div>
                     <div className="text-[10px] text-aether-gold mt-1">
-                      {formatStarsPriceLabel(product.stars)}
+                      {formatStarsPriceLabel(vipStars)}
                     </div>
                   </div>
                   <Button
@@ -467,11 +501,11 @@ export function ShopPage() {
                     onClick={() => handleStarPurchase(product.id)}
                   >
                     <Star className="h-3 w-3" />
-                    {buyingStarId === product.id ? '...' : product.stars}
+                    {buyingStarId === product.id ? '...' : vipStars}
                   </Button>
                 </CardContent>
               </Card>
-            ))}
+            )})}
           </div>
         </TabsContent>
 

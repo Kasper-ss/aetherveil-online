@@ -21,6 +21,8 @@ import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } f
 import { applyCombatRewardEase } from '@/lib/combatRewards'
 import { applyRacialAbility, canUseRacialAbility, rollDwarfTreasureFind, tickRacialCombatState } from '@/lib/racialAbilities'
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
+import { rollSecretCaveAfterVictory } from '@/data/secretCave'
+import { getWeakSpotDamageMultiplier, canUseWeakSpot } from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
 /** Global boost to player outgoing damage in combat. */
@@ -37,6 +39,7 @@ interface CombatStore {
   startWorldBossCombat: () => boolean
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
   playerAttack: () => void
+  playerWeakSpot: () => void
   playerSkill: (skillId: SkillId) => void
   useConsumableInCombat: (itemId: ConsumableId) => boolean
   eatFoodInCombat: (itemId: string) => boolean
@@ -326,6 +329,59 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         enemyCombat: enemyTurn.enemyCombat,
         combatLog: logs.slice(-30),
         turn: combat.turn + 1,
+      },
+    })
+  },
+
+  playerWeakSpot: () => {
+    const { combat, isActive } = get()
+    if (!combat || !isActive || combat.weakSpotUsed || combat.isPvp) return
+
+    const player = usePlayerStore.getState().player
+    if (!player) return
+    if (!canUseWeakSpot(player)) return
+
+    const stats = getEffectiveStats(player)
+    const setEffects = getSetCombatEffects(player)
+    const mult = getWeakSpotDamageMultiplier(player)
+    const rawDmg = calcMitigatedDamage(
+      stats.atk * mult * 1.8 * getPlayerCombatEase(player, combat.floor).playerDamageMult * PLAYER_DAMAGE_MULT,
+      combat.enemy.stats.def * 0.65,
+      ENEMY_DEF_MITIGATION,
+    )
+    const finalDmg = applySetDamageMultipliers(rawDmg, stats, setEffects)
+    const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
+    const logs = [
+      ...combat.combatLog,
+      ...hit.logs,
+      logEntry(`🎯 Слабое место! Критический удар: ${finalDmg} урона`, 'crit'),
+    ]
+
+    if (hit.enemyHp <= 0) {
+      if (handleBossDefeated(get, set, { ...combat, weakSpotUsed: true }, logs, { enemyHp: 0, combo: combat.combo + 1, enemyCombat: hit.enemyCombat })) {
+        return
+      }
+    }
+
+    const afterHit = { ...combat, enemyHp: hit.enemyHp, enemyCombat: hit.enemyCombat, weakSpotUsed: true }
+    const enemyTurn = resolveEnemyTurn(afterHit, stats)
+    logs.push(...enemyTurn.logs)
+
+    if (enemyTurn.playerHp <= 0) {
+      get().endCombat(false)
+      return
+    }
+
+    set({
+      combat: {
+        ...afterHit,
+        enemyHp: enemyTurn.enemyHp,
+        playerHp: enemyTurn.playerHp,
+        combo: combat.combo + 1,
+        enemyCombat: enemyTurn.enemyCombat,
+        combatLog: logs.slice(-30),
+        turn: combat.turn + 1,
+        weakSpotUsed: true,
       },
     })
   },
@@ -649,6 +705,15 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     // Death penalty handler sets full HP respawn
 
     set({ isActive: false, result, showLootScreen: victory && !combat.isPvp, tickInterval: null })
+
+    if (victory && !combat.isPvp) {
+      const cave = rollSecretCaveAfterVictory(combat.floor, combat.isBoss)
+      if (cave) {
+        usePlayerStore.getState().updatePlayer({
+          pendingSecretCave: { ...cave, claimedIndices: [] },
+        })
+      }
+    }
   },
 
   claimLoot: () => {

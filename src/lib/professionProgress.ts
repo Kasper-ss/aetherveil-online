@@ -1,7 +1,7 @@
 import type { Player, ProfessionId } from '@/types/game'
 
-/** Two main professions — full skill tree and mythic upgrades. */
-export const BASE_PROFESSION_SLOTS = 2
+/** Three main professions — full skill tree and mythic upgrades. */
+export const BASE_PROFESSION_SLOTS = 3
 export const MAX_PROFESSION_SLOTS = 5
 
 export function getProfessionSlotLimit(player: Player): number {

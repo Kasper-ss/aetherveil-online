@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent } from '@/types/game'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
-import { parseReferralStartParam } from '@/data/referrals'
-import { getTelegramStartParam } from '@/lib/telegram'
+import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
+import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
 import { pickNewerPlayer, SAVE_VERSION } from '@/lib/playerMigration'
 import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
@@ -76,7 +76,13 @@ import {
 import {
   getFishingSpotData, getUnlockedFishingSpot, rollSpotFishCatch,
 } from '@/data/fishingSpots'
-import { findAlchemyRecipe, canBrewAlchemyRecipe } from '@/data/alchemyPotions'
+import { findAlchemyRecipe, canBrewAlchemyRecipe, needsBrewTimer, getReadyBrews } from '@/data/alchemyPotions'
+import { getNextVipLevel } from '@/data/vipTiers'
+import { getCombineCost, getUpgradeCost, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import { canSocketGem } from '@/lib/gemSockets'
+import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
+import { hasSupremeEnchantments } from '@/lib/professionBonuses'
+import type { SocketGemId } from '@/types/game'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS, isMonthlyRewardClaimWindowOpen } from '@/lib/monthlyStats'
@@ -153,6 +159,13 @@ interface PlayerState {
   performGemDig: (targetLevel?: number) => { ok: boolean; isDouble?: boolean; isSpecial?: boolean }
   performAetherGather: (targetLevel?: number) => { ok: boolean; isDouble?: boolean; isSpecial?: boolean }
   brewPotion: (recipeId: string) => boolean
+  collectReadyBrews: () => number
+  combineSocketGem: (gemId: SocketGemId) => boolean
+  upgradeSocketGem: (gemId: SocketGemId) => boolean
+  socketGemIntoItem: (instanceId: string, gemId: SocketGemId) => boolean
+  applySupremeEnchant: (instanceId: string, enchantId: string) => boolean
+  claimSecretCaveDig: (rewardIndex: number) => boolean
+  clearSecretCave: () => void
   cookFood: (recipeId: string) => boolean
   eatFood: (itemId: string) => boolean
   craftItem: (recipeId: string) => boolean
@@ -341,6 +354,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().tryRegenVitals()
       get().checkPetRewards({ showModal: !idle })
       registerOnlinePlayer(player)
+      void get().syncPlayerState()
     }
   },
 
@@ -1328,9 +1342,143 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, recipe.goldCost)
       return false
     }
+    if (needsBrewTimer(recipe)) {
+      const brews = [
+        ...(player.activeBrews ?? []),
+        { recipeId, readyAt: new Date(Date.now() + (recipe.brewTimeMs ?? 0)).toISOString() },
+      ]
+      get().updatePlayer({ activeBrews: brews })
+      return true
+    }
     const inst = createItemInstance(recipe.resultItemId)
     if (inst) get().addItem(inst)
     return !!inst
+  },
+
+  collectReadyBrews: () => {
+    const { player } = get()
+    if (!player) return 0
+    const ready = getReadyBrews(player)
+    if (!ready.length) return 0
+    const readyIds = new Set(ready.map((b) => b.recipeId + b.readyAt))
+    let collected = 0
+    for (const brew of ready) {
+      const inst = createItemInstance(findAlchemyRecipe(brew.recipeId)?.resultItemId ?? '')
+      if (inst) {
+        get().addItem(inst)
+        collected++
+      }
+    }
+    const remaining = (player.activeBrews ?? []).filter((b) => !readyIds.has(b.recipeId + b.readyAt))
+    get().updatePlayer({ activeBrews: remaining })
+    return collected
+  },
+
+  combineSocketGem: (gemId) => {
+    const { player } = get()
+    if (!player) return false
+    const level = player.socketGemLevels?.[gemId] ?? 1
+    const cost = getCombineCost(level)
+    if (!get().spendGold(cost.gold)) return false
+    if (!get().spendResources({ gem_shard: cost.gem_shard })) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
+    const gems = { ...(player.socketGems ?? {}) }
+    gems[gemId] = (gems[gemId] ?? 0) + 1
+    if (!player.socketGemLevels?.[gemId]) {
+      get().updatePlayer({
+        socketGems: gems,
+        socketGemLevels: { ...(player.socketGemLevels ?? {}), [gemId]: 1 },
+      })
+    } else {
+      get().updatePlayer({ socketGems: gems })
+    }
+    return true
+  },
+
+  upgradeSocketGem: (gemId) => {
+    const { player } = get()
+    if (!player) return false
+    const level = player.socketGemLevels?.[gemId] ?? 0
+    if (level <= 0 || level >= MAX_SOCKET_GEM_LEVEL) return false
+    const cost = getUpgradeCost(level)
+    if (!get().spendGold(cost.gold)) return false
+    const res: Partial<Record<import('@/types/game').ResourceId, number>> = { gem_shard: cost.gem_shard }
+    if (cost.raw_diamond) res.raw_diamond = cost.raw_diamond
+    if (!get().spendResources(res)) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
+    get().updatePlayer({
+      socketGemLevels: { ...(player.socketGemLevels ?? {}), [gemId]: level + 1 },
+    })
+    return true
+  },
+
+  socketGemIntoItem: (instanceId, gemId) => {
+    const { player } = get()
+    if (!player) return false
+    if ((player.socketGems?.[gemId] ?? 0) <= 0) return false
+    const findItem = (): Item | null => {
+      const inv = player.inventory.find((i) => i.instanceId === instanceId)
+      if (inv) return inv
+      for (const slot of Object.keys(player.equipped) as (keyof Player['equipped'])[]) {
+        if (player.equipped[slot]?.instanceId === instanceId) return player.equipped[slot]
+      }
+      return null
+    }
+    const item = findItem()
+    if (!item || !canSocketGem(item, gemId)) return false
+    const updated: Item = {
+      ...item,
+      socketedGems: [...(item.socketedGems ?? []), gemId],
+    }
+    const gems = { ...(player.socketGems ?? {}) }
+    gems[gemId] = (gems[gemId] ?? 0) - 1
+    get().replaceItemInstance(instanceId, updated)
+    get().updatePlayer({ socketGems: gems })
+    return true
+  },
+
+  applySupremeEnchant: (instanceId, enchantId) => {
+    const { player } = get()
+    if (!player || !hasSupremeEnchantments(player)) return false
+    const item = player.inventory.find((i) => i.instanceId === instanceId)
+      ?? (Object.values(player.equipped).find((i) => i?.instanceId === instanceId) ?? null)
+    if (!item || item.supremeEnchantId) return false
+    const enc = getEnchantmentsForItem(item).find((e) => e.id === enchantId)
+    if (!enc || !get().spendGold(enc.goldCost)) return false
+    const enchanted = applySupremeEnchantment({ ...item, supremeEnchantId: enchantId }, enchantId)
+    get().replaceItemInstance(instanceId, enchanted)
+    return true
+  },
+
+  claimSecretCaveDig: (rewardIndex) => {
+    const { player } = get()
+    if (!player?.pendingSecretCave) return false
+    const cave = player.pendingSecretCave
+    if (cave.claimedIndices.includes(rewardIndex)) return false
+    const reward = cave.rewards[rewardIndex]
+    if (!reward) return false
+
+    if (reward.gold > 0) get().addGold(reward.gold)
+    if (Object.keys(reward.resources).length) get().addResources(reward.resources)
+    if (reward.itemId) {
+      const inst = createItemInstance(reward.itemId)
+      if (inst) get().addItem(inst)
+    }
+
+    const claimedIndices = [...cave.claimedIndices, rewardIndex]
+    const done = claimedIndices.length >= cave.maxDigs
+    get().updatePlayer({
+      pendingSecretCave: done ? null : { ...cave, claimedIndices },
+    })
+    return true
+  },
+
+  clearSecretCave: () => {
+    get().updatePlayer({ pendingSecretCave: null })
   },
 
   cookFood: (recipeId) => {
@@ -1662,8 +1810,32 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const uncollectedChanged = JSON.stringify(uncollected) !== JSON.stringify(
       player.referralUncollected ?? { gold: 0, gems: 0, items: 0 },
     )
+    const prevInvites = player.referralInvites ?? []
+    let newMilestoneCount = 0
+    let milestoneFriendName = ''
+    for (const inv of referralList) {
+      const prev = prevInvites.find((p) => p.refereeId === inv.refereeId)
+      if (prev && inv.milestoneCount > prev.milestoneCount) {
+        newMilestoneCount += inv.milestoneCount - prev.milestoneCount
+        milestoneFriendName = inv.displayName
+      }
+    }
+
     const needsUpdate = result.pendingGold > 0 || soldSet.size > 0 || hasGifts || listChanged || uncollectedChanged
     if (!needsUpdate) return
+
+    if (newMilestoneCount > 0) {
+      const rewardGold = newMilestoneCount * REFERRAL_MILESTONE_GOLD
+      if (newMilestoneCount === 1 && milestoneFriendName) {
+        showTelegramAlert(
+          `Ваш друг ${milestoneFriendName} накопил 100К монет! Вам начислено ${REFERRAL_MILESTONE_GOLD.toLocaleString('ru-RU')} монет.`,
+        )
+      } else {
+        showTelegramAlert(
+          `Друзья достигли ${newMilestoneCount} порогов по 100К! Вам начислено ${rewardGold.toLocaleString('ru-RU')} монет.`,
+        )
+      }
+    }
 
     const inventory = [...player.inventory]
     for (const gift of result.incomingGifts ?? []) {
@@ -1909,7 +2081,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   purchaseStarProduct: async (productId) => {
-    const paid = await requestStarsPayment(productId)
+    const { player } = get()
+    const vipLevel = productId === 'vip_upgrade' ? (player?.vipLevel ?? 0) : undefined
+    const paid = await requestStarsPayment(productId, { vipLevel })
     if (!paid) return false
     return get().applyStarProductReward(productId)
   },
@@ -1968,6 +2142,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         const limit = player.professionSlotLimit ?? BASE_PROFESSION_SLOTS
         if (limit >= MAX_PROFESSION_SLOTS) return false
         get().updatePlayer({ professionSlotLimit: limit + 1 })
+        break
+      }
+      case 'vip_upgrade': {
+        const current = player.vipLevel ?? 0
+        const next = getNextVipLevel(current)
+        if (!next) return false
+        get().updatePlayer({ vipLevel: next })
         break
       }
       case 'cosmetic_avatar_telegram_hero':

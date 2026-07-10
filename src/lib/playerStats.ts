@@ -6,6 +6,7 @@ import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
 import { isHighCritClass } from '@/lib/classCompat'
+import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
 import { getRacialStatPassives } from '@/lib/racialAbilities'
 
 export function hasDeathDebuff(player: Player): boolean {
@@ -157,6 +158,15 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     totals.crit += s.crit ?? 0
     totals.speed += s.speed ?? 0
     totals.stealth += s.stealth ?? 0
+    for (const gemId of item.socketedGems ?? []) {
+      const level = player.socketGemLevels?.[gemId] ?? 1
+      const val = getGemStatValue(gemId, level)
+      const stat = getSocketGemDef(gemId).stat
+      if (stat === 'atk') totals.atk += val
+      else if (stat === 'def') totals.def += val
+      else if (stat === 'hp') totals.hp += val
+      else if (stat === 'crit') totals.crit += val
+    }
   }
 
   const effectMult = (stat: import('@/types/game').EffectStat) =>

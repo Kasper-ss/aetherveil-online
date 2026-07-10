@@ -14,6 +14,7 @@ export type StarProductId =
   | 'cosmetic_frame_gold'
   | 'cosmetic_frame_legendary'
   | 'cosmetic_frame_mythic'
+  | 'vip_upgrade'
 
 export interface StarProduct {
   id: StarProductId
@@ -112,6 +113,12 @@ export const STAR_PRODUCTS: Record<StarProductId, StarProduct> = {
     nameRu: 'Рамка «Мифическая»',
     descriptionRu: 'Мифическая рамка профиля.',
     stars: 400,
+  },
+  vip_upgrade: {
+    id: 'vip_upgrade',
+    nameRu: 'VIP-статус',
+    descriptionRu: 'Повышение VIP: постоянные бонусы к опыту, дропу и золоту.',
+    stars: 250,
   },
 }
 

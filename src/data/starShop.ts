@@ -17,6 +17,7 @@ export type StarProductId =
   | 'cosmetic_frame_gold'
   | 'cosmetic_frame_legendary'
   | 'cosmetic_frame_mythic'
+  | 'vip_upgrade'
 
 export interface StarShopProduct {
   id: StarProductId
@@ -24,6 +25,7 @@ export interface StarShopProduct {
   descriptionRu: string
   stars: number
   icon: string
+  dynamicVip?: boolean
 }
 
 export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
@@ -96,6 +98,14 @@ export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
     descriptionRu: 'Дополнительный активный слот профессии (макс. 5).',
     stars: 350,
     icon: '📚',
+  },
+  {
+    id: 'vip_upgrade',
+    nameRu: 'VIP-статус',
+    descriptionRu: 'Постоянные бонусы к опыту, дропу и золоту. Следующий уровень дешевле с учётом текущего.',
+    stars: 250,
+    icon: '👑',
+    dynamicVip: true,
   },
 ]
 

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { sendMessage } from './telegram.js'
+import { getMiniAppUrl, sendMessage } from './telegram.js'
 
 const REFERRAL_SIGNUP_GOLD = 30_000
 const REFERRAL_SIGNUP_GEMS = 10
@@ -139,9 +139,17 @@ async function createReward(input: Omit<ReferralRewardRecord, 'id' | 'settled' |
 
 async function notifyMilestoneReward(referrerId: number, refereeName: string): Promise<void> {
   try {
+    const appUrl = getMiniAppUrl()
+    const replyMarkup = appUrl
+      ? {
+          inline_keyboard: [[{ text: '🎁 Собрать награду', web_app: { url: appUrl } }]],
+        }
+      : undefined
+
     await sendMessage({
       chat_id: referrerId,
-      text: `Ваш друг ${refereeName} накопил 100К монет! Заберите ${REFERRAL_MILESTONE_GOLD.toLocaleString('ru-RU')} монет в разделе «Пригласить».`,
+      text: `Ваш друг ${refereeName} накопил 100К монет! Вам начислено ${REFERRAL_MILESTONE_GOLD.toLocaleString('ru-RU')} монет.`,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     })
   } catch (err) {
     console.warn('[referrals] Telegram notify failed', err)

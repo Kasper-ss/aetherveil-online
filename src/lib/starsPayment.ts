@@ -137,7 +137,10 @@ async function fulfillWithRetry(
   }
 }
 
-export async function requestStarsPayment(productId: StarProductId): Promise<boolean> {
+export async function requestStarsPayment(
+  productId: StarProductId,
+  opts?: { vipLevel?: number },
+): Promise<boolean> {
   if (!isTelegramEnvironment()) {
     if (import.meta.env.DEV && import.meta.env.VITE_STARS_DEV_MOCK === 'true') {
       return window.confirm(`[DEV] Симулировать оплату «${productId}»?`)
@@ -154,7 +157,7 @@ export async function requestStarsPayment(productId: StarProductId): Promise<boo
     invoiceLink?: string
     payload?: string
     error?: string
-  }>('/api/stars/create-invoice', { initData, productId })
+  }>('/api/stars/create-invoice', { initData, productId, vipLevel: opts?.vipLevel })
 
   if (!ok || !createData.invoiceLink || !createData.payload) {
     throw new StarsPaymentError(createData.error ?? 'Не удалось создать счёт на оплату')

@@ -28,6 +28,29 @@ export type ResourceId =
   | 'fish_crab' | 'fish_lobster' | 'fish_squid' | 'fish_swordfish' | 'fish_aether_koi'
   | 'fishing_junk'
 
+export type SocketGemId =
+  | 'ruby' | 'sapphire' | 'emerald' | 'topaz' | 'amethyst'
+  | 'onyx' | 'opal' | 'jade' | 'garnet' | 'diamond'
+
+export interface ActiveBrew {
+  recipeId: string
+  readyAt: string
+}
+
+export interface SecretCaveState {
+  floor: number
+  digsRemaining: number
+  maxDigs: number
+  rewards: Array<{
+    resources: Partial<Record<ResourceId, number>>
+    gold: number
+    itemId?: string
+    chestFound: boolean
+  }>
+  chestFound: boolean
+  claimedIndices: number[]
+}
+
 export type EffectStat = 'atk' | 'def' | 'hp' | 'crit' | 'speed' | 'all'
 
 export interface ActiveEffect {
@@ -144,6 +167,8 @@ export interface Item {
   tier?: number
   durability?: number
   maxDurability?: number
+  socketedGems?: SocketGemId[]
+  supremeEnchantId?: string
 }
 
 export interface Skill {
@@ -330,6 +355,11 @@ export interface Player {
   cryptoState?: import('@/lib/crypto').PlayerCryptoState
   notificationSettings?: NotificationSettings
   petLastRewardAt?: string
+  vipLevel?: number
+  socketGems?: Partial<Record<SocketGemId, number>>
+  socketGemLevels?: Partial<Record<SocketGemId, number>>
+  activeBrews?: ActiveBrew[]
+  pendingSecretCave?: SecretCaveState | null
   saveVersion?: number
 }
 
@@ -463,6 +493,7 @@ export interface CombatState {
   isMiniBoss?: boolean
   bossPhase?: 1 | 2
   isWorldBoss?: boolean
+  weakSpotUsed?: boolean
 }
 
 export interface CombatResult {

@@ -2,6 +2,7 @@ import type { Player } from '@/types/game'
 import { getLuckyMultipliers } from '@/lib/luckyBonuses'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
+import { getVipMultipliers } from '@/lib/vipBonuses'
 import { FATE_EXP_MULTIPLIER, FATE_GOLD_MULTIPLIER } from '@/lib/fateCards'
 
 export function isBuffActive(until?: string): boolean {
@@ -26,7 +27,8 @@ export function getExpMultiplier(player: Player): number {
   const fate = isBuffActive(player.buffFateExpUntil) ? FATE_EXP_MULTIPLIER : 1
   const ach = getAchievementMultipliers(player).exp
   const prop = getPropertyMultipliers(player)
-  return buff * fate * getLuckyMultipliers(player).exp * ach * prop.exp * prop.allRewards
+  const vip = getVipMultipliers(player)
+  return buff * fate * getLuckyMultipliers(player).exp * ach * prop.exp * prop.allRewards * vip.exp
 }
 
 export function getGoldMultiplier(player: Player): number {
@@ -34,12 +36,14 @@ export function getGoldMultiplier(player: Player): number {
   const fate = isBuffActive(player.buffFateGoldUntil) ? FATE_GOLD_MULTIPLIER : 1
   const ach = getAchievementMultipliers(player).gold
   const prop = getPropertyMultipliers(player)
-  return buff * fate * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards
+  const vip = getVipMultipliers(player)
+  return buff * fate * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * vip.gold
 }
 
 export function getLootMultiplier(player: Player): number {
   const prop = getPropertyMultipliers(player)
-  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards
+  const vip = getVipMultipliers(player)
+  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards * vip.loot
 }
 
 export function getGatherResourceMultiplier(player: Player): number {

@@ -19,6 +19,7 @@ import { hasDeathDebuff } from '@/lib/playerStats'
 import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { canUseRacialAbility } from '@/lib/racialAbilities'
+import { canUseWeakSpot } from '@/lib/professionBonuses'
 import { getRaceData } from '@/data/races'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
@@ -37,6 +38,7 @@ export function CombatPage() {
   const result = useCombatStore((s) => s.result)
   const showLootScreen = useCombatStore((s) => s.showLootScreen)
   const playerAttack = useCombatStore((s) => s.playerAttack)
+  const playerWeakSpot = useCombatStore((s) => s.playerWeakSpot)
   const playerSkill = useCombatStore((s) => s.playerSkill)
   const useConsumableInCombat = useCombatStore((s) => s.useConsumableInCombat)
   const eatFoodInCombat = useCombatStore((s) => s.eatFoodInCombat)
@@ -95,6 +97,7 @@ export function CombatPage() {
 
   const raceData = player?.raceId ? getRaceData(player.raceId) : null
   const racialReady = player ? canUseRacialAbility(player) : false
+  const weakSpotReady = player && canUseWeakSpot(player) && !combat.weakSpotUsed && !combat.isPvp
 
   function handleFlee() {
     hapticImpact('light')
@@ -199,6 +202,15 @@ export function CombatPage() {
               </Button>
             )}
           </div>
+          {weakSpotReady && (
+            <Button
+              variant="gold"
+              className="w-full h-10"
+              onClick={() => { hapticImpact('heavy'); playerWeakSpot() }}
+            >
+              🎯 Слабое место
+            </Button>
+          )}
           {sortedHpPotions.length > 0 && sortedHpPotions.map((stack) => {
             const pct = Math.round((CONSUMABLE_EFFECTS[stack.itemId]?.healPercent ?? 0.5) * 100)
             return (

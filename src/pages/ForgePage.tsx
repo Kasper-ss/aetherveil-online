@@ -28,6 +28,9 @@ import { useT } from '@/hooks/useT'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
+import { GemWorkshopPanel } from '@/components/GemWorkshopPanel'
+import { hasSupremeEnchantments } from '@/lib/professionBonuses'
+import { getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import type { MissingCost } from '@/lib/craftCosts'
 
 export function ForgePage() {
@@ -49,6 +52,8 @@ export function ForgePage() {
   const repairAllItems = usePlayerStore((s) => s.repairAllItems)
   const getRepairAllCost = usePlayerStore((s) => s.getRepairAllCost)
   const upgradeItemRarity = usePlayerStore((s) => s.upgradeItemRarity)
+  const applySupremeEnchant = usePlayerStore((s) => s.applySupremeEnchant)
+  const [gemItem, setGemItem] = useState<Item | null>(null)
   const getRarityUpgradeMissing = usePlayerStore((s) => s.getRarityUpgradeMissing)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedRepairItem, setSelectedRepairItem] = useState<Item | null>(null)
@@ -227,11 +232,12 @@ export function ForgePage() {
       </div>
 
       <Tabs defaultValue="craft" className="p-4">
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="craft">{t('forge.recipes')}</TabsTrigger>
-          <TabsTrigger value="upgrade">{t('forge.upgrades')}</TabsTrigger>
-          <TabsTrigger value="repair">Починка</TabsTrigger>
-          <TabsTrigger value="rarity">Редкость</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-5">
+          <TabsTrigger value="craft" className="text-[10px]">{t('forge.recipes')}</TabsTrigger>
+          <TabsTrigger value="upgrade" className="text-[10px]">{t('forge.upgrades')}</TabsTrigger>
+          <TabsTrigger value="gems" className="text-[10px]">Камни</TabsTrigger>
+          <TabsTrigger value="repair" className="text-[10px]">Починка</TabsTrigger>
+          <TabsTrigger value="rarity" className="text-[10px]">Редкость</TabsTrigger>
         </TabsList>
 
         <TabsContent value="craft" className="mt-2">
@@ -416,6 +422,42 @@ export function ForgePage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="gems" className="mt-2">
+          <GemWorkshopPanel
+            selectedItem={gemItem}
+            onSelectItem={setGemItem}
+            gear={allGear}
+          />
+          {hasSupremeEnchantments(player) && (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-medium text-aether-purple">Верховные зачарования</p>
+              {allGear.filter((i) => !i.supremeEnchantId).slice(0, 6).map((item) => (
+                <Card key={item.instanceId}>
+                  <CardContent className="p-3">
+                    <div className="text-sm text-white mb-2">{item.name}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {getEnchantmentsForItem(item).map((enc) => (
+                        <Button
+                          key={enc.id}
+                          size="sm"
+                          variant="outline"
+                          className="text-[10px] h-7"
+                          onClick={() => {
+                            if (item.instanceId && applySupremeEnchant(item.instanceId, enc.id)) hapticSuccess()
+                            else hapticError()
+                          }}
+                        >
+                          {enc.nameRu} 🪙{enc.goldCost}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 

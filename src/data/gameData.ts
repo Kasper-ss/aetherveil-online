@@ -162,7 +162,8 @@ function migrateResources(
 
 export function migratePlayer(player: import('@/types/game').Player): import('@/types/game').Player {
   let base = player
-  if ((base.saveVersion ?? 0) < SAVE_VERSION) {
+  const prevVersion = base.saveVersion ?? 0
+  if (prevVersion < 7) {
     base = wipePlayerToFresh(base)
   }
   const normalizedClassId = normalizeClassId(base.classId as string | undefined)
@@ -221,7 +222,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     friendIds: base.friendIds ?? [],
     activeEffects: base.activeEffects ?? [],
     activeProfessions: base.activeProfessions ?? (base.profession ? [base.profession] : []),
-    professionSlotLimit: base.professionSlotLimit ?? BASE_PROFESSION_SLOTS,
+    professionSlotLimit: Math.max(base.professionSlotLimit ?? BASE_PROFESSION_SLOTS, BASE_PROFESSION_SLOTS),
     professionExp: base.professionExp ?? {},
     unlockedSetScrolls: migrateUnlockedSetScrolls(base.unlockedSetScrolls),
     ownedTools: base.ownedTools ?? [],
@@ -257,6 +258,11 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     profileTitleId: base.profileTitleId,
     achievementBonuses: base.achievementBonuses ?? { expPct: 0, goldPct: 0, lootPct: 0, allStatsPct: 0 },
     notificationSettings: base.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS,
+    vipLevel: base.vipLevel ?? 0,
+    socketGems: base.socketGems ?? {},
+    socketGemLevels: base.socketGemLevels ?? {},
+    activeBrews: base.activeBrews ?? [],
+    pendingSecretCave: base.pendingSecretCave ?? null,
     fairStats: base.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
     saveVersion: SAVE_VERSION,
   }

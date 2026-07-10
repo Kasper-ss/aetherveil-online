@@ -39,7 +39,7 @@ const translations = {
     'friends.referralRewardsTitle': 'Реферальные награды',
     'friends.referralSignupReward': 'За друга, начавшего игру:',
     'friends.referralSignupRewardDetail': 'монеты + гемы + редкий предмет',
-    'friends.referralMilestoneReward': 'За каждые 100 000 монет друга — 1 000 монет (забрать вручную)',
+    'friends.referralMilestoneReward': 'За каждые 100 000 монет друга — 1 000 монет (push-уведомление + сбор вручную)',
     'friends.referralCode': 'Ваш реферальный код',
     'friends.codeCopied': 'Код скопирован',
     'friends.referralStats': 'Активных рефералов',

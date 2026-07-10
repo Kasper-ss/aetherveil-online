@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCombatStore } from '@/store/combatStore'
 import { usePlayerStore } from '@/store/playerStore'
+import { SecretCaveModal } from '@/components/SecretCaveModal'
 import { getCannibalizeHeal } from '@/lib/racialAbilities'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/localeStore'
@@ -23,6 +25,10 @@ export function LootScreen() {
   const clearCombat = useCombatStore((s) => s.clearCombat)
   const player = usePlayerStore((s) => s.player)
   const resolveCannibalize = usePlayerStore((s) => s.resolveCannibalize)
+  const clearSecretCave = usePlayerStore((s) => s.clearSecretCave)
+  const [caveDismissed, setCaveDismissed] = useState(false)
+
+  const showCave = player?.pendingSecretCave && !caveDismissed
 
   if (!result?.victory) return null
 
@@ -151,6 +157,16 @@ export function LootScreen() {
           {t('loot.claim')}
         </Button>
       </div>
+
+      {showCave && player.pendingSecretCave && (
+        <SecretCaveModal
+          cave={player.pendingSecretCave}
+          onClose={() => {
+            setCaveDismissed(true)
+            clearSecretCave()
+          }}
+        />
+      )}
     </div>
   )
 }

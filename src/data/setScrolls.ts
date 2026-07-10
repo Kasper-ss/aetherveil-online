@@ -24,7 +24,7 @@ const EPIC_PIECE_GOLD = 1_000_000
 const EPIC_PIECE_GEMS = 15
 const LEGENDARY_PIECE_GOLD = 5_000_000
 const LEGENDARY_PIECE_GEMS = 35
-const MYTHIC_PIECE_GOLD = 1_500_000
+const MYTHIC_PIECE_GOLD = 10_000_000
 const MYTHIC_PIECE_GEMS = 65
 
 /** Old full-set scroll IDs → per-piece scroll IDs (save migration). */

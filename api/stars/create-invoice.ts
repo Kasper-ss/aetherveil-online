@@ -15,13 +15,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = req.body as { initData?: string; productId?: string } | undefined
+    const body = req.body as { initData?: string; productId?: string; vipLevel?: number } | undefined
     if (!body?.initData || !body?.productId) {
       return res.status(400).json({ error: 'initData и productId обязательны' })
     }
     const result = await createStarInvoice({
       initData: body.initData,
       productId: body.productId,
+      vipLevel: body.vipLevel,
     })
     return res.status(200).json(result)
   } catch (error) {
