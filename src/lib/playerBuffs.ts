@@ -59,6 +59,18 @@ export function getDailyBonusExtra(player: Player): { gold: number; gems: number
   return { gold: 50, gems: 5 }
 }
 
+export function getBoostedExp(amount: number, player: Player): number {
+  return Math.floor(amount * getExpMultiplier(player))
+}
+
+export function getBoostedGold(amount: number, player: Player): number {
+  return Math.floor(amount * getGoldMultiplier(player))
+}
+
+export function hasRewardBoost(player: Player): boolean {
+  return getExpMultiplier(player) > 1.001 || getGoldMultiplier(player) > 1.001
+}
+
 export interface ActiveBuffInfo {
   id: string
   label: string

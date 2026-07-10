@@ -8,6 +8,7 @@ import { getRaidProgress } from '@/lib/raidProgress'
 import { getRaidsForFloor } from '@/data/raids'
 import { RESOURCES } from '@/data/classes'
 import { formatNumber } from '@/lib/utils'
+import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
 import { formatItemStats } from '@/data/items'
 import { hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
@@ -30,6 +31,10 @@ export function RaidCompleteScreen() {
   const equipSlots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']
   const equipment = progress.accumulatedLoot.filter((i) => equipSlots.includes(i.slot as EquipSlot))
 
+  const displayExp = getBoostedExp(progress.accumulatedExp, player)
+  const displayGold = getBoostedGold(progress.accumulatedGold, player)
+  const showBoostNote = hasRewardBoost(player) && (displayExp > progress.accumulatedExp || displayGold > progress.accumulatedGold)
+
   function handleClaim() {
     claimRaidComplete()
     hapticSuccess()
@@ -51,14 +56,19 @@ export function RaidCompleteScreen() {
 
       <div className="flex justify-center gap-8 px-4 mb-4">
         <div className="text-center">
-          <div className="text-3xl font-bold text-aether-cyan">+{progress.accumulatedExp}</div>
+          <div className="text-3xl font-bold text-aether-cyan">+{displayExp}</div>
           <div className="text-xs text-slate-400">EXP</div>
         </div>
         <div className="text-center">
-          <div className="text-3xl font-bold text-aether-gold">+{formatNumber(progress.accumulatedGold)}</div>
+          <div className="text-3xl font-bold text-aether-gold">+{formatNumber(displayGold)}</div>
           <div className="text-xs text-slate-400">Золото</div>
         </div>
       </div>
+      {showBoostNote && (
+        <p className="text-[10px] text-aether-cyan text-center px-4 mb-2">
+          С учётом активных бонусов (карты судьбы и др.)
+        </p>
+      )}
 
       {equipment.length > 0 && (
         <div className="px-4 mb-4">

@@ -49,7 +49,7 @@ import {
   getActiveProfessions, getProfessionExp, getProfessionRank, getProfessionSlotLimit,
   professionRankRequiredForSkill, canUpgradeProfessionSkill,
   canUpgradeProfessionMythicSkill, BASE_PROFESSION_SLOTS, MAX_PROFESSION_SLOTS,
-  getGrindProfessionXp,
+  getGrindProfessionXp, getMineHerbXpGain,
 } from '@/lib/professionProgress'
 import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress } from '@/lib/quests'
 import { DAILY_QUESTS, WEEKLY_QUESTS, GUILD_QUESTS } from '@/data/quests'
@@ -1285,7 +1285,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isVein } = rollMineRewards(mineWithBonus)
     get().addResources(resources)
-    const xpGain = getGrindProfessionXp(level)
+    const xpGain = getMineHerbXpGain(level)
     const newXp = (player.mineDigXp ?? 0) + xpGain
     get().updatePlayer({
       mineDigXp: newXp,
@@ -1442,7 +1442,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       resources[primary] = (resources[primary] ?? 0) + bonus
     }
     get().addResources(resources)
-    const xpGain = getGrindProfessionXp(level)
+    const xpGain = getMineHerbXpGain(level)
     const newXp = (player.fieldGatherXp ?? 0) + xpGain
     get().updatePlayer({
       fieldGatherXp: newXp,

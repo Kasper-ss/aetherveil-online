@@ -39,6 +39,38 @@ export function getGrindLocationXpToUnlock(level: number): number {
   return Math.floor(28 * Math.pow(level - 1, 1.5) + (level - 1) * 20)
 }
 
+/** XP threshold to unlock mine / herb field tier — early levels cheap, later levels expensive. */
+export function getMineHerbUnlockXp(level: number): number {
+  if (level <= 1) return 0
+  return Math.floor(25 * Math.pow(level - 1, 2) + (level - 1) * 18)
+}
+
+/** XP per mine dig or herb gather — grows with location tier. */
+export function getMineHerbXpGain(locationLevel: number): number {
+  return Math.max(2, Math.floor(2 + locationLevel * 1.35 + Math.pow(locationLevel, 1.22) * 0.85))
+}
+
+export function getMineHerbTierProgress(
+  totalXp: number,
+  unlockedLevel: number,
+  maxLevel: number,
+): { nextLevel: number | null; xpIntoTier: number; xpNeededForNext: number; progressPct: number } {
+  const currentThreshold = getMineHerbUnlockXp(unlockedLevel)
+  const nextLevel = unlockedLevel < maxLevel ? unlockedLevel + 1 : null
+  if (!nextLevel) {
+    return { nextLevel: null, xpIntoTier: 0, xpNeededForNext: 0, progressPct: 100 }
+  }
+  const nextThreshold = getMineHerbUnlockXp(nextLevel)
+  const xpIntoTier = Math.max(0, totalXp - currentThreshold)
+  const xpNeededForNext = Math.max(1, nextThreshold - currentThreshold)
+  return {
+    nextLevel,
+    xpIntoTier,
+    xpNeededForNext,
+    progressPct: Math.min(100, (xpIntoTier / xpNeededForNext) * 100),
+  }
+}
+
 /** Profession / location XP per one gather action — grows with location tier. */
 export function getGrindProfessionXp(grindLevel: number): number {
   return Math.max(1, Math.floor(2 + grindLevel * 1.5 + Math.pow(grindLevel, 1.12) * 0.9))

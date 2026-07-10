@@ -1,5 +1,5 @@
 import type { ResourceId } from '@/types/game'
-import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
+import { getMineHerbUnlockXp } from '@/lib/professionProgress'
 
 export interface HerbFieldLevel {
   level: number
@@ -72,7 +72,7 @@ export function getHerbFieldLevelData(level: number): HerbFieldLevel {
 export function getUnlockedHerbFieldLevel(xp: number): number {
   let unlocked = 1
   for (const h of HERB_FIELD_LEVELS) {
-    if (xp >= getGrindLocationXpToUnlock(h.level)) unlocked = h.level
+    if (xp >= getMineHerbUnlockXp(h.level)) unlocked = h.level
   }
   return unlocked
 }

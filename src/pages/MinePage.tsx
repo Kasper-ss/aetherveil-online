@@ -11,7 +11,7 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { MINE_LEVELS, getUnlockedMineLevel } from '@/data/mineLevels'
-import { getGrindLocationXpToUnlock } from '@/lib/professionProgress'
+import { getMineHerbUnlockXp, getMineHerbXpGain, getMineHerbTierProgress } from '@/lib/professionProgress'
 import { playerHasTool } from '@/data/tools'
 import { RESOURCES } from '@/data/classes'
 import { ORE_RESOURCE_IDS } from '@/data/resourceCatalog'
@@ -30,9 +30,9 @@ export function MinePage() {
 
   const unlocked = getUnlockedMineLevel(player.mineDigXp ?? 0)
   const hasPick = playerHasTool(player, 'pickaxe')
-  const nextLevel = MINE_LEVELS.find((m) => m.level === unlocked + 1)
-  const nextUnlockXp = nextLevel ? getGrindLocationXpToUnlock(nextLevel.level) : 0
-  const xpToNext = nextLevel ? Math.max(0, nextUnlockXp - (player.mineDigXp ?? 0)) : 0
+  const tierProgress = getMineHerbTierProgress(player.mineDigXp ?? 0, unlocked, MINE_LEVELS.length)
+  const nextLevel = tierProgress.nextLevel ? MINE_LEVELS.find((m) => m.level === tierProgress.nextLevel) : undefined
+  const xpToNext = tierProgress.nextLevel ? tierProgress.xpNeededForNext - tierProgress.xpIntoTier : 0
 
   function handleDig() {
     const result = performMineDig(selectedLevel)
@@ -70,7 +70,7 @@ export function MinePage() {
               <div>Разблокировано уровней: <span className="text-aether-cyan">{unlocked}/6</span></div>
               {nextLevel && xpToNext > 0 && (
                 <>
-                  <Progress value={nextUnlockXp > 0 ? ((player.mineDigXp ?? 0) / nextUnlockXp) * 100 : 0} className="mt-2" />
+                  <Progress value={tierProgress.progressPct} className="mt-2" />
                   <div>До «{nextLevel.nameRu}»: {xpToNext} XP</div>
                 </>
               )}
@@ -97,12 +97,12 @@ export function MinePage() {
                       <Badge className="text-[9px]">Ур.{mine.level}</Badge>
                     </div>
                     <div className="text-[10px] text-slate-400">
-                      ⚡{mine.energyCost} · x2 {Math.round(mine.doubleChance * 100)}% · жила {Math.round(mine.veinChance * 100)}%
+                      ⚡{mine.energyCost} · +{getMineHerbXpGain(mine.level)} XP · x2 {Math.round(mine.doubleChance * 100)}% · жила {Math.round(mine.veinChance * 100)}%
                     </div>
                     <div className="text-[10px] text-aether-cyan mt-1">
                       {RESOURCES[mine.primaryResource].icon} {RESOURCES[mine.primaryResource].nameRu}
                     </div>
-                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getGrindLocationXpToUnlock(mine.level)} XP шахты</div>}
+                    {locked && <div className="text-[9px] text-red-400 mt-1">Нужно {getMineHerbUnlockXp(mine.level)} XP шахты</div>}
                   </CardContent>
                 </Card>
               )

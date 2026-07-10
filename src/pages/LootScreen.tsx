@@ -13,6 +13,7 @@ import { RESOURCES } from '@/data/classes'
 import { formatNumber } from '@/lib/utils'
 import { hapticSuccess, hapticImpact } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
+import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
 import { formatItemStats } from '@/data/items'
 import type { EquipSlot, ResourceId } from '@/types/game'
 
@@ -31,6 +32,10 @@ export function LootScreen() {
   const showCave = player?.pendingSecretCave && !caveDismissed
 
   if (!result?.victory) return null
+
+  const displayExp = player ? getBoostedExp(result.exp, player) : result.exp
+  const displayGold = player ? getBoostedGold(result.gold, player) : result.gold
+  const showBoostNote = player && hasRewardBoost(player) && (displayExp > result.exp || displayGold > result.gold)
 
   const equipSlots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']
   const equipment = result.loot.filter((i) => equipSlots.includes(i.slot as EquipSlot))
@@ -55,11 +60,11 @@ export function LootScreen() {
       {/* EXP & Gold */}
       <div className="flex justify-center gap-8 px-4 mb-4">
         <div className="text-center">
-          <div className="text-3xl font-bold text-aether-cyan">+{result.exp}</div>
+          <div className="text-3xl font-bold text-aether-cyan">+{displayExp}</div>
           <div className="text-xs text-slate-400">{t('loot.exp')}</div>
         </div>
         <div className="text-center">
-          <div className="text-3xl font-bold text-aether-gold">+{formatNumber(result.gold)}</div>
+          <div className="text-3xl font-bold text-aether-gold">+{formatNumber(displayGold)}</div>
           <div className="text-xs text-slate-400">{t('loot.gold')}</div>
         </div>
         {result.comboMax > 1 && (
@@ -69,6 +74,11 @@ export function LootScreen() {
           </div>
         )}
       </div>
+      {showBoostNote && (
+        <p className="text-[10px] text-aether-cyan text-center px-4 mb-2">
+          С учётом активных бонусов (карты судьбы и др.)
+        </p>
+      )}
 
       {/* Equipment */}
       {equipment.length > 0 && (
