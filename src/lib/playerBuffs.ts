@@ -2,6 +2,7 @@ import type { Player } from '@/types/game'
 import { getLuckyMultipliers } from '@/lib/luckyBonuses'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
+import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getVipMultipliers } from '@/lib/vipBonuses'
 import { FATE_EXP_MULTIPLIER, FATE_GOLD_MULTIPLIER } from '@/lib/fateCards'
 
@@ -27,8 +28,9 @@ export function getExpMultiplier(player: Player): number {
   const fate = isBuffActive(player.buffFateExpUntil) ? FATE_EXP_MULTIPLIER : 1
   const ach = getAchievementMultipliers(player).exp
   const prop = getPropertyMultipliers(player)
+  const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return buff * fate * getLuckyMultipliers(player).exp * ach * prop.exp * prop.allRewards * vip.exp
+  return buff * fate * getLuckyMultipliers(player).exp * ach * prop.exp * prop.allRewards * city.exp * city.allRewards * vip.exp
 }
 
 export function getGoldMultiplier(player: Player): number {
@@ -36,22 +38,26 @@ export function getGoldMultiplier(player: Player): number {
   const fate = isBuffActive(player.buffFateGoldUntil) ? FATE_GOLD_MULTIPLIER : 1
   const ach = getAchievementMultipliers(player).gold
   const prop = getPropertyMultipliers(player)
+  const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return buff * fate * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * vip.gold
+  return buff * fate * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * city.mobGold * city.allRewards * vip.gold
 }
 
 export function getLootMultiplier(player: Player): number {
   const prop = getPropertyMultipliers(player)
+  const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards * vip.loot
+  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards * city.rareLoot * city.allRewards * vip.loot
 }
 
 export function getGatherResourceMultiplier(player: Player): number {
-  return getPropertyMultipliers(player).gatherResources
+  const city = getCityMultipliers(player)
+  return getPropertyMultipliers(player).gatherResources * city.gatherResources
 }
 
 export function getCraftSuccessMultiplier(player: Player): number {
-  return getPropertyMultipliers(player).craftSuccess
+  const city = getCityMultipliers(player)
+  return getPropertyMultipliers(player).craftSuccess * city.craftSuccess
 }
 
 export function getDailyBonusExtra(player: Player): { gold: number; gems: number } {

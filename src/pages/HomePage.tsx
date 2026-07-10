@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -25,6 +25,7 @@ import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRe
 import { isWorldBossUnlocked, getWorldBossCooldown, WORLD_BOSS_UNLOCK_FLOOR } from '@/data/worldBoss'
 import { maybeNotifyWorldBoss } from '@/lib/worldBossNotifications'
 import { isRealEstateUnlocked } from '@/data/realEstate'
+import { isCityUnlocked } from '@/data/cityBuildings'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -88,6 +89,7 @@ export function HomePage() {
         ? `Мировой Босс · ${worldBossStatus.daysUntilNext} д`
         : `Мировой Босс 🔒 ${WORLD_BOSS_UNLOCK_FLOOR} эт.`
   const realEstateUnlocked = isRealEstateUnlocked(player)
+  const cityUnlocked = isCityUnlocked(player)
 
   function nav(path: string) {
     hapticImpact('light')
@@ -127,6 +129,9 @@ export function HomePage() {
     { icon: Pickaxe, label: 'Шахта', path: '/mine', variant: 'gold' as const },
     { icon: Leaf, label: 'Поле трав', path: '/field', variant: 'secondary' as const },
     { icon: Shield, label: 'Рейды', path: '/raids', variant: 'purple' as const, primary: false },
+    ...(cityUnlocked
+      ? [{ icon: Building2, label: 'Город', path: '/city', variant: 'secondary' as const }]
+      : [{ icon: Building2, label: `Город 🔒`, path: '/city', variant: 'secondary' as const }]),
     { icon: Users, label: t('hub.guild'), path: '/guild', variant: 'secondary' as const },
     { icon: Package, label: t('hub.inventory'), path: '/inventory', variant: 'secondary' as const },
     { icon: ShoppingBag, label: t('hub.shop'), path: '/shop', variant: 'purple' as const },

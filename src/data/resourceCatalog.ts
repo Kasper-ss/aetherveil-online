@@ -2,6 +2,8 @@ import type { ResourceId } from '@/types/game'
 import { FISH_TABLE } from '@/data/fishing'
 import { JEWEL_RESOURCE_IDS } from '@/lib/jewelResources'
 
+export const WOOD_RESOURCE_IDS: ResourceId[] = ['wood_plank']
+
 export const BASIC_RESOURCE_IDS: ResourceId[] = [
   'hide', 'meat', 'gem_shard', 'mana_crystal', 'aether_dust', 'star_shard',
   'upgrade_core', 'rare_spice', 'abyssal_pearl', 'fishing_junk',
@@ -24,6 +26,7 @@ export interface ResourceSection {
 }
 
 export const RESOURCE_SECTIONS: ResourceSection[] = [
+  { id: 'wood', titleRu: 'Древесина', resourceIds: WOOD_RESOURCE_IDS },
   { id: 'basic', titleRu: 'Материалы', resourceIds: BASIC_RESOURCE_IDS },
   { id: 'ore', titleRu: 'Руда', resourceIds: ORE_RESOURCE_IDS },
   { id: 'herbs', titleRu: 'Травы', resourceIds: HERB_RESOURCE_IDS },

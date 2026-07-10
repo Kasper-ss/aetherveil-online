@@ -4,6 +4,7 @@ import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
+import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
 import { isHighCritClass } from '@/lib/classCompat'
 import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
@@ -80,7 +81,8 @@ export function getAllocatedStats(player: Player): AllocatedStats {
 export function getMaxEnergy(player: Player): number {
   const end = getAllocatedStats(player).endurance
   const prop = getPropertyMultipliers(player).maxEnergy
-  return Math.floor((BASE_MAX_ENERGY + end * 3) * prop)
+  const city = getCityMultipliers(player).maxEnergy
+  return Math.floor((BASE_MAX_ENERGY + end * 3) * prop * city)
 }
 
 export function getEnergyRegenIntervalMs(player: Player): number {
@@ -88,7 +90,8 @@ export function getEnergyRegenIntervalMs(player: Player): number {
   const base = Math.max(8_000, BASE_ENERGY_REGEN_MS - end * 800)
   const setEffects = getSetCombatEffects(player)
   const propEnergy = getPropertyMultipliers(player).energyRegen
-  return Math.max(5_000, Math.floor(base / (propEnergy * setEffects.energyRegenMult)))
+  const cityEnergy = getCityMultipliers(player).energyRegen
+  return Math.max(5_000, Math.floor(base / (propEnergy * cityEnergy * setEffects.energyRegenMult)))
 }
 
 export function getHpRegenIntervalMs(player: Player): number {
@@ -174,10 +177,12 @@ export function getEffectiveStats(player: Player): EffectiveStats {
 
   const achMult = getAchievementMultipliers(player).allStats
   const propMult = getPropertyMultipliers(player).allStats
+  const cityAtk = getCityMultipliers(player).atk
+  const cityDef = getCityMultipliers(player).def
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2.5) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult),
-    def: Math.floor((base.def + totals.def + alloc.def * 2.5) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2.5) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult * cityAtk),
+    def: Math.floor((base.def + totals.def + alloc.def * 2.5) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def * cityDef),
     hp: Math.floor((base.hp + totals.hp + alloc.hp * 18) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
     crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
     speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),

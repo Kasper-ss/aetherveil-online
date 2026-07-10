@@ -31,6 +31,7 @@ import { KitchenPage } from '@/pages/KitchenPage'
 import { HerbFieldPage } from '@/pages/HerbFieldPage'
 import { QuestsPage } from '@/pages/QuestsPage'
 import { RaidsPage } from '@/pages/RaidsPage'
+import { CityPage } from '@/pages/CityPage'
 import { WorldBossPage } from '@/pages/WorldBossPage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
@@ -83,6 +84,7 @@ function AppRoutes() {
           <Route path="/quests" element={<QuestsPage />} />
           <Route path="/world-boss" element={<WorldBossPage />} />
           <Route path="/raids" element={<RaidsPage />} />
+          <Route path="/city" element={<CityPage />} />
         </Routes>
       </div>
     </>

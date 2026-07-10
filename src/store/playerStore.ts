@@ -109,7 +109,16 @@ import {
   buildPetReward, getPetRewardCycles, PET_REWARD_INTERVAL_MS, type PetReward,
 } from '@/lib/petRewards'
 import { useUIStore } from '@/store/uiStore'
-import type { NotificationSettings } from '@/types/game'
+import type { NotificationSettings, CityPlacedBuilding } from '@/types/game'
+import {
+  CITY_MAX_BUILDING_LEVEL, FOREST_CHOP_ENERGY, getCityBuildingDef, getUpgradeGoldCost,
+  getUpgradeResourceCosts, getUpgradeTimeMs, type CityBuildingId,
+} from '@/data/cityBuildings'
+import { canAffordCityCosts } from '@/lib/cityCosts'
+import {
+  calcPassiveAccrual, canPlaceAt, getBuildingAt,
+  getCityState, isCityBuildingReady,
+} from '@/lib/cityState'
 
 export interface DismantleSummary {
   count: number
@@ -265,6 +274,14 @@ interface PlayerState {
   buyProperty: (propertyId: string) => Promise<{ ok: boolean; error?: string }>
   sellProperty: () => Promise<{ ok: boolean; error?: string; refund?: number }>
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void
+  pendingCityRush: { x: number; y: number } | null
+  startCityBuild: (buildingId: CityBuildingId, x: number, y: number) => boolean
+  upgradeCityBuilding: (x: number, y: number) => boolean
+  demolishCityBuilding: (x: number, y: number) => boolean
+  collectCityPassive: () => boolean
+  tickCityPassive: () => void
+  performForestChop: () => { ok: boolean; amount?: number }
+  rushCityBuild: (x: number, y: number) => Promise<boolean>
 }
 
 const SAVE_KEY = 'player'
@@ -324,6 +341,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isAuthenticated: false,
   idleReward: null,
   petReward: null,
+  pendingCityRush: null,
 
   loadPlayer: async () => {
     set({ isLoading: true })
@@ -830,6 +848,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().tryRegenHp()
     get().tryRegenMana()
     get().accrueBankInterest()
+    get().tickCityPassive()
     get().checkPetRewards({ showModal: true })
 
     const after = get().player
@@ -2276,6 +2295,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         get().updatePlayer({ vipLevel: next })
         break
       }
+      case 'city_build_rush': {
+        const rush = get().pendingCityRush
+        if (!rush) return false
+        const placed = getBuildingAt(player, rush.x, rush.y)
+        if (!placed || isCityBuildingReady(placed)) return false
+        const state = getCityState(player)
+        const buildings = state.buildings.map((b) =>
+          b.x === rush.x && b.y === rush.y ? { ...b, readyAt: new Date().toISOString() } : b,
+        )
+        get().updatePlayer({ cityState: { ...state, buildings } })
+        set({ pendingCityRush: null })
+        break
+      }
       case 'cosmetic_avatar_telegram_hero':
         get().updatePlayer({
           unlockedCosmetics: [...new Set([...(player.unlockedCosmetics ?? []), 'telegram_hero'])],
@@ -2717,6 +2749,135 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().updatePlayer({
       notificationSettings: { ...getNotificationSettings(player), ...settings },
     })
+  },
+
+  startCityBuild: (buildingId, x, y) => {
+    const { player } = get()
+    if (!player || !canPlaceAt(player, x, y)) return false
+    const def = getCityBuildingDef(buildingId)
+    if (!canAffordCityCosts(player, def.goldCost, def.resourceCosts)) return false
+    if (!get().spendGold(def.goldCost)) return false
+    if (!get().spendResources(def.resourceCosts)) {
+      grantGoldRaw(get, def.goldCost)
+      return false
+    }
+    const state = getCityState(get().player!)
+    const placed: CityPlacedBuilding = {
+      buildingId,
+      x,
+      y,
+      level: 1,
+      builtAt: new Date().toISOString(),
+      readyAt: new Date(Date.now() + def.buildTimeMs).toISOString(),
+    }
+    get().updatePlayer({
+      cityState: { ...state, buildings: [...state.buildings, placed] },
+      ...syncEnergyFields(get().player!),
+    })
+    return true
+  },
+
+  upgradeCityBuilding: (x, y) => {
+    const { player } = get()
+    if (!player) return false
+    const placed = getBuildingAt(player, x, y)
+    if (!placed || !isCityBuildingReady(placed)) return false
+    if (placed.level >= CITY_MAX_BUILDING_LEVEL) return false
+    const def = getCityBuildingDef(placed.buildingId as CityBuildingId)
+    const goldCost = getUpgradeGoldCost(def, placed.level)
+    const resourceCosts = getUpgradeResourceCosts(def, placed.level)
+    if (!canAffordCityCosts(player, goldCost, resourceCosts)) return false
+    if (!get().spendGold(goldCost)) return false
+    if (!get().spendResources(resourceCosts)) {
+      grantGoldRaw(get, goldCost)
+      return false
+    }
+    const timeMs = getUpgradeTimeMs(def, placed.level)
+    const state = getCityState(player)
+    const buildings = state.buildings.map((b) =>
+      b.x === x && b.y === y
+        ? {
+            ...b,
+            level: b.level + 1,
+            readyAt: new Date(Date.now() + timeMs).toISOString(),
+          }
+        : b,
+    )
+    get().updatePlayer({
+      cityState: { ...state, buildings },
+      ...syncEnergyFields(get().player!),
+    })
+    return true
+  },
+
+  demolishCityBuilding: (x, y) => {
+    const { player } = get()
+    if (!player) return false
+    if (!getBuildingAt(player, x, y)) return false
+    const state = getCityState(player)
+    get().updatePlayer({
+      cityState: {
+        ...state,
+        buildings: state.buildings.filter((b) => !(b.x === x && b.y === y)),
+      },
+      ...syncEnergyFields(player),
+    })
+    return true
+  },
+
+  tickCityPassive: () => {
+    const { player } = get()
+    if (!player?.cityState?.buildings?.length) return
+    const { resources, passiveLastTickAt } = calcPassiveAccrual(player)
+    const hasPending = Object.values(resources).some((v) => (v ?? 0) > 0)
+    if (!hasPending && passiveLastTickAt === player.cityState.passiveLastTickAt) return
+    get().updatePlayer({
+      cityState: {
+        ...getCityState(player),
+        pendingPassive: resources,
+        passiveLastTickAt,
+      },
+    })
+  },
+
+  collectCityPassive: () => {
+    const { player } = get()
+    if (!player) return false
+    get().tickCityPassive()
+    const state = getCityState(get().player!)
+    const pending = state.pendingPassive
+    const total = Object.values(pending).reduce((s, v) => s + (v ?? 0), 0)
+    if (total <= 0) return false
+    get().addResources(pending)
+    get().updatePlayer({
+      cityState: { ...state, pendingPassive: {}, passiveLastTickAt: new Date().toISOString() },
+    })
+    return true
+  },
+
+  performForestChop: () => {
+    const { player } = get()
+    if (!player) return { ok: false }
+    if (!hasInfiniteEnergy(player) && !get().spendEnergy(FOREST_CHOP_ENERGY)) return { ok: false }
+    const amount = 2 + Math.floor(Math.random() * 3)
+    get().addResources({ wood_plank: amount })
+    return { ok: true, amount }
+  },
+
+  rushCityBuild: async (x, y) => {
+    const { player } = get()
+    if (!player) return false
+    const placed = getBuildingAt(player, x, y)
+    if (!placed || isCityBuildingReady(placed)) return false
+    set({ pendingCityRush: { x, y } })
+    try {
+      const paid = await get().purchaseStarProduct('city_build_rush')
+      if (!paid) set({ pendingCityRush: null })
+      return paid
+    } catch {
+      set({ pendingCityRush: null })
+      return false
+    }
   },
 }))
 

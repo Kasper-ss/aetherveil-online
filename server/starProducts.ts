@@ -15,6 +15,7 @@ export type StarProductId =
   | 'cosmetic_frame_legendary'
   | 'cosmetic_frame_mythic'
   | 'vip_upgrade'
+  | 'city_build_rush'
 
 export interface StarProduct {
   id: StarProductId
@@ -119,6 +120,12 @@ export const STAR_PRODUCTS: Record<StarProductId, StarProduct> = {
     nameRu: 'VIP-статус',
     descriptionRu: 'Повышение VIP: постоянные бонусы к опыту, дропу и золоту.',
     stars: 250,
+  },
+  city_build_rush: {
+    id: 'city_build_rush',
+    nameRu: 'Ускорение стройки',
+    descriptionRu: 'Мгновенно завершить постройку или улучшение в городе.',
+    stars: 75,
   },
 }
 

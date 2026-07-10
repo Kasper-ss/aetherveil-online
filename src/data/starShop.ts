@@ -18,6 +18,7 @@ export type StarProductId =
   | 'cosmetic_frame_legendary'
   | 'cosmetic_frame_mythic'
   | 'vip_upgrade'
+  | 'city_build_rush'
 
 export interface StarShopProduct {
   id: StarProductId
@@ -106,6 +107,13 @@ export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
     stars: 250,
     icon: '👑',
     dynamicVip: true,
+  },
+  {
+    id: 'city_build_rush',
+    nameRu: 'Ускорение стройки',
+    descriptionRu: 'Мгновенно завершить текущую постройку или улучшение в городе.',
+    stars: 75,
+    icon: '🏗️',
   },
 ]
 

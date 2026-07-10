@@ -29,6 +29,7 @@ export type ResourceId =
   | 'fishing_junk'
   | 'jewel_ruby' | 'jewel_sapphire' | 'jewel_emerald' | 'jewel_topaz' | 'jewel_amethyst'
   | 'jewel_onyx' | 'jewel_opal' | 'jewel_jade' | 'jewel_garnet' | 'jewel_diamond'
+  | 'wood_plank'
 
 export type SocketGemId =
   | 'ruby' | 'sapphire' | 'emerald' | 'topaz' | 'amethyst'
@@ -37,6 +38,21 @@ export type SocketGemId =
 export interface ActiveBrew {
   recipeId: string
   readyAt: string
+}
+
+export interface CityPlacedBuilding {
+  buildingId: string
+  x: number
+  y: number
+  level: number
+  builtAt: string
+  readyAt?: string
+}
+
+export interface CityState {
+  buildings: CityPlacedBuilding[]
+  pendingPassive: Partial<Record<ResourceId, number>>
+  passiveLastTickAt: string
 }
 
 export interface SecretCaveState {
@@ -368,6 +384,7 @@ export interface Player {
   raidProgress?: Record<string, import('@/lib/raidProgress').RaidProgress>
   raidDeathCooldowns?: Record<string, string>
   completedRaids?: string[]
+  cityState?: CityState
   saveVersion?: number
 }
 

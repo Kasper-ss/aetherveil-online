@@ -51,6 +51,7 @@ export const RESOURCES: Record<ResourceId, Resource> = {
   fish_swordfish: { id: 'fish_swordfish', name: 'Swordfish', nameRu: 'Рыба-меч', icon: '🗡️' },
   fish_aether_koi: { id: 'fish_aether_koi', name: 'Aether Koi', nameRu: 'Эфирный карп', icon: '✨' },
   fishing_junk: { id: 'fishing_junk', name: 'Junk', nameRu: 'Мусор', icon: '🥾' },
+  wood_plank: { id: 'wood_plank', name: 'Wood Plank', nameRu: 'Доски', icon: '🪵' },
   ...JEWEL_RESOURCE_ENTRIES,
 } as Record<ResourceId, Resource>
 
