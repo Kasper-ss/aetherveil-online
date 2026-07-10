@@ -2,9 +2,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { usePlayerStore } from '@/store/playerStore'
-import { SOCKET_GEMS, getMaxSockets, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import { SOCKET_GEMS, getMaxSockets, MAX_SOCKET_GEM_LEVEL, getGemStatValue } from '@/data/socketGems'
 import { jewelResourceId } from '@/lib/jewelResources'
 import { getItemSockets, countEmptySockets } from '@/lib/gemSockets'
+import { canWorkWithGem, isGemStudied, isGemStudying, getGemStudyRemainingMs, formatGemStudyCountdown } from '@/lib/gemStudy'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, SocketGemId } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
@@ -51,7 +52,8 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
   return (
     <div className="space-y-4">
       <p className="text-[10px] text-slate-400">
-        Ювелирное дело: комбинируйте и улучшайте 10 видов камней. Кузнечное дело: вставляйте в снаряжение.
+        Сначала изучите камень (вкладка «Изучение»). Комбинирование и улучшение дают опыт ювелира.
+        Вставка в снаряжение — в кузнице.
       </p>
 
       <div className="space-y-2">
@@ -59,21 +61,45 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
         {SOCKET_GEMS.map((gem) => {
           const count = jewelCount(gem.id)
           const level = player.socketGemLevels?.[gem.id] ?? 1
+          const studied = isGemStudied(player, gem.id)
+          const studying = isGemStudying(player, gem.id)
+          const canWork = canWorkWithGem(player, gem.id)
+          const studyLeft = getGemStudyRemainingMs(player, gem.id)
           return (
-            <Card key={gem.id}>
+            <Card key={gem.id} className={studied ? 'border-aether-cyan/30' : ''}>
               <CardContent className="p-3 flex items-center gap-2">
                 <span className="text-2xl">{gem.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white">{gem.nameRu}</div>
                   <div className="text-[10px] text-slate-400">
-                    Ур.{level}/{MAX_SOCKET_GEM_LEVEL} · ×{count} · +{gem.stat.toUpperCase()}
+                    Ур.{level}/{MAX_SOCKET_GEM_LEVEL} · ×{count} · +{getGemStatValue(gem.id, level)} {gem.stat.toUpperCase()}
                   </div>
+                  {!studied && !studying && (
+                    <div className="text-[10px] text-amber-400">Требуется изучение</div>
+                  )}
+                  {studying && (
+                    <div className="text-[10px] text-amber-400">
+                      Изучается: {formatGemStudyCountdown(studyLeft)}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handleCombine(gem.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-[10px] h-7"
+                    disabled={!canWork}
+                    onClick={() => handleCombine(gem.id)}
+                  >
                     Создать
                   </Button>
-                  <Button size="sm" variant="secondary" className="text-[10px] h-7" disabled={level >= MAX_SOCKET_GEM_LEVEL} onClick={() => handleUpgrade(gem.id)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-[10px] h-7"
+                    disabled={!canWork || level >= MAX_SOCKET_GEM_LEVEL}
+                    onClick={() => handleUpgrade(gem.id)}
+                  >
                     Улучшить
                   </Button>
                 </div>

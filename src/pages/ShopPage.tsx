@@ -131,6 +131,13 @@ export function ShopPage() {
       updatePlayer({ unlockedSetScrolls: [...(p.unlockedSetScrolls ?? []), shopItem.scrollId] })
     } else if (shopItem.resourceBundle) {
       usePlayerStore.getState().addResources(shopItem.resourceBundle)
+      const jewelCount = Object.entries(shopItem.resourceBundle).reduce((s, [rid, amt]) => {
+        if (!amt || !rid.startsWith('jewel_')) return s
+        return s + amt
+      }, 0)
+      if (jewelCount > 0) {
+        usePlayerStore.getState().awardJewelerExp(jewelCount * 8)
+      }
     } else if (shopItem.itemId) {
       const count = shopItem.bundleCount ?? 1
       for (let i = 0; i < count; i++) {

@@ -4,6 +4,8 @@ import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { showTelegramAlert } from '@/lib/telegram'
 import { requestBotVitalNotify } from '@/lib/botNotifications'
 import type { PetReward } from '@/lib/petRewards'
+import { getSocketGemDef } from '@/data/socketGems'
+import type { SocketGemId } from '@/types/game'
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   hpFull: true,
@@ -72,6 +74,11 @@ export function maybeNotifyVitalsViaBot(
 
   const kind = hpJustFull && energyJustFull ? 'both' : hpJustFull ? 'hp' : 'energy'
   void requestBotVitalNotify(player, kind)
+}
+
+export function maybeNotifyGemStudyComplete(gemId: SocketGemId): void {
+  const def = getSocketGemDef(gemId)
+  showTelegramAlert(`💎 Изучение завершено: ${def.nameRu}! Теперь можно улучшать и комбинировать камень.`)
 }
 
 export function maybeNotifyPetReward(reward: PetReward): void {

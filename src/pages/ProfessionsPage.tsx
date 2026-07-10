@@ -233,6 +233,15 @@ function ProfessionDetail({
             {CATALOG_GRIND_ROUTES[entry.id].label}
           </Button>
         )}
+        {entry.id === 'jewelcrafting' && (
+          <Button
+            variant="default"
+            className="w-full text-xs"
+            onClick={() => navigate('/jeweler')}
+          >
+            💎 Ювелирная мастерская
+          </Button>
+        )}
 
         {entry.passiveBonusRu && (
           <Card>

@@ -90,6 +90,17 @@ import {
   type RaidDefinition,
 } from '@/data/raids'
 import { RAID_DEATH_COOLDOWN_MS } from '@/data/raids'
+import {
+  GEM_STUDY_DURATION_MS,
+  canStartGemStudy,
+  canWorkWithGem,
+  getActiveGemStudies,
+  getStudiedGems,
+  type GemStudyEntry,
+} from '@/lib/gemStudy'
+import { JEWELER_XP, jewelSellXp } from '@/lib/jewelerXp'
+import { parseJewelResourceId } from '@/lib/jewelResources'
+import { maybeNotifyGemStudyComplete } from '@/lib/vitalNotifications'
 import { canSocketGem } from '@/lib/gemSockets'
 import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
@@ -282,9 +293,23 @@ interface PlayerState {
   tickCityPassive: () => void
   performForestChop: () => { ok: boolean; amount?: number }
   rushCityBuild: (x: number, y: number) => Promise<boolean>
+  awardJewelerExp: (amount: number) => void
+  startGemStudy: (gemId: SocketGemId) => boolean
+  tickGemStudies: () => void
 }
 
 const SAVE_KEY = 'player'
+
+function grantJewelerProfessionExp(get: () => PlayerState, amount: number): void {
+  const { player } = get()
+  if (!player || amount <= 0) return
+  get().updatePlayer({
+    professionExp: {
+      ...player.professionExp,
+      jeweler: getProfessionExp(player, 'jeweler') + amount,
+    },
+  })
+}
 
 function applyQuestTracking(
   get: () => PlayerState,
@@ -849,6 +874,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().tryRegenMana()
     get().accrueBankInterest()
     get().tickCityPassive()
+    get().tickGemStudies()
     get().checkPetRewards({ showModal: true })
 
     const after = get().player
@@ -1518,7 +1544,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   combineSocketGem: (gemId) => {
     const { player } = get()
-    if (!player) return false
+    if (!player || !canWorkWithGem(player, gemId)) return false
     const level = player.socketGemLevels?.[gemId] ?? 1
     const cost = getCombineCost(level)
     if (!get().spendGold(cost.gold)) return false
@@ -1537,12 +1563,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     } else {
       get().updatePlayer({ resources: gems })
     }
+    grantJewelerProfessionExp(get, JEWELER_XP.combine(level))
     return true
   },
 
   upgradeSocketGem: (gemId) => {
     const { player } = get()
-    if (!player) return false
+    if (!player || !canWorkWithGem(player, gemId)) return false
     const level = player.socketGemLevels?.[gemId] ?? 0
     if (level <= 0 || level >= MAX_SOCKET_GEM_LEVEL) return false
     const cost = getUpgradeCost(level)
@@ -1556,6 +1583,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().updatePlayer({
       socketGemLevels: { ...(player.socketGemLevels ?? {}), [gemId]: level + 1 },
     })
+    grantJewelerProfessionExp(get, JEWELER_XP.upgrade(level))
     return true
   },
 
@@ -2644,6 +2672,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (gold <= 0) return false
     if (!get().spendResources({ [resourceId]: amount })) return false
     get().addGold(gold)
+    if (parseJewelResourceId(resourceId)) {
+      grantJewelerProfessionExp(get, jewelSellXp(amount))
+    }
     return true
   },
 
@@ -2877,6 +2908,52 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     } catch {
       set({ pendingCityRush: null })
       return false
+    }
+  },
+
+  awardJewelerExp: (amount) => {
+    grantJewelerProfessionExp(get, amount)
+  },
+
+  startGemStudy: (gemId) => {
+    const { player } = get()
+    if (!player || !canStartGemStudy(player, gemId)) return false
+    const entry: GemStudyEntry = {
+      gemId,
+      readyAt: new Date(Date.now() + GEM_STUDY_DURATION_MS).toISOString(),
+    }
+    get().updatePlayer({
+      activeGemStudies: [...getActiveGemStudies(player), entry],
+    })
+    return true
+  },
+
+  tickGemStudies: () => {
+    const { player } = get()
+    if (!player) return
+    const now = Date.now()
+    const studied = new Set(getStudiedGems(player))
+    const stillActive: GemStudyEntry[] = []
+    let completed = false
+
+    for (const entry of getActiveGemStudies(player)) {
+      if (new Date(entry.readyAt).getTime() <= now) {
+        if (!studied.has(entry.gemId)) {
+          studied.add(entry.gemId)
+          grantJewelerProfessionExp(get, JEWELER_XP.studyComplete)
+          maybeNotifyGemStudyComplete(entry.gemId)
+        }
+        completed = true
+      } else {
+        stillActive.push(entry)
+      }
+    }
+
+    if (completed || stillActive.length !== getActiveGemStudies(player).length) {
+      get().updatePlayer({
+        studiedGems: [...studied],
+        activeGemStudies: stillActive,
+      })
     }
   },
 }))

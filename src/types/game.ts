@@ -40,6 +40,11 @@ export interface ActiveBrew {
   readyAt: string
 }
 
+export interface GemStudyEntry {
+  gemId: SocketGemId
+  readyAt: string
+}
+
 export interface CityPlacedBuilding {
   buildingId: string
   x: number
@@ -385,6 +390,8 @@ export interface Player {
   raidDeathCooldowns?: Record<string, string>
   completedRaids?: string[]
   cityState?: CityState
+  studiedGems?: SocketGemId[]
+  activeGemStudies?: GemStudyEntry[]
   saveVersion?: number
 }
 

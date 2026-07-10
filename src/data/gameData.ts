@@ -17,6 +17,7 @@ import { normalizeClassId } from '@/lib/classCompat'
 import { jewelResourceId, rollJewelLoot } from '@/lib/jewelResources'
 import type { SocketGemId } from '@/types/game'
 import { defaultCityState } from '@/lib/cityState'
+import { migrateStudiedGems } from '@/lib/gemStudy'
 
 export { ALL_ITEMS as ITEMS, rollEquipmentDrop, getMobsRequiredForFloor } from '@/data/items'
 export { FLOORS, getFloorData, MAX_FLOOR } from '@/data/floors'
@@ -284,6 +285,8 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     raidDeathCooldowns: base.raidDeathCooldowns ?? {},
     completedRaids: base.completedRaids ?? [],
     cityState: base.cityState ?? defaultCityState(),
+    studiedGems: migrateStudiedGems(base),
+    activeGemStudies: base.activeGemStudies ?? [],
     fairStats: base.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
     saveVersion: SAVE_VERSION,
   }
