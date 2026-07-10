@@ -7,19 +7,20 @@ export interface SocketGemDef {
   stat: 'atk' | 'def' | 'hp' | 'crit'
   baseValue: number
   perLevel: number
+  rarity: ItemRarity
 }
 
 export const SOCKET_GEMS: SocketGemDef[] = [
-  { id: 'ruby', nameRu: 'Рубин', icon: '🔴', stat: 'atk', baseValue: 3, perLevel: 2 },
-  { id: 'sapphire', nameRu: 'Сапфир', icon: '🔵', stat: 'def', baseValue: 2, perLevel: 2 },
-  { id: 'emerald', nameRu: 'Изумруд', icon: '🟢', stat: 'hp', baseValue: 15, perLevel: 10 },
-  { id: 'topaz', nameRu: 'Топаз', icon: '🟡', stat: 'crit', baseValue: 1, perLevel: 1 },
-  { id: 'amethyst', nameRu: 'Аметист', icon: '🟣', stat: 'atk', baseValue: 2, perLevel: 1 },
-  { id: 'onyx', nameRu: 'Оникс', icon: '⚫', stat: 'def', baseValue: 3, perLevel: 2 },
-  { id: 'opal', nameRu: 'Опал', icon: '⚪', stat: 'crit', baseValue: 2, perLevel: 1 },
-  { id: 'jade', nameRu: 'Нефрит', icon: '🟩', stat: 'hp', baseValue: 20, perLevel: 12 },
-  { id: 'garnet', nameRu: 'Гранат', icon: '🟥', stat: 'atk', baseValue: 4, perLevel: 2 },
-  { id: 'diamond', nameRu: 'Алмаз', icon: '💎', stat: 'crit', baseValue: 3, perLevel: 2 },
+  { id: 'ruby', nameRu: 'Рубин', icon: '🔴', stat: 'atk', baseValue: 3, perLevel: 2, rarity: 'rare' },
+  { id: 'sapphire', nameRu: 'Сапфир', icon: '🔵', stat: 'def', baseValue: 2, perLevel: 2, rarity: 'rare' },
+  { id: 'emerald', nameRu: 'Изумруд', icon: '🟢', stat: 'hp', baseValue: 15, perLevel: 10, rarity: 'epic' },
+  { id: 'topaz', nameRu: 'Топаз', icon: '🟡', stat: 'crit', baseValue: 1, perLevel: 1, rarity: 'rare' },
+  { id: 'amethyst', nameRu: 'Аметист', icon: '🟣', stat: 'atk', baseValue: 2, perLevel: 1, rarity: 'rare' },
+  { id: 'onyx', nameRu: 'Оникс', icon: '⚫', stat: 'def', baseValue: 3, perLevel: 2, rarity: 'epic' },
+  { id: 'opal', nameRu: 'Опал', icon: '⚪', stat: 'crit', baseValue: 2, perLevel: 1, rarity: 'epic' },
+  { id: 'jade', nameRu: 'Нефрит', icon: '🟩', stat: 'hp', baseValue: 20, perLevel: 12, rarity: 'legendary' },
+  { id: 'garnet', nameRu: 'Гранат', icon: '🟥', stat: 'atk', baseValue: 4, perLevel: 2, rarity: 'rare' },
+  { id: 'diamond', nameRu: 'Алмаз', icon: '💎', stat: 'crit', baseValue: 3, perLevel: 2, rarity: 'mythic' },
 ]
 
 export const MAX_SOCKET_GEM_LEVEL = 10

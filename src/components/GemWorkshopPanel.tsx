@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge'
 import { usePlayerStore } from '@/store/playerStore'
 import { SOCKET_GEMS, getMaxSockets, MAX_SOCKET_GEM_LEVEL, getGemStatValue } from '@/data/socketGems'
 import { jewelResourceId } from '@/lib/jewelResources'
-import { getItemSockets, countEmptySockets } from '@/lib/gemSockets'
+import { getItemSockets, countEmptySockets, canSocketGem } from '@/lib/gemSockets'
 import { canWorkWithGem, isGemStudied, isGemStudying, getGemStudyRemainingMs, formatGemStudyCountdown } from '@/lib/gemStudy'
+import { RARITY_LABELS_RU } from '@/data/items'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, SocketGemId } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
@@ -52,8 +53,8 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
   return (
     <div className="space-y-4">
       <p className="text-[10px] text-slate-400">
-        Сначала изучите камень (вкладка «Изучение»). Комбинирование и улучшение дают опыт ювелира.
-        Вставка в снаряжение — в кузнице.
+        Сначала изучите камень (вкладка «Изучение»). Камень вставляется только в снаряжение той же редкости.
+        Комбинирование и улучшение дают опыт ювелира.
       </p>
 
       <div className="space-y-2">
@@ -73,6 +74,7 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
                   <div className="text-sm text-white">{gem.nameRu}</div>
                   <div className="text-[10px] text-slate-400">
                     Ур.{level}/{MAX_SOCKET_GEM_LEVEL} · ×{count} · +{getGemStatValue(gem.id, level)} {gem.stat.toUpperCase()}
+                    · {RARITY_LABELS_RU[gem.rarity]}
                   </div>
                   {!studied && !studying && (
                     <div className="text-[10px] text-amber-400">Требуется изучение</div>
@@ -131,6 +133,7 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
               <div className="text-[10px] text-slate-400">
                 Слоты: {getItemSockets(selectedItem).length}/{getMaxSockets(selectedItem.slot as EquipSlot, selectedItem.rarity)}
                 {countEmptySockets(selectedItem) > 0 && ` · свободно ${countEmptySockets(selectedItem)}`}
+                · {RARITY_LABELS_RU[selectedItem.rarity]}
               </div>
               <div className="flex flex-wrap gap-1">
                 {getItemSockets(selectedItem).map((g) => (
@@ -139,11 +142,17 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
               </div>
               {countEmptySockets(selectedItem) > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0).map((g) => (
+                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && canSocketGem(selectedItem, g.id)).map((g) => (
                     <Button key={g.id} size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handleSocket(g.id)}>
                       {g.icon} вставить
                     </Button>
                   ))}
+                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && !canSocketGem(selectedItem, g.id) && g.rarity === selectedItem.rarity).length === 0
+                    && countEmptySockets(selectedItem) > 0 && (
+                    <p className="text-[9px] text-amber-400 w-full">
+                      Нет камней редкости «{RARITY_LABELS_RU[selectedItem.rarity]}» для вставки
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>

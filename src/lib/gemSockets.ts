@@ -1,20 +1,56 @@
-import type { Item, Player, SocketGemId, Stats } from '@/types/game'
-import { getGemStatValue, getMaxSockets, getSocketGemDef } from '@/data/socketGems'
+import type { Item, Player, SocketGemId, Stats, ItemRarity } from '@/types/game'
+import { getGemStatValue, getMaxSockets, getSocketGemDef, SOCKET_GEMS } from '@/data/socketGems'
+import { RARITY_LABELS_RU } from '@/data/items'
+import { jewelResourceId } from '@/lib/jewelResources'
 
 export function getItemSockets(item: Item): SocketGemId[] {
   return item.socketedGems ?? []
 }
 
+export function getItemMaxGemSockets(item: Item): number {
+  if (item.slot === 'consumable' || item.slot === 'pet') return 0
+  return getMaxSockets(item.slot as import('@/data/items').EquipSlot, item.rarity)
+}
+
 export function countEmptySockets(item: Item): number {
-  const max = getMaxSockets(item.slot as import('@/data/items').EquipSlot, item.rarity)
-  return Math.max(0, max - getItemSockets(item).length)
+  return Math.max(0, getItemMaxGemSockets(item) - getItemSockets(item).length)
+}
+
+export function gemMatchesItemRarity(gemId: SocketGemId, itemRarity: ItemRarity): boolean {
+  return getSocketGemDef(gemId).rarity === itemRarity
 }
 
 export function canSocketGem(item: Item, gemId: SocketGemId): boolean {
   if (item.slot === 'consumable' || item.slot === 'pet') return false
+  if (!gemMatchesItemRarity(gemId, item.rarity)) return false
   if (countEmptySockets(item) <= 0) return false
   const sockets = getItemSockets(item)
   return !sockets.includes(gemId)
+}
+
+export function getSocketGemRarityMismatchReason(gemId: SocketGemId, item: Item): string | null {
+  const gemRarity = getSocketGemDef(gemId).rarity
+  if (gemRarity === item.rarity) return null
+  return `Камень «${getSocketGemDef(gemId).nameRu}» (${RARITY_LABELS_RU[gemRarity]}) подходит только для ${RARITY_LABELS_RU[gemRarity].toLowerCase()} снаряжения`
+}
+
+export function formatGemSocketSummary(item: Item): string {
+  const max = getItemMaxGemSockets(item)
+  if (max <= 0) return 'без слотов'
+  const used = getItemSockets(item).length
+  const empty = max - used
+  return `💎 ${empty}/${max}`
+}
+
+export function getSocketableGemIdsForItem(
+  player: Player,
+  item: Item,
+): SocketGemId[] {
+  if (countEmptySockets(item) <= 0) return []
+  return SOCKET_GEMS
+    .filter((g) => (player.resources?.[jewelResourceId(g.id)] ?? 0) > 0)
+    .filter((g) => canSocketGem(item, g.id))
+    .map((g) => g.id)
 }
 
 export function applySocketGemStats(base: Stats, player: Player, item: Item): Stats {

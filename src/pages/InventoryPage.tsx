@@ -16,7 +16,11 @@ import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { ResourceCatalog } from '@/components/ui/ResourceCatalog'
+import { EquipSlotSwapDialog } from '@/components/ui/EquipSlotSwapDialog'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
+import { formatGemSocketSummary, getItemMaxGemSockets } from '@/lib/gemSockets'
+import { SOCKET_GEMS } from '@/data/socketGems'
+import { getItemSockets } from '@/lib/gemSockets'
 import type { Item, EquipSlot } from '@/types/game'
 
 const EQUIP_ORDER: EquipSlot[] = [
@@ -31,10 +35,16 @@ export function InventoryPage() {
   const consumeConsumable = usePlayerStore((s) => s.consumeConsumable)
   const eatFood = usePlayerStore((s) => s.eatFood)
   const [gearSort, setGearSort] = useState<GearSortMode>('type')
+  const [swapSlot, setSwapSlot] = useState<EquipSlot | null>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
 
   if (!player) return null
+
+  const getAlternativesForSlot = (slot: EquipSlot): Item[] =>
+    player.inventory.filter(
+      (i) => i.slot === slot && i.instanceId !== player.equipped[slot]?.instanceId,
+    )
 
   const setBonuses = getActiveSetBonuses(player)
   const consumableStacks = groupConsumableStacks(player.inventory)
@@ -59,7 +69,17 @@ export function InventoryPage() {
   )
 
   function handleEquip(item: Item) {
-    if (item.slot !== 'consumable') equipItem(item)
+    if (item.slot !== 'consumable') {
+      equipItem(item)
+      setSwapSlot(null)
+      hapticSuccess()
+    }
+  }
+
+  function handleUnequipSlot(slot: EquipSlot) {
+    unequipItem(slot)
+    setSwapSlot(null)
+    hapticSuccess()
   }
 
   function handleUseConsumable(itemId: ConsumableId) {
@@ -98,30 +118,52 @@ export function InventoryPage() {
         </TabsList>
 
         <TabsContent value="equipment">
+          <p className="text-[10px] text-slate-500 mb-2">Нажмите на слот, чтобы быстро сменить предмет</p>
           <div className="grid grid-cols-1 gap-1.5">
             {EQUIP_ORDER.map((slot) => {
               const item = player.equipped[slot]
+              const maxSockets = item ? getItemMaxGemSockets(item) : 0
               return (
-                <Card key={slot}>
+                <Card
+                  key={slot}
+                  className="cursor-pointer active:scale-[0.99] transition-transform"
+                  onClick={() => setSwapSlot(slot)}
+                >
                   <CardContent className="p-2 flex items-center gap-2">
                     <EquipmentSlotIcon slot={slot} rarity={item?.rarity} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] text-slate-500">{SLOT_LABELS_RU[slot]}</div>
                       <div className="text-xs font-medium text-white truncate">{item?.name ?? 'Пусто'}</div>
                       {item && (
-                        <div className="text-[9px] text-aether-cyan truncate">{formatItemStats(item)}</div>
+                        <>
+                          <div className="text-[9px] text-aether-cyan truncate">{formatItemStats(item)}</div>
+                          {maxSockets > 0 && (
+                            <div className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
+                              <span>Слоты: {formatGemSocketSummary(item)}</span>
+                              {getItemSockets(item).map((g) => (
+                                <span key={g}>{SOCKET_GEMS.find((x) => x.id === g)?.icon}</span>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
-                    {item && (
-                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => unequipItem(slot)}>
-                        Снять
-                      </Button>
-                    )}
+                    <span className="text-[10px] text-slate-500 shrink-0">Сменить ›</span>
                   </CardContent>
                 </Card>
               )
             })}
           </div>
+
+          <EquipSlotSwapDialog
+            open={swapSlot !== null}
+            onOpenChange={(open) => !open && setSwapSlot(null)}
+            slot={swapSlot}
+            equipped={swapSlot ? player.equipped[swapSlot] : null}
+            alternatives={swapSlot ? getAlternativesForSlot(swapSlot) : []}
+            onSelect={handleEquip}
+            onUnequip={swapSlot && player.equipped[swapSlot] ? () => handleUnequipSlot(swapSlot) : undefined}
+          />
         </TabsContent>
 
         <TabsContent value="items">
@@ -202,6 +244,11 @@ export function InventoryPage() {
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-white truncate">{item.name}</div>
                       <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                      {getItemMaxGemSockets(item) > 0 && (
+                        <div className="text-[9px] text-slate-400 mt-0.5">
+                          Слоты камней: {formatGemSocketSummary(item)}
+                        </div>
+                      )}
                       {Object.keys(item.stats).length > 0 && (
                         <div className="text-[9px] text-aether-cyan mt-0.5 leading-tight">{formatItemStats(item)}</div>
                       )}
