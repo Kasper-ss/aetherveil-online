@@ -1,5 +1,6 @@
 import type { ResourceId } from '@/types/game'
 import { FISH_TABLE } from '@/data/fishing'
+import { JEWEL_RESOURCE_IDS } from '@/lib/jewelResources'
 
 export const BASIC_RESOURCE_IDS: ResourceId[] = [
   'hide', 'meat', 'gem_shard', 'mana_crystal', 'aether_dust', 'star_shard',
@@ -26,5 +27,6 @@ export const RESOURCE_SECTIONS: ResourceSection[] = [
   { id: 'basic', titleRu: 'Материалы', resourceIds: BASIC_RESOURCE_IDS },
   { id: 'ore', titleRu: 'Руда', resourceIds: ORE_RESOURCE_IDS },
   { id: 'herbs', titleRu: 'Травы', resourceIds: HERB_RESOURCE_IDS },
+  { id: 'jewels', titleRu: 'Камни (ювелир)', resourceIds: JEWEL_RESOURCE_IDS },
   { id: 'fish', titleRu: 'Рыба', resourceIds: FISH_RESOURCE_IDS },
 ]

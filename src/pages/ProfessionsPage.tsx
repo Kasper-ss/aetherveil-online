@@ -37,6 +37,14 @@ import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { ProfessionId } from '@/types/game'
 import type { MissingCost } from '@/lib/craftCosts'
 
+const CATALOG_GRIND_ROUTES: Record<string, { path: string; label: string }> = {
+  mining: { path: '/mine', label: '⛏️ Перейти в шахту' },
+  herbalism: { path: '/field', label: '🌿 Перейти на поле трав' },
+  skinning: { path: '/hunt', label: '🏹 Охотничьи угодья' },
+  jewelcrafting: { path: '/gems', label: '💠 Кристальные рудники' },
+  enchanting: { path: '/aether', label: '✨ Эфирный разлом' },
+}
+
 function formatUpgradeCost(cost: ProfessionUpgradeCost): string {
   const parts = [`🪙${cost.gold}`]
   for (const [rid, amount] of Object.entries(cost.resources)) {
@@ -192,6 +200,7 @@ function ProfessionDetail({
   onBack: () => void
   onMissing: (title: string, missing: MissingCost[]) => void
 }) {
+  const navigate = useNavigate()
   const toggleActiveProfession = usePlayerStore((s) => s.toggleActiveProfession)
   const activeList = getActiveProfessions(player)
   const slotLimit = getProfessionSlotLimit(player)
@@ -215,6 +224,16 @@ function ProfessionDetail({
       </div>
 
       <div className="p-4 space-y-3">
+        {CATALOG_GRIND_ROUTES[entry.id] && (
+          <Button
+            variant="outline"
+            className="w-full text-xs"
+            onClick={() => navigate(CATALOG_GRIND_ROUTES[entry.id].path)}
+          >
+            {CATALOG_GRIND_ROUTES[entry.id].label}
+          </Button>
+        )}
+
         {entry.passiveBonusRu && (
           <Card>
             <CardContent className="p-3">
@@ -382,8 +401,17 @@ export function ProfessionsPage() {
       </div>
 
       <p className="px-4 py-2 text-[11px] text-slate-400">
-        Выберите профессию для подробного описания, веток специализаций и прокачки. Три основные — полное древо навыков.
+        Выберите профессию для описания и прокачки навыков. До 3 основных — полное древо.
       </p>
+
+      <Card className="mx-4 mb-2 border-aether-cyan/30">
+        <CardContent className="p-3 text-[10px] text-slate-400 space-y-1">
+          <p className="text-xs font-medium text-aether-cyan">Как прокачивать профессии</p>
+          <p>1. <span className="text-slate-300">XP ранга</span> — добывайте в точках сбора: шахта, поле трав, рыбалка, охота, рудники.</p>
+          <p>2. <span className="text-slate-300">Навыки</span> — откройте профессию → «Прокачка» → улучшайте за золото и ресурсы.</p>
+          <p>3. <span className="text-slate-300">Основные слоты</span> — назначьте до {slotLimit} профессий основными, чтобы открыть все навыки и мифические ветки.</p>
+        </CardContent>
+      </Card>
 
       <div className="p-4 grid grid-cols-2 gap-3">
         {PROFESSION_CATALOG.map((p) => (
