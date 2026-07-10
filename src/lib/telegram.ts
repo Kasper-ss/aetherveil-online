@@ -261,6 +261,15 @@ export async function shareGuildInviteLink(referralCode: string): Promise<void> 
   await openShareLink(url, text)
 }
 
+export function openTelegramChannel(url: string): void {
+  const webApp = getWebApp()
+  if (webApp) {
+    webApp.openTelegramLink(url)
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 /**
  * Validate initData on your backend:
  * POST /api/auth/validate { initData: webApp.initData }

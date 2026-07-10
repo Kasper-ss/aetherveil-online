@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Volume2, VolumeX, Music } from 'lucide-react'
+import { ArrowLeft, Volume2, VolumeX, Music, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -12,7 +12,8 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { xpForLevel, formatNumber } from '@/lib/utils'
 import { toggleMusic, toggleSound } from '@/lib/audio'
 import { useRef, useState } from 'react'
-import { shareInviteLink, hapticSuccess, hapticError, showTelegramAlert } from '@/lib/telegram'
+import { shareInviteLink, hapticSuccess, hapticError, showTelegramAlert, openTelegramChannel } from '@/lib/telegram'
+import { FEEDBACK_CHANNEL_URL, formatGameVersion } from '@/lib/gameVersion'
 import { StarsPaymentError } from '@/lib/starsPayment'
 import { formatStarsPriceLabel } from '@/data/starShop'
 import { getCombatMaxHp, hasDeathDebuff, formatDodgePercent } from '@/lib/playerStats'
@@ -417,6 +418,20 @@ export function ProfilePage() {
           <Music className="h-4 w-4" />
           Музыка
         </Button>
+      </div>
+
+      <div className="px-4 pb-6 space-y-3">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => openTelegramChannel(FEEDBACK_CHANNEL_URL)}
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Обратная связь и обновления
+        </Button>
+        <p className="text-center text-[10px] text-slate-500">
+          Версия игры: {formatGameVersion()}
+        </p>
       </div>
         </TabsContent>
 
