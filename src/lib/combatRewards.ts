@@ -1,21 +1,5 @@
-import { getRecommendedLevelForFloor } from '@/lib/combatScaling'
-
-/** WoW-style reward tuning: less XP/gold when overleveled for the floor. */
-export function getCombatRewardEase(playerLevel: number, floor: number): { expMult: number; goldMult: number } {
-  const recLevel = getRecommendedLevelForFloor(floor)
-  const gap = playerLevel - recLevel
-
-  if (gap > 10) {
-    const penalty = Math.min(0.65, 0.25 + (gap - 10) * 0.06)
-    return { expMult: 1 - penalty, goldMult: 1 - penalty * 0.45 }
-  }
-  if (gap > 5) {
-    const penalty = (gap - 5) * 0.05
-    return { expMult: 1 - penalty, goldMult: 1 - penalty * 0.4 }
-  }
-  if (gap < -4) {
-    return { expMult: 1.08, goldMult: 1.05 }
-  }
+/** Награды зависят от этажа (см. floors.ts); штраф за перелевел отключён. */
+export function getCombatRewardEase(_playerLevel: number, _floor: number): { expMult: number; goldMult: number } {
   return { expMult: 1, goldMult: 1 }
 }
 

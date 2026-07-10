@@ -67,9 +67,10 @@ export function getFloorChallengeMult(floor: number): number {
   return base * getPostFloor50Mult(floor)
 }
 
-/** Reward scaling — tuned for staged WoW-like progression */
+/** Награды растут с этажом: на низких — мало, выше — постепенно больше */
 function getFloorRewardScale(floor: number): number {
-  return 0.88 * (1 + (floor - 1) * 0.11 + Math.pow(floor, 1.15) * 0.045)
+  if (floor <= 1) return 0.28
+  return 0.14 + floor * 0.095 + Math.pow(floor, 1.14) * 0.042
 }
 
 /** Global mob/boss combat stat tuning — HP and ATK tuned separately (+3% vs prior balance). */

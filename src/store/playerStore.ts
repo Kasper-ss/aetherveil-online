@@ -79,6 +79,8 @@ import {
 import { findAlchemyRecipe, canBrewAlchemyRecipe, needsBrewTimer, getReadyBrews } from '@/data/alchemyPotions'
 import { getNextVipLevel } from '@/data/vipTiers'
 import { getCombineCost, getUpgradeCost, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import { jewelResourceId } from '@/lib/jewelResources'
+import { getWorldBossSchedule } from '@/lib/worldBossSchedule'
 import { canSocketGem } from '@/lib/gemSockets'
 import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
@@ -551,9 +553,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newTitles = titles.includes('world_boss_slayer')
       ? titles
       : [...titles, 'world_boss_slayer']
+    const schedule = getWorldBossSchedule()
     get().updatePlayer({
       bossTrophies: newTrophies,
       worldBossLastKillAt: new Date().toISOString(),
+      worldBossLastSpawnIndex: schedule.spawnIndex,
       worldBossKills: (player.worldBossKills ?? 0) + 1,
       unlockedTitles: newTitles,
       gems: player.gems + WORLD_BOSS_REWARDS.gems,
@@ -1384,15 +1388,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return false
     }
-    const gems = { ...(player.socketGems ?? {}) }
-    gems[gemId] = (gems[gemId] ?? 0) + 1
+    const rid = jewelResourceId(gemId)
+    const gems = { ...(player.resources ?? {}) }
+    gems[rid] = (gems[rid] ?? 0) + 1
     if (!player.socketGemLevels?.[gemId]) {
       get().updatePlayer({
-        socketGems: gems,
+        resources: gems,
         socketGemLevels: { ...(player.socketGemLevels ?? {}), [gemId]: 1 },
       })
     } else {
-      get().updatePlayer({ socketGems: gems })
+      get().updatePlayer({ resources: gems })
     }
     return true
   },
@@ -1419,7 +1424,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   socketGemIntoItem: (instanceId, gemId) => {
     const { player } = get()
     if (!player) return false
-    if ((player.socketGems?.[gemId] ?? 0) <= 0) return false
+    const rid = jewelResourceId(gemId)
+    if ((player.resources?.[rid] ?? 0) <= 0) return false
     const findItem = (): Item | null => {
       const inv = player.inventory.find((i) => i.instanceId === instanceId)
       if (inv) return inv
@@ -1434,10 +1440,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       ...item,
       socketedGems: [...(item.socketedGems ?? []), gemId],
     }
-    const gems = { ...(player.socketGems ?? {}) }
-    gems[gemId] = (gems[gemId] ?? 0) - 1
+    const gems = { ...(player.resources ?? {}) }
+    gems[rid] = (gems[rid] ?? 0) - 1
     get().replaceItemInstance(instanceId, updated)
-    get().updatePlayer({ socketGems: gems })
+    get().updatePlayer({ resources: gems })
     return true
   },
 

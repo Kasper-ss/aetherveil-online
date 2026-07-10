@@ -1,8 +1,14 @@
 import type { FloorEnemy, Player } from '@/types/game'
 import { makeEnemy } from '@/data/floors'
+import {
+  canFightWorldBoss,
+  formatWorldBossCountdown,
+  getWorldBossSchedule,
+} from '@/lib/worldBossSchedule'
+import { jewelResourceId, rollRandomJewelResource } from '@/lib/jewelResources'
+import type { ResourceId } from '@/types/game'
 
 export const WORLD_BOSS_UNLOCK_FLOOR = 25
-export const WORLD_BOSS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 export const WORLD_BOSS_TITLE_ID = 'world_boss_slayer'
 export const WORLD_BOSS_SWORD_ID = 'aether_worldbreaker'
 
@@ -12,26 +18,23 @@ export function isWorldBossUnlocked(player: Player): boolean {
 
 export function getWorldBossCooldown(player: Player): {
   canFight: boolean
+  isActive: boolean
   nextAvailableAt: string | null
   remainingMs: number
+  daysUntilNext: number
 } {
-  const last = player.worldBossLastKillAt
-  if (!last) return { canFight: true, nextAvailableAt: null, remainingMs: 0 }
-  const next = new Date(last).getTime() + WORLD_BOSS_COOLDOWN_MS
-  const remaining = next - Date.now()
-  if (remaining <= 0) return { canFight: true, nextAvailableAt: null, remainingMs: 0 }
-  return { canFight: false, nextAvailableAt: new Date(next).toISOString(), remainingMs: remaining }
+  const schedule = getWorldBossSchedule()
+  return {
+    canFight: canFightWorldBoss(player),
+    isActive: schedule.isActive,
+    nextAvailableAt: new Date(schedule.nextSpawnAt).toISOString(),
+    remainingMs: schedule.msUntilNext,
+    daysUntilNext: schedule.daysUntilNext,
+  }
 }
 
 export function formatCooldownRemaining(ms: number): string {
-  if (ms <= 0) return ''
-  const totalMin = Math.ceil(ms / 60_000)
-  const days = Math.floor(totalMin / (60 * 24))
-  const hours = Math.floor((totalMin % (60 * 24)) / 60)
-  const mins = totalMin % 60
-  if (days > 0) return `${days} д ${hours} ч`
-  if (hours > 0) return `${hours} ч ${mins} м`
-  return `${mins} м`
+  return formatWorldBossCountdown(ms)
 }
 
 /** Scales with player's highest floor reached */
@@ -59,14 +62,24 @@ export function buildWorldBossEnemy(player: Player): FloorEnemy {
   }
 }
 
-export const WORLD_BOSS_REWARDS = {
-  gold: 15000,
-  gems: 80,
-  resources: {
+export function getWorldBossRewardResources(): Partial<Record<ResourceId, number>> {
+  const rewards: Partial<Record<ResourceId, number>> = {
     star_shard: 5,
     aether_dust: 12,
     abyssal_pearl: 4,
     raw_diamond: 3,
     upgrade_core: 5,
-  } as const,
+  }
+  for (let i = 0; i < 3; i++) {
+    const id = rollRandomJewelResource({ rareOnly: true })
+    rewards[id] = (rewards[id] ?? 0) + 1
+  }
+  const diamond = jewelResourceId('diamond')
+  rewards[diamond] = (rewards[diamond] ?? 0) + 1
+  return rewards
+}
+
+export const WORLD_BOSS_REWARDS = {
+  gold: 15000,
+  gems: 80,
 }

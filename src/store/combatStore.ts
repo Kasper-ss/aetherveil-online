@@ -15,7 +15,7 @@ import {
   absorbEnemyShield, createEnemyCombatState, executeEnemyAttack, formatEnemyAbilityHint,
 } from '@/lib/enemyCombat'
 import { handleBossDefeated } from '@/lib/bossPhases'
-import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked } from '@/data/worldBoss'
+import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldBossUnlocked, getWorldBossRewardResources } from '@/data/worldBoss'
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
 import { applyCombatRewardEase } from '@/lib/combatRewards'
@@ -632,7 +632,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           || p.equipped.weapon?.id === 'aether_worldbreaker'
         )
         if (sword && !hasSword) loot.push(sword)
-        resources = { ...WORLD_BOSS_REWARDS.resources }
+        resources = getWorldBossRewardResources()
       } else {
         const pvePlayer = usePlayerStore.getState().player
         const rawExp = combat.enemy.expReward

@@ -4,6 +4,15 @@ import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
 import { applyClassCraftModifier } from '@/lib/classCraft'
 
+import { SOCKET_GEMS } from '@/data/socketGems'
+
+const JEWEL_RESOURCE_ENTRIES = Object.fromEntries(
+  SOCKET_GEMS.map((g) => [
+    `jewel_${g.id}`,
+    { id: `jewel_${g.id}`, name: g.nameRu, nameRu: g.nameRu, icon: g.icon },
+  ]),
+) as Partial<Record<ResourceId, Resource>>
+
 export const RESOURCES: Record<ResourceId, Resource> = {
   iron_ore: { id: 'iron_ore', name: 'Iron Ore', nameRu: 'Железная руда', icon: '🪨' },
   herb: { id: 'herb', name: 'Healing Herb', nameRu: 'Целебная трава', icon: '🌿' },
@@ -42,7 +51,8 @@ export const RESOURCES: Record<ResourceId, Resource> = {
   fish_swordfish: { id: 'fish_swordfish', name: 'Swordfish', nameRu: 'Рыба-меч', icon: '🗡️' },
   fish_aether_koi: { id: 'fish_aether_koi', name: 'Aether Koi', nameRu: 'Эфирный карп', icon: '✨' },
   fishing_junk: { id: 'fishing_junk', name: 'Junk', nameRu: 'Мусор', icon: '🥾' },
-}
+  ...JEWEL_RESOURCE_ENTRIES,
+} as Record<ResourceId, Resource>
 
 function skill(
   id: string, name: string, nameRu: string, desc: string, descRu: string,

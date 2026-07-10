@@ -1,5 +1,6 @@
 import type { ResourceId } from '@/types/game'
 import { createItemInstance } from '@/data/items'
+import { rollJewelLoot } from '@/lib/jewelResources'
 
 export interface SecretCaveReward {
   resources: Partial<Record<ResourceId, number>>
@@ -51,8 +52,12 @@ export function rollSecretCaveAfterVictory(floor: number, isBoss: boolean): Secr
 function generateCaveDig(floor: number): SecretCaveReward {
   const resId = RESOURCE_POOL[Math.floor(Math.random() * RESOURCE_POOL.length)]
   const amount = 1 + Math.floor(floor * 0.4) + Math.floor(Math.random() * 3)
+  const resources: Partial<Record<ResourceId, number>> = { [resId]: amount }
+  if (Math.random() < 0.12 + floor * 0.008) {
+    Object.assign(resources, rollJewelLoot(1, 1, Math.random() < 0.35))
+  }
   return {
-    resources: { [resId]: amount },
+    resources,
     gold: Math.floor(20 + floor * 8 + Math.random() * 40),
     chestFound: false,
   }

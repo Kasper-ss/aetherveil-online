@@ -14,6 +14,8 @@ import { defaultMonthlyStats, monthKey } from '@/lib/monthlyStats'
 import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/vitalNotifications'
 import { SAVE_VERSION, wipePlayerToFresh } from '@/lib/playerMigration'
 import { normalizeClassId } from '@/lib/classCompat'
+import { jewelResourceId, rollJewelLoot } from '@/lib/jewelResources'
+import type { SocketGemId } from '@/types/game'
 
 export { ALL_ITEMS as ITEMS, rollEquipmentDrop, getMobsRequiredForFloor } from '@/data/items'
 export { FLOORS, getFloorData, MAX_FLOOR } from '@/data/floors'
@@ -80,10 +82,16 @@ export function generateCombatResources(
   if (isBoss) {
     res.upgrade_core = 1 + Math.floor(floor / 3)
     if (Math.random() > 0.5) res.star_shard = 1
+    Object.assign(res, rollJewelLoot(0.5, 1 + Math.floor(Math.random() * 2), true))
   } else if (isMiniBoss) {
     if (Math.random() < 0.45) res.gem_shard = 1 + Math.floor(Math.random() * 2)
     if (Math.random() < 0.22) res.star_shard = 1
     if (Math.random() < 0.18) res.upgrade_core = 1
+    Object.assign(res, rollJewelLoot(0.38, 1, true))
+  } else if (isEpic) {
+    Object.assign(res, rollJewelLoot(0.1, 1, false))
+  } else if (Math.random() < 0.01 + floor * 0.0006) {
+    Object.assign(res, rollJewelLoot(1, 1, floor >= 15))
   }
 
   return res
@@ -151,12 +159,18 @@ function migrateBossTrophies(player: import('@/types/game').Player): string[] {
 
 function migrateResources(
   resources: Partial<Record<import('@/types/game').ResourceId, number>> | undefined,
+  socketGems?: Partial<Record<SocketGemId, number>>,
 ): Partial<Record<import('@/types/game').ResourceId, number>> {
   const merged: Record<string, number> = {
     iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1,
     ...resources,
   }
   delete merged.bone
+  for (const [gemId, count] of Object.entries(socketGems ?? {})) {
+    if (!count || count <= 0) continue
+    const rid = jewelResourceId(gemId as SocketGemId)
+    merged[rid] = (merged[rid] ?? 0) + count
+  }
   return merged as Partial<Record<import('@/types/game').ResourceId, number>>
 }
 
@@ -196,7 +210,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     hpLastRegenAt: base.hpLastRegenAt ?? new Date().toISOString(),
     currentHp: base.currentHp,
     maxEnergy: getMaxEnergy({ ...base, allocatedStats: { ...EMPTY_ALLOCATED, ...base.allocatedStats } }),
-    resources: migrateResources(base.resources),
+    resources: migrateResources(base.resources, base.socketGems),
     marketListings: (base.marketListings ?? []).filter((l) => (l.resourceId as string | undefined) !== 'bone'),
     expEasterEggClaimed: base.expEasterEggClaimed ?? false,
     underwearEasterEggClaimed: base.underwearEasterEggClaimed ?? false,
@@ -247,6 +261,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     achievementsClaimed: base.achievementsClaimed ?? [],
     bossTrophies: migrateBossTrophies(base),
     worldBossLastKillAt: base.worldBossLastKillAt,
+    worldBossLastSpawnIndex: base.worldBossLastSpawnIndex,
     worldBossKills: base.worldBossKills ?? 0,
     lifetimeGoldEarned: base.lifetimeGoldEarned ?? 0,
     referralInvites: base.referralInvites ?? [],

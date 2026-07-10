@@ -6,6 +6,7 @@ import type { VitalSyncPayload } from '../../server/vitalNotifications.js'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
 import { claimGuildGifts } from '../../server/guildGifts.js'
 import { processPropertyAction } from '../../server/realEstate.js'
+import { processWorldBossNotifications } from '../../server/worldBossNotifications.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -97,7 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       vitalNotify = await processVitalBotNotifications(user.id, body.vitals)
     }
 
-    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral, vitalNotify, property })
+    const worldBossNotify = await processWorldBossNotifications(user.id)
+
+    return res.status(200).json({ ok: true, ...result, incomingGifts, ...referral, vitalNotify, worldBossNotify, property })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync error'
     return res.status(500).json({ error: message })

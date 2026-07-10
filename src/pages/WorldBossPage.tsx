@@ -15,6 +15,7 @@ import {
   getWorldBossCooldown,
   formatCooldownRemaining,
 } from '@/data/worldBoss'
+import { getWorldBossSchedule } from '@/lib/worldBossSchedule'
 import { hapticError, hapticImpact, hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 
@@ -34,12 +35,13 @@ export function WorldBossPage() {
   if (!player) return null
 
   const unlocked = isWorldBossUnlocked(player)
-  const cooldown = getWorldBossCooldown(player)
+  const status = getWorldBossCooldown(player)
+  const schedule = getWorldBossSchedule()
   const kills = player.worldBossKills ?? 0
 
   function handleFight() {
     if (!unlocked) { hapticError(); return }
-    if (!cooldown.canFight) { hapticError(); return }
+    if (!status.canFight) { hapticError(); return }
     if (getPlayerCurrentHp(player!) < 1) { hapticError(); return }
     hapticImpact('heavy')
     playSfx('click')
@@ -70,23 +72,34 @@ export function WorldBossPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-300">
             <p>
-              Древнее существо из разлома между мирами. Открывается с {WORLD_BOSS_UNLOCK_FLOOR}-го этажа.
+              Появляется раз в 3 дня на 24 часа. Открывается с {WORLD_BOSS_UNLOCK_FLOOR}-го этажа.
               Сложность растёт с вашим прогрессом в башне.
             </p>
             <div className="flex flex-wrap gap-2">
+              <Badge className="bg-slate-700 text-slate-300 text-[10px]">Каждые 3 дня</Badge>
               <Badge className="bg-slate-700 text-slate-300 text-[10px]">2 фазы</Badge>
-              <Badge className="bg-slate-700 text-slate-300 text-[10px]">Дебаффы</Badge>
-              <Badge className="bg-slate-700 text-slate-300 text-[10px]">Масштабирование</Badge>
+              <Badge className="bg-slate-700 text-slate-300 text-[10px]">Редкие камни</Badge>
             </div>
             {!unlocked && (
               <p className="text-xs text-red-400">
                 🔒 Достигните {WORLD_BOSS_UNLOCK_FLOOR}-го этажа (сейчас: {player.highestFloor})
               </p>
             )}
-            {unlocked && !cooldown.canFight && (
-              <p className="text-xs text-amber-400 flex items-center gap-1">
+            {unlocked && schedule.isActive && status.canFight && (
+              <p className="text-xs text-aether-cyan font-medium">
+                Сегодня будет Мировой Босс — можно сразиться!
+              </p>
+            )}
+            {unlocked && schedule.isActive && !status.canFight && (
+              <p className="text-xs text-amber-400">
+                Вы уже победили Архонта в этом цикле. Следующий спавн через {formatCooldownRemaining(status.remainingMs)}.
+              </p>
+            )}
+            {unlocked && !schedule.isActive && (
+              <p className="text-xs text-slate-400 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Перепрохождение через: {formatCooldownRemaining(cooldown.remainingMs)}
+                До появления: {status.daysUntilNext === 1 ? '1 день' : `${status.daysUntilNext} дн.`}
+                {' '}({formatCooldownRemaining(status.remainingMs)})
               </p>
             )}
             {kills > 0 && (
@@ -105,7 +118,7 @@ export function WorldBossPage() {
           <CardContent className="text-xs text-slate-300 space-y-1">
             <p>🪙 {WORLD_BOSS_REWARDS.gold.toLocaleString()} золота</p>
             <p>💎 {WORLD_BOSS_REWARDS.gems} кристаллов</p>
-            <p>⭐ Редкие ресурсы: осколки звёзд, эфирная пыль, жемчуг бездны и др.</p>
+            <p>⭐ Редкие ресурсы и камни для ювелирного дела</p>
             <p>🗡️ Уникальный легендарный меч «Клинок Разлома Миров» (первое убийство)</p>
             <p>🏅 Титул «Убийца Архонта»</p>
             <p>🏆 Особый трофей в коллекции</p>
@@ -115,15 +128,17 @@ export function WorldBossPage() {
         <Button
           className="w-full"
           size="lg"
-          disabled={!unlocked || !cooldown.canFight}
+          disabled={!unlocked || !status.canFight}
           onClick={handleFight}
         >
           <Swords className="h-4 w-4 mr-2" />
           {!unlocked
             ? `Нужен ${WORLD_BOSS_UNLOCK_FLOOR}-й этаж`
-            : !cooldown.canFight
-              ? `Ожидание: ${formatCooldownRemaining(cooldown.remainingMs)}`
-              : 'Вызвать Архонта (15 ⚡)'}
+            : !schedule.isActive
+              ? `Появится через ${status.daysUntilNext} дн.`
+              : !status.canFight
+                ? 'Уже побеждён в этом цикле'
+                : 'Вызвать Архонта (15 ⚡)'}
         </Button>
       </div>
     </div>

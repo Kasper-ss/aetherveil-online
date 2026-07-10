@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { usePlayerStore } from '@/store/playerStore'
 import { SOCKET_GEMS, getMaxSockets, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import { jewelResourceId } from '@/lib/jewelResources'
 import { getItemSockets, countEmptySockets } from '@/lib/gemSockets'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item, SocketGemId } from '@/types/game'
@@ -22,7 +23,11 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
 
   if (!player) return null
 
-  const gems = player.socketGems ?? {}
+  const gems = player.resources ?? {}
+
+  function jewelCount(gemId: SocketGemId): number {
+    return gems[jewelResourceId(gemId)] ?? 0
+  }
 
   function handleCombine(gemId: SocketGemId) {
     if (combineGem(gemId)) hapticSuccess()
@@ -52,7 +57,7 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
       <div className="space-y-2">
         <p className="text-xs font-medium text-white">Ваши камни</p>
         {SOCKET_GEMS.map((gem) => {
-          const count = gems[gem.id] ?? 0
+          const count = jewelCount(gem.id)
           const level = player.socketGemLevels?.[gem.id] ?? 1
           return (
             <Card key={gem.id}>
@@ -108,7 +113,7 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
               </div>
               {countEmptySockets(selectedItem) > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {SOCKET_GEMS.filter((g) => (gems[g.id] ?? 0) > 0).map((g) => (
+                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0).map((g) => (
                     <Button key={g.id} size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handleSocket(g.id)}>
                       {g.icon} вставить
                     </Button>

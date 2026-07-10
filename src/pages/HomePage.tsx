@@ -23,6 +23,7 @@ import { useT } from '@/hooks/useT'
 import { CLASSES } from '@/data/classes'
 import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRewards'
 import { isWorldBossUnlocked, getWorldBossCooldown } from '@/data/worldBoss'
+import { maybeNotifyWorldBoss } from '@/lib/worldBossNotifications'
 import { isRealEstateUnlocked } from '@/data/realEstate'
 
 export function HomePage() {
@@ -44,6 +45,10 @@ export function HomePage() {
     const id = setInterval(() => petTick((n) => n + 1), 30_000)
     return () => clearInterval(id)
   }, [pet])
+
+  useEffect(() => {
+    if (player) maybeNotifyWorldBoss()
+  }, [player?.telegramId])
 
   if (playerLoading || !player) {
     return (
@@ -73,7 +78,15 @@ export function HomePage() {
   const mobsRequired = getMobsRequiredForFloor(player.farmFloor)
   const mobsKilled = player.floorMobKills[player.farmFloor] ?? 0
   const worldBossUnlocked = isWorldBossUnlocked(player)
-  const worldBossReady = worldBossUnlocked && getWorldBossCooldown(player).canFight
+  const worldBossStatus = getWorldBossCooldown(player)
+  const worldBossReady = worldBossUnlocked && worldBossStatus.canFight
+  const worldBossMenuLabel = !worldBossUnlocked
+    ? 'Мировой Босс'
+    : worldBossReady
+      ? 'Мировой Босс ⚔️'
+      : worldBossStatus.isActive
+        ? 'Мировой Босс ✓'
+        : `Мировой Босс · ${worldBossStatus.daysUntilNext} д`
   const realEstateUnlocked = isRealEstateUnlocked(player)
 
   function nav(path: string) {
@@ -106,7 +119,7 @@ export function HomePage() {
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
     ...(worldBossUnlocked ? [{
       icon: Skull,
-      label: worldBossReady ? 'Мировой Босс' : 'Мировой Босс ⏳',
+      label: worldBossMenuLabel,
       path: '/world-boss',
       variant: 'purple' as const,
       primary: worldBossReady,

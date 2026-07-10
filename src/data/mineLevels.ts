@@ -1,4 +1,5 @@
 import type { ResourceId } from '@/types/game'
+import { rollJewelLoot } from '@/lib/jewelResources'
 
 export interface MineLevel {
   level: number
@@ -150,6 +151,8 @@ export function rollMineRewards(level: MineLevel): {
     const bonus = level.drops[Math.floor(Math.random() * level.drops.length)]
     resources[bonus.resource] = (resources[bonus.resource] ?? 0) + rollAmount(bonus.amount)
   }
+
+  Object.assign(resources, rollJewelLoot(0.03 + level.level * 0.012, 1, level.level >= 4))
 
   return { resources, isDouble, isVein }
 }

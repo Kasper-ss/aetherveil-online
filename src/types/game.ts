@@ -25,8 +25,10 @@ export type ResourceId =
   | 'herb_mint' | 'herb_lotus' | 'herb_phoenix' | 'herb_void'
   | 'fish_minnow' | 'fish_bream' | 'fish_carp' | 'fish_perch' | 'fish_trout'
   | 'fish_salmon' | 'fish_pike' | 'fish_tuna' | 'fish_cod' | 'fish_eel'
-  | 'fish_crab' | 'fish_lobster' | 'fish_squid' | 'fish_swordfish' | 'fish_aether_koi'
+  | 'fish_crab' | 'fish_lobster' | 'fish_squid' | 'fish_swordfish'   | 'fish_aether_koi'
   | 'fishing_junk'
+  | 'jewel_ruby' | 'jewel_sapphire' | 'jewel_emerald' | 'jewel_topaz' | 'jewel_amethyst'
+  | 'jewel_onyx' | 'jewel_opal' | 'jewel_jade' | 'jewel_garnet' | 'jewel_diamond'
 
 export type SocketGemId =
   | 'ruby' | 'sapphire' | 'emerald' | 'topaz' | 'amethyst'
@@ -347,6 +349,8 @@ export interface Player {
   achievementsClaimed?: string[]
   bossTrophies?: string[]
   worldBossLastKillAt?: string
+  /** Индекс спавна (каждые 3 дня), в котором игрок уже победил босса */
+  worldBossLastSpawnIndex?: number
   worldBossKills?: number
   unlockedTitles?: string[]
   profileTitleId?: string
