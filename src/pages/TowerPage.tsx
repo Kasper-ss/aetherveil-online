@@ -42,7 +42,7 @@ export function TowerPage() {
   useTelegramBackButton(() => navigate('/'), true)
 
   if (!player) return null
-  if (!player.classSelected) { navigate('/'); return null }
+  if (!player.raceSelected || !player.classSelected) { navigate('/'); return null }
 
   const farmFloor = player.farmFloor
   const floor = getFloorData(farmFloor)

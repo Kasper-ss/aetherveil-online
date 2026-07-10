@@ -18,6 +18,8 @@ import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { hasDeathDebuff } from '@/lib/playerStats'
 import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
+import { canUseRacialAbility } from '@/lib/racialAbilities'
+import { getRaceData } from '@/data/races'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
   player: 'text-aether-cyan',
@@ -38,6 +40,7 @@ export function CombatPage() {
   const playerSkill = useCombatStore((s) => s.playerSkill)
   const useConsumableInCombat = useCombatStore((s) => s.useConsumableInCombat)
   const eatFoodInCombat = useCombatStore((s) => s.eatFoodInCombat)
+  const useRacialAbilityInCombat = useCombatStore((s) => s.useRacialAbilityInCombat)
   const fleeCombat = useCombatStore((s) => s.fleeCombat)
   const clearCombat = useCombatStore((s) => s.clearCombat)
   const player = usePlayerStore((s) => s.player)
@@ -89,6 +92,9 @@ export function CombatPage() {
           }, {}),
       )
     : []
+
+  const raceData = player?.raceId ? getRaceData(player.raceId) : null
+  const racialReady = player ? canUseRacialAbility(player) : false
 
   function handleFlee() {
     hapticImpact('light')
@@ -176,6 +182,17 @@ export function CombatPage() {
             <Button className="flex-1 h-12 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
               ⚔️ Атаковать
             </Button>
+            {raceData && (
+              <Button
+                variant="gold"
+                className="h-12 px-3"
+                disabled={!racialReady}
+                onClick={() => { hapticImpact('medium'); useRacialAbilityInCombat() }}
+                title={raceData.abilityNameRu}
+              >
+                {raceData.icon}
+              </Button>
+            )}
             {!combat.isBoss && (
               <Button variant="outline" className="h-12 px-3" onClick={handleFlee}>
                 🏃
@@ -245,7 +262,7 @@ export function CombatPage() {
               const scaled = getScaledSkill(skill, skillLevel)
               const cd = combat.skillCooldowns[sid as SkillId] ?? 0
               const manaCost = scaled.energyCost
-              const lacksResource = player?.classId === 'mage'
+              const lacksResource = player && usesMana(player)
                 ? manaCurrent < manaCost
                 : (player?.energy ?? 0) < manaCost
               return (

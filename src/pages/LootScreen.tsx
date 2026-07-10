@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCombatStore } from '@/store/combatStore'
+import { usePlayerStore } from '@/store/playerStore'
+import { getCannibalizeHeal } from '@/lib/racialAbilities'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/localeStore'
 import { RESOURCES } from '@/data/classes'
@@ -19,6 +21,8 @@ export function LootScreen() {
   const result = useCombatStore((s) => s.result)
   const claimLoot = useCombatStore((s) => s.claimLoot)
   const clearCombat = useCombatStore((s) => s.clearCombat)
+  const player = usePlayerStore((s) => s.player)
+  const resolveCannibalize = usePlayerStore((s) => s.resolveCannibalize)
 
   if (!result?.victory) return null
 
@@ -124,6 +128,19 @@ export function LootScreen() {
             })}
           </div>
         </div>
+      )}
+
+      {player?.pendingCannibalize && (
+        <Card className="mx-4 mb-4 border-purple-500/40">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm text-white">💀 Каннибализм — съесть труп?</p>
+            <p className="text-[10px] text-slate-400">Восстановит ~{getCannibalizeHeal(player)} HP</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="default" onClick={() => resolveCannibalize(true)}>Съесть</Button>
+              <Button variant="outline" onClick={() => resolveCannibalize(false)}>Отказаться</Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="p-4 pb-8">

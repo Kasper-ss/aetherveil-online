@@ -3,7 +3,7 @@ import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId,
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
 import { parseReferralStartParam } from '@/data/referrals'
 import { getTelegramStartParam } from '@/lib/telegram'
-import { pickNewerPlayer } from '@/lib/playerMigration'
+import { pickNewerPlayer, SAVE_VERSION } from '@/lib/playerMigration'
 import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
@@ -18,6 +18,10 @@ import {
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta } from '@/data/items'
 import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
+import { usesPetClass, isManaClass } from '@/lib/classCompat'
+import {
+  applyRacialAbility, canUseRacialAbility, getCannibalizeHeal,
+} from '@/lib/racialAbilities'
 import {
   applyRarityUpgrade, canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems,
   getRarityUpgradeBlockReason, getRarityUpgradeCost, RARITY_DUPLICATES_REQUIRED,
@@ -132,7 +136,10 @@ interface PlayerState {
   canClaimDaily: () => boolean
   completeTutorial: () => void
   regenerateEnergy: () => void
+  selectRace: (raceId: import('@/types/game').PlayerRace) => void
   selectClass: (classId: PlayerClass) => void
+  useRacialAbility: () => boolean
+  resolveCannibalize: (eat: boolean) => void
   addResources: (resources: Partial<Record<ResourceId, number>>) => void
   spendResources: (resources: Partial<Record<ResourceId, number>>) => boolean
   upgradeProfessionSkill: (professionId: ProfessionId, skillIndex: number) => boolean
@@ -296,11 +303,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
       }
+      const preVersion = player.saveVersion ?? 0
       const refCode = parseReferralStartParam(getTelegramStartParam())
       if (refCode && !player.referredBy && refCode !== player.referralCode) {
         player = { ...player, referredBy: refCode }
       }
       player = migratePlayer(player)
+      if (preVersion < SAVE_VERSION) {
+        storageSet(SAVE_KEY, player)
+        await savePlayerToSupabase(player)
+      }
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
@@ -314,12 +326,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
       }
+      const preVersion = player.saveVersion ?? 0
       const refCode = parseReferralStartParam(getTelegramStartParam())
       if (refCode && !player.referredBy && refCode !== player.referralCode) {
         player = { ...player, referredBy: refCode }
       }
       player = migratePlayer(player)
       storageSet(SAVE_KEY, player)
+      if (preVersion < SAVE_VERSION) {
+        await savePlayerToSupabase(player)
+      }
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
@@ -963,12 +979,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     return true
   },
 
+  selectRace: (raceId) => {
+    get().updatePlayer({ raceId, raceSelected: true })
+  },
+
   selectClass: (classId) => {
     const classData = getClassData(classId)
     const mainItem = createItemInstance(classData.startingWeaponId)
     const equipped = { ...EMPTY_EQUIPPED }
     if (mainItem) {
-      if (classId === 'summoner') equipped.pet = mainItem
+      if (usesPetClass(classId)) equipped.pet = mainItem
       else equipped.weapon = mainItem
     }
     const level = get().player?.level ?? 1
@@ -985,12 +1005,35 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       maxEnergy: BASE_MAX_ENERGY,
       currentHp: getCombatMaxHp({ ...get().player!, classId, stats: classData.stats, level: get().player!.level }),
       hpLastRegenAt: new Date().toISOString(),
-      ...(classId === 'mage' ? {
+      ...(isManaClass(classId) ? {
         maxMana: getMaxMana({ ...get().player!, classId, level: get().player!.level }),
         currentMana: getMaxMana({ ...get().player!, classId, level: get().player!.level }),
         manaLastRegenAt: new Date().toISOString(),
       } : {}),
     })
+  },
+
+  useRacialAbility: () => {
+    const { player } = get()
+    if (!player || !canUseRacialAbility(player)) return false
+    const result = applyRacialAbility(player)
+    get().updatePlayer(result.player)
+    return true
+  },
+
+  resolveCannibalize: (eat) => {
+    const { player } = get()
+    if (!player?.pendingCannibalize) return
+    if (eat) {
+      const heal = getCannibalizeHeal(player)
+      const maxHp = getCombatMaxHp(player)
+      get().updatePlayer({
+        pendingCannibalize: false,
+        currentHp: Math.min(maxHp, (player.currentHp ?? maxHp) + heal),
+      })
+    } else {
+      get().updatePlayer({ pendingCannibalize: false })
+    }
   },
 
   addResources: (resources) => {

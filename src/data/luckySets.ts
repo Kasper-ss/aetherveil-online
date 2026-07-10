@@ -44,7 +44,7 @@ export const LUCKY_SETS: LuckySetDef[] = [
   },
   {
     id: 'lucky_archer',
-    classId: 'archer',
+    classId: 'hunter',
     name: 'Lucky · Лучник',
     classLabel: 'Лучник',
     bonus: FULL_LUCK_DESC,
@@ -60,7 +60,7 @@ export const LUCKY_SETS: LuckySetDef[] = [
   },
   {
     id: 'lucky_summoner',
-    classId: 'summoner',
+    classId: 'priest',
     name: 'Lucky · Призыватель',
     classLabel: 'Призыватель',
     bonus: FULL_LUCK_DESC,
@@ -68,7 +68,7 @@ export const LUCKY_SETS: LuckySetDef[] = [
   },
   {
     id: 'lucky_assassin',
-    classId: 'assassin',
+    classId: 'rogue',
     name: 'Lucky · Убийца',
     classLabel: 'Убийца',
     bonus: FULL_LUCK_DESC,
@@ -76,7 +76,7 @@ export const LUCKY_SETS: LuckySetDef[] = [
   },
   {
     id: 'lucky_knight',
-    classId: 'knight',
+    classId: 'paladin',
     name: 'Lucky · Рыцарь',
     classLabel: 'Рыцарь',
     bonus: FULL_LUCK_DESC,

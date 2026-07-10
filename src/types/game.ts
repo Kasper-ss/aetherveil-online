@@ -12,7 +12,10 @@ export type SkillId =
   | 'backstab' | 'poison_dagger' | 'smoke_bomb' | 'lethal_strike' | 'aether_blade'
   | 'shield_bash' | 'holy_smite' | 'iron_fortress' | 'judgment' | 'aether_aegis'
 export type EnemyPattern = 'aggressive' | 'defensive' | 'berserker' | 'boss'
-export type PlayerClass = 'warrior' | 'archer' | 'mage' | 'summoner' | 'assassin' | 'knight'
+export type PlayerClass =
+  | 'warrior' | 'paladin' | 'hunter' | 'rogue' | 'priest'
+  | 'shaman' | 'mage' | 'warlock' | 'druid' | 'monk'
+export type PlayerRace = 'human' | 'dwarf' | 'night_elf' | 'orc' | 'undead' | 'troll' | 'blood_elf'
 export type ProfessionId = 'blacksmith' | 'alchemist' | 'hunter' | 'jeweler' | 'sorcerer'
 export type ResourceId =
   | 'iron_ore' | 'herb' | 'hide' | 'meat' | 'gem_shard' | 'mana_crystal'
@@ -121,6 +124,7 @@ export interface ClassData {
   stats: Stats
   startingSkill: SkillId
   startingWeaponId: string
+  allowedRaces: PlayerRace[] | 'all'
 }
 
 export interface Item {
@@ -251,6 +255,12 @@ export interface Player {
   pvpLosses: number
   classId?: PlayerClass
   classSelected: boolean
+  raceId?: PlayerRace
+  raceSelected: boolean
+  racialCooldownUntil?: string
+  racialStealthTurns?: number
+  racialBerserkTurns?: number
+  pendingCannibalize?: boolean
   profession?: ProfessionId
   activeProfessions?: ProfessionId[]
   professionSlotLimit?: number

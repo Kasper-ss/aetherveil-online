@@ -5,6 +5,8 @@ import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
+import { isHighCritClass } from '@/lib/classCompat'
+import { getRacialStatPassives } from '@/lib/racialAbilities'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -28,9 +30,9 @@ export const MAX_DODGE_CHANCE = 0.7
 /** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
 export const DODGE_SPEED_FACTOR = 0.008
 export const DODGE_STEALTH_FACTOR = 0.012
-/** Max crit % by class: archer/assassin 80%, others 45%. */
+/** Max crit % by class: hunter/rogue/monk line 80%, others 45%. */
 export function getMaxCritChanceForClass(classId?: PlayerClass): number {
-  if (classId === 'archer' || classId === 'assassin') return 80
+  if (isHighCritClass(classId)) return 80
   return 45
 }
 
@@ -135,7 +137,14 @@ export function formatDuration(ms: number): string {
 
 export function getEffectiveStats(player: Player): EffectiveStats {
   const alloc = getAllocatedStats(player)
-  const base = { ...player.stats }
+  const racial = getRacialStatPassives(player.raceId)
+  const base = {
+    ...player.stats,
+    atk: (player.stats.atk ?? 0) + (racial.atk ?? 0),
+    def: (player.stats.def ?? 0) + (racial.def ?? 0),
+    crit: (player.stats.crit ?? 0) + (racial.crit ?? 0),
+    speed: (player.stats.speed ?? 0) + (racial.speed ?? 0),
+  }
   const totals = { atk: 0, def: 0, hp: 0, crit: 0, speed: 0, stealth: 0 }
 
   for (const slot of EQUIP_SLOTS) {

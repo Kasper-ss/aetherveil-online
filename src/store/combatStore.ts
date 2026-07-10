@@ -19,6 +19,7 @@ import { WORLD_BOSS_REWARDS, buildWorldBossEnemy, getWorldBossCooldown, isWorldB
 import { createItemInstance } from '@/data/items'
 import { scaleEnemyForPlayerPower, getPlayerCombatEase, formatCombatEaseHint } from '@/lib/combatScaling'
 import { applyCombatRewardEase } from '@/lib/combatRewards'
+import { applyRacialAbility, canUseRacialAbility, rollDwarfTreasureFind, tickRacialCombatState } from '@/lib/racialAbilities'
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
@@ -39,6 +40,7 @@ interface CombatStore {
   playerSkill: (skillId: SkillId) => void
   useConsumableInCombat: (itemId: ConsumableId) => boolean
   eatFoodInCombat: (itemId: string) => boolean
+  useRacialAbilityInCombat: () => boolean
   fleeCombat: () => void
   endCombat: (victory: boolean) => void
   claimLoot: () => void
@@ -507,6 +509,19 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     return true
   },
 
+  useRacialAbilityInCombat: () => {
+    const { combat, isActive } = get()
+    if (!combat || !isActive || combat.isPvp) return false
+    const playerStore = usePlayerStore.getState()
+    const player = playerStore.player
+    if (!player || !canUseRacialAbility(player)) return false
+    const applied = applyRacialAbility(player)
+    playerStore.updatePlayer(applied.player)
+    const logs = [...combat.combatLog, logEntry(applied.log, 'skill')]
+    set({ combat: { ...combat, combatLog: logs.slice(-30) } })
+    return true
+  },
+
   fleeCombat: () => {
     const { combat, isActive, tickInterval } = get()
     if (!combat || !isActive || combat.isPvp || combat.isBoss || combat.isWorldBoss) return
@@ -571,6 +586,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           : { exp: rawExp, gold: rawGold }
         exp = eased.exp
         gold = eased.gold
+        if (pvePlayer?.raceId === 'dwarf') {
+          const treasure = rollDwarfTreasureFind('dwarf')
+          if (treasure) gold += treasure.gold
+        }
         const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
         const isEpic = !!combat.enemy.isEpic
         const isMiniBoss = !!combat.enemy.isMiniBoss
@@ -596,6 +615,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (!victory && !combat.isPvp) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
+    }
+
+    if (victory && !combat.isPvp && !combat.isBoss) {
+      const p = usePlayerStore.getState().player
+      if (p) {
+        const racialTick = tickRacialCombatState(p)
+        const updates = { ...racialTick } as Partial<import('@/types/game').Player>
+        if (p.raceId === 'undead') updates.pendingCannibalize = true
+        usePlayerStore.getState().updatePlayer(updates)
+      }
     }
 
     if (!combat.isPvp) {

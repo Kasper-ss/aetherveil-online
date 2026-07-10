@@ -1,10 +1,11 @@
 import type { Player } from '@/types/game'
+import { isManaClass } from '@/lib/classCompat'
 
 export const BASE_MAX_MANA = 100
 export const BASE_MANA_REGEN_MS = 12_000
 
 export function usesMana(player: Player): boolean {
-  return player.classId === 'mage'
+  return isManaClass(player.classId)
 }
 
 export function getMaxMana(player: Player): number {
@@ -28,6 +29,7 @@ export function getManaFullInMs(player: Player): number {
   const max = getMaxMana(player)
   const current = getPlayerCurrentMana(player)
   if (current >= max) return 0
+  const interval = getManaRegenIntervalMs(player)
   const missing = max - current
-  return missing * getManaRegenIntervalMs(player)
+  return Math.ceil((missing / max) * interval)
 }

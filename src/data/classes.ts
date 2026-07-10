@@ -1,4 +1,4 @@
-import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item } from '@/types/game'
+import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item, PlayerClass } from '@/types/game'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
@@ -157,47 +157,89 @@ export const PROFESSIONS: Profession[] = [
 export const CLASSES: ClassData[] = [
   {
     id: 'warrior', name: 'Warrior', nameRu: 'Воин', icon: '⚔️',
-    description: 'Balanced fighter with high HP and solid ATK.',
-    descriptionRu: 'Сбалансированный боец с высоким HP и хорошим ATK.',
+    description: 'Melee master, tanking and high damage. Most versatile class.',
+    descriptionRu: 'Мастер ближнего боя, танкование и высокий урон. Самый универсальный класс.',
     stats: { atk: 14, def: 8, hp: 120, crit: 5, speed: 8 },
-    startingSkill: 'dual_blades', startingWeaponId: 'weapon_t1',
+    startingSkill: 'dual_blades', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
   },
   {
-    id: 'archer', name: 'Archer', nameRu: 'Лучник', icon: '🏹',
-    description: 'Fast and precise with high crit chance.',
-    descriptionRu: 'Быстрый и точный с высоким шансом крита.',
+    id: 'paladin', name: 'Paladin', nameRu: 'Паладин', icon: '🛡️',
+    description: 'Holy warrior — tank, healer and DPS.',
+    descriptionRu: 'Священный воин. Отличный танк, хилер и ДД в одной упаковке.',
+    stats: { atk: 11, def: 12, hp: 130, crit: 4, speed: 7 },
+    startingSkill: 'dual_blades', startingWeaponId: 'weapon_t1',
+    allowedRaces: ['human', 'dwarf', 'blood_elf'],
+  },
+  {
+    id: 'hunter', name: 'Hunter', nameRu: 'Охотник', icon: '🏹',
+    description: 'Ranged DPS with a pet. Strong in PvP.',
+    descriptionRu: 'Стрелок с питомцем. Отличный ДД на дистанции и в PvP.',
     stats: { atk: 12, def: 5, hp: 90, crit: 14, speed: 14 },
-    startingSkill: 'dash_strike', startingWeaponId: 'weapon_t1',
+    startingSkill: 'dash_strike', startingWeaponId: 'pet_t1',
+    allowedRaces: ['human', 'dwarf', 'night_elf', 'orc', 'troll', 'blood_elf'],
+  },
+  {
+    id: 'rogue', name: 'Rogue', nameRu: 'Разбойник', icon: '🗡️',
+    description: 'Stealth, control and burst damage. PvP king.',
+    descriptionRu: 'Мастер скрытности, контроля и бурст-урона. Король PvP.',
+    stats: { atk: 15, def: 4, hp: 85, crit: 18, speed: 16 },
+    startingSkill: 'dash_strike', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
+  },
+  {
+    id: 'priest', name: 'Priest', nameRu: 'Жрец', icon: '✝️',
+    description: 'Best healer, powerful shadow DPS.',
+    descriptionRu: 'Лучший хилер в игре, также мощный спелл-ДД (Shadow).',
+    stats: { atk: 10, def: 6, hp: 100, crit: 6, speed: 9 },
+    startingSkill: 'healing_light', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
+  },
+  {
+    id: 'shaman', name: 'Shaman', nameRu: 'Шаман', icon: '⚡',
+    description: 'Elementalist, healer and DPS with totems.',
+    descriptionRu: 'Элементалист, хилер и ДД. Уникальные тотемы.',
+    stats: { atk: 13, def: 7, hp: 105, crit: 7, speed: 10 },
+    startingSkill: 'healing_light', startingWeaponId: 'weapon_t1',
+    allowedRaces: ['dwarf', 'troll', 'orc'],
   },
   {
     id: 'mage', name: 'Mage', nameRu: 'Маг', icon: '🔮',
-    description: 'Devastating magic damage, fragile defense.',
-    descriptionRu: 'Разрушительный магический урон, слабая защита.',
+    description: 'Control and AoE damage master.',
+    descriptionRu: 'Мастер контроля и AoE-урона. Один из самых весёлых классов.',
     stats: { atk: 16, def: 4, hp: 80, crit: 8, speed: 10 },
-    startingSkill: 'sword_skill', startingWeaponId: 'weapon_t1',
+    startingSkill: 'sword_skill', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
   },
   {
-    id: 'summoner', name: 'Summoner', nameRu: 'Призыватель', icon: '👻',
-    description: 'Support specialist with healing abilities.',
-    descriptionRu: 'Специалист поддержки с лечением.',
-    stats: { atk: 10, def: 6, hp: 100, crit: 6, speed: 9 },
-    startingSkill: 'healing_light', startingWeaponId: 'pet_t1',
+    id: 'warlock', name: 'Warlock', nameRu: 'Чернокнижник', icon: '👿',
+    description: 'Demon summoner, DoT damage and control.',
+    descriptionRu: 'Призыватель демонов, мощный DoT-урон и контроль.',
+    stats: { atk: 15, def: 4, hp: 82, crit: 9, speed: 9 },
+    startingSkill: 'sword_skill', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
   },
   {
-    id: 'assassin', name: 'Assassin', nameRu: 'Убийца', icon: '🗡️',
-    description: 'Glass cannon with extreme crit and speed.',
-    descriptionRu: 'Стеклянная пушка с экстремальным критом и скоростью.',
-    stats: { atk: 15, def: 4, hp: 85, crit: 18, speed: 16 },
-    startingSkill: 'dash_strike', startingWeaponId: 'weapon_t1',
+    id: 'druid', name: 'Druid', nameRu: 'Друид', icon: '🐻',
+    description: 'Tank, healer and DPS in one class.',
+    descriptionRu: 'Единственный класс, который может быть танком, хилером и ДД.',
+    stats: { atk: 11, def: 9, hp: 115, crit: 6, speed: 9 },
+    startingSkill: 'healing_light', startingWeaponId: 'weapon_t1',
+    allowedRaces: ['night_elf'],
   },
   {
-    id: 'knight', name: 'Knight', nameRu: 'Рыцарь', icon: '🛡️',
-    description: 'Tank with highest HP and defense.',
-    descriptionRu: 'Танк с максимальным HP и защитой.',
-    stats: { atk: 11, def: 12, hp: 130, crit: 4, speed: 7 },
-    startingSkill: 'dual_blades', startingWeaponId: 'weapon_t1',
+    id: 'monk', name: 'Monk', nameRu: 'Монах', icon: '🥋',
+    description: 'Mobile melee fighter with healing and control.',
+    descriptionRu: 'Мобильный боец ближнего боя с отличным хилом и контролем.',
+    stats: { atk: 13, def: 7, hp: 110, crit: 10, speed: 14 },
+    startingSkill: 'dash_strike', startingWeaponId: 'weapon_t1', allowedRaces: 'all',
   },
 ]
+
+export function getClassesForRace(raceId: import('@/types/game').PlayerRace): ClassData[] {
+  return CLASSES.filter((c) => c.allowedRaces === 'all' || c.allowedRaces.includes(raceId))
+}
+
+export function canPickClass(raceId: import('@/types/game').PlayerRace, classId: PlayerClass): boolean {
+  const cls = CLASSES.find((c) => c.id === classId)
+  if (!cls) return false
+  return cls.allowedRaces === 'all' || cls.allowedRaces.includes(raceId)
+}
 
 export const CRAFT_RECIPES: CraftRecipe[] = [
   { id: 'craft_helmet_t3', resultItemId: 'helmet_t3', name: 'Стальной шлем', description: 'ЗАЩ +8, HP +30', resources: { iron_ore: 12, upgrade_core: 2 }, goldCost: 250, requiredProfession: 'blacksmith', requiredProfessionLevel: 5 },

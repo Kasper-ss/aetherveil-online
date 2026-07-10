@@ -47,7 +47,7 @@ export const KITCHEN_RECIPES: KitchenRecipe[] = [
     buffMult: 1.15,
     buffDurationMs: 25 * 60_000,
     buffLabel: 'Травяной суп',
-    classBonus: 'knight',
+    classBonus: 'paladin',
     classDiscount: 0.12,
   },
   {
@@ -63,7 +63,7 @@ export const KITCHEN_RECIPES: KitchenRecipe[] = [
     buffMult: 1.12,
     buffDurationMs: 20 * 60_000,
     buffLabel: 'Рыбный гриль',
-    classBonus: 'archer',
+    classBonus: 'hunter',
     classDiscount: 0.12,
   },
   {
@@ -79,7 +79,7 @@ export const KITCHEN_RECIPES: KitchenRecipe[] = [
     buffMult: 1.15,
     buffDurationMs: 30 * 60_000,
     buffLabel: 'Морской пир',
-    classBonus: 'assassin',
+    classBonus: 'rogue',
     classDiscount: 0.1,
   },
   {
@@ -111,7 +111,7 @@ export const KITCHEN_RECIPES: KitchenRecipe[] = [
     buffMult: 1.18,
     buffDurationMs: 40 * 60_000,
     buffLabel: 'Эфирное суши',
-    classBonus: 'summoner',
+    classBonus: 'priest',
     classDiscount: 0.1,
   },
 ]

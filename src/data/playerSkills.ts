@@ -1,4 +1,5 @@
 import type { PlayerClass, ResourceId, Skill, SkillId } from '@/types/game'
+import { normalizeClassId } from '@/lib/classCompat'
 
 export const SKILL_MAX_LEVEL = 10
 
@@ -189,13 +190,45 @@ export const CLASS_SKILL_TREES: Record<PlayerClass, ClassSkillNode[]> = {
     { unlockLevel: 40, skillId: 'executioner' },
     { unlockLevel: 50, skillId: 'aether_rampage' },
   ],
-  archer: [
+  paladin: [
+    { unlockLevel: 1, skillId: 'dual_blades' },
+    { unlockLevel: 10, skillId: 'shield_bash' },
+    { unlockLevel: 20, skillId: 'holy_smite' },
+    { unlockLevel: 30, skillId: 'iron_fortress' },
+    { unlockLevel: 40, skillId: 'judgment' },
+    { unlockLevel: 50, skillId: 'aether_aegis' },
+  ],
+  hunter: [
     { unlockLevel: 1, skillId: 'dash_strike' },
     { unlockLevel: 10, skillId: 'piercing_shot' },
     { unlockLevel: 20, skillId: 'volley' },
     { unlockLevel: 30, skillId: 'trap_shot' },
     { unlockLevel: 40, skillId: 'headshot' },
     { unlockLevel: 50, skillId: 'aether_rain' },
+  ],
+  rogue: [
+    { unlockLevel: 1, skillId: 'dash_strike' },
+    { unlockLevel: 10, skillId: 'backstab' },
+    { unlockLevel: 20, skillId: 'poison_dagger' },
+    { unlockLevel: 30, skillId: 'smoke_bomb' },
+    { unlockLevel: 40, skillId: 'lethal_strike' },
+    { unlockLevel: 50, skillId: 'aether_blade' },
+  ],
+  priest: [
+    { unlockLevel: 1, skillId: 'healing_light' },
+    { unlockLevel: 10, skillId: 'spirit_bolt' },
+    { unlockLevel: 20, skillId: 'summon_guardian' },
+    { unlockLevel: 30, skillId: 'draining_touch' },
+    { unlockLevel: 40, skillId: 'group_heal' },
+    { unlockLevel: 50, skillId: 'aether_avatar' },
+  ],
+  shaman: [
+    { unlockLevel: 1, skillId: 'healing_light' },
+    { unlockLevel: 10, skillId: 'fireball' },
+    { unlockLevel: 20, skillId: 'chain_lightning' },
+    { unlockLevel: 30, skillId: 'spirit_bolt' },
+    { unlockLevel: 40, skillId: 'arcane_orb' },
+    { unlockLevel: 50, skillId: 'aether_storm' },
   ],
   mage: [
     { unlockLevel: 1, skillId: 'sword_skill' },
@@ -205,29 +238,29 @@ export const CLASS_SKILL_TREES: Record<PlayerClass, ClassSkillNode[]> = {
     { unlockLevel: 40, skillId: 'arcane_orb' },
     { unlockLevel: 50, skillId: 'aether_storm' },
   ],
-  summoner: [
-    { unlockLevel: 1, skillId: 'healing_light' },
-    { unlockLevel: 10, skillId: 'spirit_bolt' },
-    { unlockLevel: 20, skillId: 'summon_guardian' },
-    { unlockLevel: 30, skillId: 'draining_touch' },
-    { unlockLevel: 40, skillId: 'group_heal' },
-    { unlockLevel: 50, skillId: 'aether_avatar' },
+  warlock: [
+    { unlockLevel: 1, skillId: 'sword_skill' },
+    { unlockLevel: 10, skillId: 'fireball' },
+    { unlockLevel: 20, skillId: 'draining_touch' },
+    { unlockLevel: 30, skillId: 'poison_dagger' },
+    { unlockLevel: 40, skillId: 'chain_lightning' },
+    { unlockLevel: 50, skillId: 'aether_storm' },
   ],
-  assassin: [
+  druid: [
+    { unlockLevel: 1, skillId: 'healing_light' },
+    { unlockLevel: 10, skillId: 'shield_bash' },
+    { unlockLevel: 20, skillId: 'spirit_bolt' },
+    { unlockLevel: 30, skillId: 'iron_fortress' },
+    { unlockLevel: 40, skillId: 'group_heal' },
+    { unlockLevel: 50, skillId: 'aether_aegis' },
+  ],
+  monk: [
     { unlockLevel: 1, skillId: 'dash_strike' },
     { unlockLevel: 10, skillId: 'backstab' },
-    { unlockLevel: 20, skillId: 'poison_dagger' },
+    { unlockLevel: 20, skillId: 'healing_light' },
     { unlockLevel: 30, skillId: 'smoke_bomb' },
     { unlockLevel: 40, skillId: 'lethal_strike' },
     { unlockLevel: 50, skillId: 'aether_blade' },
-  ],
-  knight: [
-    { unlockLevel: 1, skillId: 'dual_blades' },
-    { unlockLevel: 10, skillId: 'shield_bash' },
-    { unlockLevel: 20, skillId: 'holy_smite' },
-    { unlockLevel: 30, skillId: 'iron_fortress' },
-    { unlockLevel: 40, skillId: 'judgment' },
-    { unlockLevel: 50, skillId: 'aether_aegis' },
   ],
 }
 
@@ -238,13 +271,14 @@ export function getUnlockedSkillsForLevel(classId: PlayerClass, level: number): 
 }
 
 export function syncPlayerSkills(
-  classId: PlayerClass | undefined,
+  classId: PlayerClass | string | undefined,
   level: number,
   currentSkills: SkillId[],
   currentLevels: Partial<Record<SkillId, number>>,
 ): { skills: SkillId[]; skillLevels: Partial<Record<SkillId, number>> } {
-  if (!classId) return { skills: currentSkills, skillLevels: currentLevels }
-  const unlocked = getUnlockedSkillsForLevel(classId, level)
+  const normalized = normalizeClassId(classId as string)
+  if (!normalized) return { skills: currentSkills, skillLevels: currentLevels }
+  const unlocked = getUnlockedSkillsForLevel(normalized, level)
   const skillLevels = { ...currentLevels }
   for (const sid of unlocked) {
     if (!skillLevels[sid]) skillLevels[sid] = 1
