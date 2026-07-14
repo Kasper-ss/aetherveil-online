@@ -12,6 +12,10 @@ class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState>
   state: ErrorBoundaryState = { error: null }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    // Telegram SDK throws this when multiple native popups open at once — recover silently
+    if (error.message === 'WebAppPopupOpened') {
+      return { error: null }
+    }
     return { error }
   }
 

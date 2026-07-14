@@ -90,6 +90,50 @@ const DEV_MOCK_USER: TelegramUser = {
   language_code: 'en',
 }
 
+type AlertEntry = { message: string; onClose?: () => void }
+
+const alertQueue: AlertEntry[] = []
+let alertShowing = false
+let popupListenerBound = false
+
+function bindPopupClosedListener(webApp: TelegramWebApp): void {
+  if (popupListenerBound) return
+  popupListenerBound = true
+  webApp.onEvent?.('popupClosed', () => {
+    if (!alertShowing) return
+    alertShowing = false
+    window.setTimeout(drainAlertQueue, 50)
+  })
+}
+
+function drainAlertQueue(): void {
+  if (alertShowing) return
+  const next = alertQueue.shift()
+  if (!next) return
+
+  const webApp = getWebApp()
+  if (!webApp?.showAlert) {
+    alert(next.message)
+    next.onClose?.()
+    drainAlertQueue()
+    return
+  }
+
+  alertShowing = true
+  try {
+    webApp.showAlert(next.message, () => {
+      alertShowing = false
+      next.onClose?.()
+      drainAlertQueue()
+    })
+  } catch (error) {
+    console.warn('[telegram] showAlert failed, retrying', error)
+    alertShowing = false
+    alertQueue.unshift(next)
+    window.setTimeout(drainAlertQueue, 400)
+  }
+}
+
 export function getWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null
 }
@@ -134,6 +178,7 @@ export function initTelegramWebApp(): TelegramWebApp | null {
 
   applyTelegramTheme(webApp)
   applyTelegramViewport(webApp)
+  bindPopupClosedListener(webApp)
 
   return webApp
 }
@@ -192,15 +237,10 @@ export function hapticError(): void {
   getWebApp()?.HapticFeedback?.notificationOccurred('error')
 }
 
-/** alert() часто не виден в WebView Telegram — используем showAlert */
+/** alert() часто не виден в WebView Telegram — используем showAlert с очередью (один popup за раз) */
 export function showTelegramAlert(message: string, onClose?: () => void): void {
-  const webApp = getWebApp()
-  if (webApp?.showAlert) {
-    webApp.showAlert(message, onClose)
-    return
-  }
-  alert(message)
-  onClose?.()
+  alertQueue.push({ message, onClose })
+  drainAlertQueue()
 }
 
 /**
