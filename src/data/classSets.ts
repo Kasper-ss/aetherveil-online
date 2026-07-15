@@ -1,8 +1,25 @@
 import type { PlayerClass } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
-import { CLASSES } from '@/data/classes'
 
 const PIECES: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon']
+
+/** Lightweight class metadata — kept here to avoid circular imports with classes/items. */
+export const CLASS_META: Array<{ id: PlayerClass; nameRu: string; icon: string }> = [
+  { id: 'warrior', nameRu: 'Воин', icon: '⚔️' },
+  { id: 'paladin', nameRu: 'Паладин', icon: '🛡️' },
+  { id: 'hunter', nameRu: 'Охотник', icon: '🏹' },
+  { id: 'rogue', nameRu: 'Разбойник', icon: '🗡️' },
+  { id: 'priest', nameRu: 'Жрец', icon: '✝️' },
+  { id: 'shaman', nameRu: 'Шаман', icon: '⚡' },
+  { id: 'mage', nameRu: 'Маг', icon: '🔮' },
+  { id: 'warlock', nameRu: 'Чернокнижник', icon: '👿' },
+  { id: 'druid', nameRu: 'Друид', icon: '🐻' },
+  { id: 'monk', nameRu: 'Монах', icon: '🥋' },
+]
+
+export const CLASS_NAME_RU: Record<PlayerClass, string> = Object.fromEntries(
+  CLASS_META.map((c) => [c.id, c.nameRu]),
+) as Record<PlayerClass, string>
 
 const SET_THEMES: Record<PlayerClass, [string, string, string]> = {
   warrior: ['Страж', 'Берсерк', 'Защитник'],
@@ -39,7 +56,7 @@ export interface ClassSetDef {
   pieces: Array<{ slot: EquipSlot; name: string; icon: string; stats: Partial<import('@/types/game').Stats> }>
 }
 
-export const CLASS_COMMON_SETS: ClassSetDef[] = CLASSES.flatMap((cls) => {
+export const CLASS_COMMON_SETS: ClassSetDef[] = CLASS_META.flatMap((cls) => {
   const themes = SET_THEMES[cls.id]
   return themes.map((theme, themeIndex) => {
     const setId = `class_${cls.id}_${themeIndex + 1}`

@@ -1,7 +1,7 @@
 import type { CraftRecipe, ShopItem } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 import { ALL_ITEMS } from '@/data/items'
-import { getClassData } from '@/data/classes'
+import { CLASS_NAME_RU } from '@/data/classSets'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 
 export interface SetScrollProduct {
@@ -54,7 +54,7 @@ function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
   const rarity = recipe.setCraftRarity
   if (rarity !== 'epic' && rarity !== 'legendary' && rarity !== 'mythic') return null
   const item = ALL_ITEMS[recipe.resultItemId]
-  const classLabel = item?.requiredClass ? getClassData(item.requiredClass).nameRu : null
+  const classLabel = item?.requiredClass ? CLASS_NAME_RU[item.requiredClass] : null
   const classNote = classLabel ? ` Предмет для класса «${classLabel}».` : ''
   return {
     scrollId: `scroll_${recipe.id}`,

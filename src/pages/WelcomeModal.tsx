@@ -11,9 +11,11 @@ export function WelcomeModal() {
   const show = Boolean(player?.classSelected && player.raceSelected && !player.welcomeShown)
   if (!show || !player?.classId || !player.raceId) return null
 
-  const className = getClassData(player.classId).nameRu
+  const classData = getClassData(player.classId)
   const race = getRaceData(player.raceId)
-  if (!race) return null
+  if (!classData || !race) return null
+
+  const className = classData.nameRu
 
   function handleStart() {
     completeWelcome()
@@ -35,7 +37,7 @@ export function WelcomeModal() {
         <div className="bg-aether-card border border-aether-border rounded-xl p-4 w-full max-w-sm space-y-2">
           <p className="text-xs text-slate-400">Ваш герой</p>
           <p className="text-lg text-white font-bold">
-            {race.icon} {race.nameRu} · {getClassData(player.classId).icon} {className}
+            {race.icon} {race.nameRu} · {classData.icon} {className}
           </p>
           <p className="text-[10px] text-slate-500">
             Этаж {player.highestFloor} · Ур. {player.level}
