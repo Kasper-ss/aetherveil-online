@@ -26,7 +26,7 @@ import {
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
-import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
+import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta } from '@/data/items'
 import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
@@ -559,8 +559,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const base = item.instanceId ? item : { ...item, instanceId: `${item.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
-    const stamped = stampItemClassBinding(base, player.classId)
-    const inst = ensureItemDurability(stamped)
+    const inst = ensureItemDurability(base)
     get().updatePlayer({ inventory: [...player.inventory, inst] })
   },
 
@@ -1930,12 +1929,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return false
     }
 
-    let inst = createItemInstance(recipe.resultItemId)
+    const craftTemplate = ALL_ITEMS[recipe.resultItemId]
+    const classBound = !!(recipe.setCraftRarity && craftTemplate?.requiredClass)
+    let inst = createItemInstance(recipe.resultItemId, { classBound })
     if (inst) {
       inst = applyBlacksmithCraftBonuses(player, inst)
       get().addItem(inst)
       if (Math.random() < getBlacksmithDoubleCraftChance(player)) {
-        const duplicate = applyBlacksmithCraftBonuses(player, createItemInstance(recipe.resultItemId)!)
+        const duplicate = applyBlacksmithCraftBonuses(player, createItemInstance(recipe.resultItemId, { classBound })!)
         if (duplicate) get().addItem(duplicate)
       }
     }

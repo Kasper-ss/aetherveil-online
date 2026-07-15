@@ -413,7 +413,6 @@ for (const set of CLASS_COMMON_SETS) {
       sellPrice: 80,
       setId: set.id,
       setName: set.name,
-      requiredClass: set.classId,
       upgradeLevel: 1,
       starLevel: 0,
     }
@@ -519,7 +518,7 @@ export function getItemTemplate(id: string): Item | undefined {
   return ALL_ITEMS[id]
 }
 
-export function createItemInstance(templateId: string): Item | null {
+export function createItemInstance(templateId: string, opts?: { classBound?: boolean }): Item | null {
   const template = ALL_ITEMS[templateId]
   if (!template) return null
   const base: Item = {
@@ -528,7 +527,12 @@ export function createItemInstance(templateId: string): Item | null {
     upgradeLevel: template.upgradeLevel ?? 1,
     starLevel: template.starLevel ?? 0,
   }
-  return ensureItemDurability(base)
+  const inst = ensureItemDurability(base)
+  if (!opts?.classBound && inst.requiredClass) {
+    const { requiredClass: _rc, ...rest } = inst
+    return rest as Item
+  }
+  return inst
 }
 
 export function getUpgradeLevelStepPercent(level: number): number {
@@ -635,33 +639,33 @@ export function buildItemBonusDescription(item: Item): string {
 }
 
 export function refreshItemMeta(item: Item): Item {
-  const stamped = stampItemClassBinding(item)
   return {
-    ...stamped,
-    name: formatItemDisplayName(stamped),
-    description: buildItemBonusDescription(stamped),
+    ...item,
+    name: formatItemDisplayName(item),
+    description: buildItemBonusDescription(item),
   }
+}
+
+export function clearItemClassBinding(item: Item): Item {
+  if (!item.requiredClass) return item
+  const { requiredClass: _rc, ...rest } = item
+  return rest as Item
 }
 
 export function resolveItemRequiredClass(
   item: Pick<Item, 'id' | 'requiredClass' | 'setId' | 'slot'>,
-  fallbackClassId?: import('@/types/game').PlayerClass,
 ): import('@/types/game').PlayerClass | undefined {
   if (item.requiredClass) return item.requiredClass
   const template = ALL_ITEMS[item.id]
   if (template?.requiredClass) return template.requiredClass
   const setId = item.setId ?? template?.setId
   if (setId && SET_CLASS_MAP[setId]) return SET_CLASS_MAP[setId]
-  if (fallbackClassId && item.slot !== 'consumable') return fallbackClassId
   return undefined
 }
 
-export function stampItemClassBinding(
-  item: Item,
-  fallbackClassId?: import('@/types/game').PlayerClass,
-): Item {
+export function stampItemClassBinding(item: Item): Item {
   if (item.slot === 'consumable') return item
-  const requiredClass = resolveItemRequiredClass(item, fallbackClassId)
+  const requiredClass = resolveItemRequiredClass(item)
   if (!requiredClass || item.requiredClass === requiredClass) return item
   return { ...item, requiredClass }
 }
@@ -676,19 +680,15 @@ export function rollEquipmentDrop(
   floor: number,
   isBoss: boolean,
   lootMult = 1,
-  classId?: import('@/types/game').PlayerClass,
 ): Item | null {
   const chance = Math.min(0.98, (isBoss ? 0.85 : 0.45) * lootMult)
   if (Math.random() > chance) return null
 
-  if (classId && Math.random() < 0.18) {
-    const sets = CLASS_COMMON_SETS.filter((s) => s.classId === classId)
-    if (sets.length > 0) {
-      const set = sets[Math.floor(Math.random() * sets.length)]
-      const piece = set.pieces[Math.floor(Math.random() * set.pieces.length)]
-      const inst = createItemInstance(`${set.id}_${piece.slot}`)
-      if (inst) return inst
-    }
+  if (Math.random() < 0.18 && CLASS_COMMON_SETS.length > 0) {
+    const set = CLASS_COMMON_SETS[Math.floor(Math.random() * CLASS_COMMON_SETS.length)]
+    const piece = set.pieces[Math.floor(Math.random() * set.pieces.length)]
+    const inst = createItemInstance(`${set.id}_${piece.slot}`)
+    if (inst) return inst
   }
 
   const dropTier = Math.floor(Math.random() * 4) + Math.min(8, Math.floor(floor / 4))
@@ -696,9 +696,7 @@ export function rollEquipmentDrop(
   const slots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']
   const slot = slots[Math.floor(Math.random() * slots.length)]
   const id = `${slot}_t${tier + 1}`
-  const item = createItemInstance(id)
-  if (!item) return null
-  return classId ? stampItemClassBinding(item, classId) : item
+  return createItemInstance(id)
 }
 
 export const EMPTY_EQUIPPED: EquippedItems = {

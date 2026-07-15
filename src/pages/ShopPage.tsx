@@ -18,7 +18,6 @@ import { formatNumber } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
 import { createItemInstance } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
-import { formatItemClassRestriction } from '@/lib/classGear'
 import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
 import { getVipTier, getNextVipLevel, getVipUpgradeStars } from '@/data/vipTiers'
 import { getVipMultipliers } from '@/lib/vipBonuses'
@@ -358,18 +357,18 @@ export function ShopPage() {
                 <>
                   <Badge variant={scrollMeta.rarity} className="text-[8px]">{RARITY_LABELS_RU[scrollMeta.rarity]}</Badge>
                   <Badge className="text-[8px] border border-aether-border">{scrollMeta.setName}</Badge>
+                  {scrollMeta.classLabel && (
+                    <Badge className="text-[8px] border border-amber-500/40 text-amber-300">
+                      Класс: {scrollMeta.classLabel}
+                    </Badge>
+                  )}
                 </>
               )}
-              {template && (
+              {template && item.type === 'equipment' && (
                 <Badge variant={template.rarity} className="text-[8px]">{RARITY_LABELS_RU[template.rarity]}</Badge>
               )}
-              {template?.setName && (
+              {template?.setName && item.type === 'equipment' && (
                 <Badge className="text-[8px] border border-aether-border">{template.setName}</Badge>
-              )}
-              {template && formatItemClassRestriction(template) && (
-                <Badge className="text-[8px] border border-amber-500/40 text-amber-300">
-                  {formatItemClassRestriction(template)}
-                </Badge>
               )}
             </div>
             {template && Object.keys(template.stats).length > 0 && (

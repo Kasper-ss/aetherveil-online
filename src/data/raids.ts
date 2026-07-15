@@ -89,9 +89,8 @@ export function generateRaidLoot(
   floor: number,
   isBoss: boolean,
   lootMult = 1,
-  classId?: import('@/types/game').PlayerClass,
 ): Item[] {
-  return generateVictoryLoot(floor, isBoss, 2.4 * lootMult, false, isBoss, classId)
+  return generateVictoryLoot(floor, isBoss, 2.4 * lootMult, false, isBoss)
 }
 
 export function getRaidCompletionBonus(floor: number): { gold: number; gems: number } {

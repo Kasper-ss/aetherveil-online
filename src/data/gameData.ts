@@ -1,5 +1,5 @@
 import type { ShopItem, DailyReward, ResourceId, Item } from '@/types/game'
-import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
+import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta, clearItemClassBinding } from '@/data/items'
 import { EMPTY_ALLOCATED, getMaxEnergy } from '@/lib/playerStats'
 import { ensureItemDurability } from '@/lib/equipmentDurability'
 import { getMaxMana, usesMana } from '@/lib/mana'
@@ -119,7 +119,6 @@ export function generateVictoryLoot(
   lootMult = 1,
   isEpic = false,
   isMiniBoss = false,
-  classId?: import('@/types/game').PlayerClass,
 ): Item[] {
   const loot: Item[] = []
   const bonusMult = isMiniBoss ? 1.65 : isEpic ? 1.5 : 1
@@ -128,14 +127,14 @@ export function generateVictoryLoot(
 
   if (!boostedRoll && Math.random() > 0.1) return loot
 
-  const drop = rollEquipmentDrop(floor, isBoss || isEpic || isMiniBoss, effectiveMult, classId)
+  const drop = rollEquipmentDrop(floor, isBoss || isEpic || isMiniBoss, effectiveMult)
   if (drop) loot.push(drop)
 
   if (isBoss && Math.random() > 0.35) {
-    const bonus = rollEquipmentDrop(floor, true, effectiveMult, classId)
+    const bonus = rollEquipmentDrop(floor, true, effectiveMult)
     if (bonus) loot.push(bonus)
   } else if (boostedRoll && Math.random() > (isMiniBoss ? 0.35 : 0.5)) {
-    const bonus = rollEquipmentDrop(floor, isBoss || isMiniBoss, effectiveMult, classId)
+    const bonus = rollEquipmentDrop(floor, isBoss || isMiniBoss, effectiveMult)
     if (bonus) loot.push(bonus)
   }
 
@@ -144,26 +143,27 @@ export function generateVictoryLoot(
 
 function sanitizeItem(
   i: import('@/types/game').Item,
-  classId?: import('@/types/game').PlayerClass,
+  stripClassBinding = false,
 ): import('@/types/game').Item {
-  const base = {
+  let base: import('@/types/game').Item = {
     ...i,
     stats: i.stats ?? {},
     rarity: (i.rarity as string) === 'uncommon' ? 'rare' : i.rarity,
     upgradeLevel: i.upgradeLevel ?? 1,
     starLevel: i.starLevel ?? 0,
   }
-  return refreshItemMeta(ensureItemDurability(stampItemClassBinding(base, classId)))
+  if (stripClassBinding) base = clearItemClassBinding(base)
+  return refreshItemMeta(ensureItemDurability(base))
 }
 
 function sanitizeEquipped(
   equipped: Partial<import('@/types/game').EquippedItems>,
-  classId?: import('@/types/game').PlayerClass,
+  stripClassBinding = false,
 ): import('@/types/game').EquippedItems {
   const result = { ...EMPTY_EQUIPPED }
   for (const slot of Object.keys(EMPTY_EQUIPPED) as (keyof import('@/types/game').EquippedItems)[]) {
     const item = equipped[slot]
-    result[slot] = item ? sanitizeItem(item, classId) : null
+    result[slot] = item ? sanitizeItem(item, stripClassBinding) : null
   }
   return result
 }
@@ -203,6 +203,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
   if (prevVersion < 7) {
     base = wipePlayerToFresh(base)
   }
+  const stripClassBinding = prevVersion < 12
   const normalizedClassId = normalizeClassId(base.classId as string | undefined)
   const synced = syncPlayerSkills(
     normalizedClassId,
@@ -220,11 +221,11 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     farmFloor: base.farmFloor ?? base.currentFloor ?? 1,
     floorMobKills: base.floorMobKills ?? {},
     floorMiniBossKills: base.floorMiniBossKills ?? {},
-    equipped: sanitizeEquipped(base.equipped ?? {}, normalizedClassId),
+    equipped: sanitizeEquipped(base.equipped ?? {}, stripClassBinding),
     inventory: (base.inventory ?? []).filter((i) => {
       const valid = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet', 'consumable']
       return valid.includes(i.slot)
-    }).map((i) => sanitizeItem(i, normalizedClassId)),
+    }).map((i) => sanitizeItem(i, stripClassBinding)),
     statPoints: base.statPoints ?? 0,
     allocatedStats: { ...EMPTY_ALLOCATED, ...base.allocatedStats },
     professionLevels: base.professionLevels ?? {},
@@ -310,7 +311,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     portalRun: base.portalRun
       ? {
           ...base.portalRun,
-          accumulatedLoot: (base.portalRun.accumulatedLoot ?? []).map((i) => sanitizeItem(i, normalizedClassId)),
+          accumulatedLoot: (base.portalRun.accumulatedLoot ?? []).map((i) => sanitizeItem(i, stripClassBinding)),
         }
       : null,
     secondaryClassId: base.secondaryClassId,
@@ -320,7 +321,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
         raidId,
         {
           ...progress,
-          accumulatedLoot: (progress.accumulatedLoot ?? []).map((i) => sanitizeItem(i, normalizedClassId)),
+          accumulatedLoot: (progress.accumulatedLoot ?? []).map((i) => sanitizeItem(i, stripClassBinding)),
         },
       ]),
     ),

@@ -785,7 +785,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         exp = eased.exp
         gold = eased.gold
         const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
-        loot.push(...generateRaidLoot(combat.floor, isBoss, lootMult, pvePlayer?.classId))
+        loot.push(...generateRaidLoot(combat.floor, isBoss, lootMult))
         resources = generateRaidResources(combat.floor, isBoss, lootMult)
       } else {
         const pvePlayer = usePlayerStore.getState().player
@@ -808,7 +808,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           : 1
         const lootMult = lootMultBase * portalMult
         const treatAsEpic = isEpic || (combat.isPortal && combat.portalType === 'red' && !combat.isBoss)
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss, pvePlayer?.classId))
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss))
         resources = generateCombatResources(combat.floor, combat.isBoss, treatAsEpic, isMiniBoss, lootMult)
       }
     } else if (combat.isPvp) {

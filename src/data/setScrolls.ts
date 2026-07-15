@@ -1,7 +1,7 @@
 import type { CraftRecipe, ShopItem } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 import { ALL_ITEMS } from '@/data/items'
-import { CLASS_NAME_RU } from '@/data/classSets'
+import { CLASS_NAME_RU, SET_CLASS_MAP } from '@/data/classSets'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
 
 export interface SetScrollProduct {
@@ -15,6 +15,7 @@ export interface SetScrollProduct {
   setId: string
   setName: string
   slot: EquipSlot
+  classLabel?: string
 }
 
 const SLOT_ORDER: EquipSlot[] = [
@@ -54,12 +55,13 @@ function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
   const rarity = recipe.setCraftRarity
   if (rarity !== 'epic' && rarity !== 'legendary' && rarity !== 'mythic') return null
   const item = ALL_ITEMS[recipe.resultItemId]
-  const classLabel = item?.requiredClass ? CLASS_NAME_RU[item.requiredClass] : null
+  const classId = item?.requiredClass ?? (item?.setId ? SET_CLASS_MAP[item.setId] : undefined)
+  const classLabel = classId ? CLASS_NAME_RU[classId] : null
   const classNote = classLabel ? ` Предмет для класса «${classLabel}».` : ''
   return {
     scrollId: `scroll_${recipe.id}`,
     recipeId: recipe.id,
-    nameRu: `Свиток: ${recipe.name}`,
+    nameRu: classLabel ? `Свиток: ${recipe.name} · ${classLabel}` : `Свиток: ${recipe.name}`,
     descriptionRu: `Открывает рецепт «${recipe.name}» в Кузнице.${classNote}`,
     goldPrice: rarity === 'mythic' ? MYTHIC_PIECE_GOLD : rarity === 'legendary' ? LEGENDARY_PIECE_GOLD : EPIC_PIECE_GOLD,
     gemsPrice: rarity === 'mythic' ? MYTHIC_PIECE_GEMS : rarity === 'legendary' ? LEGENDARY_PIECE_GEMS : EPIC_PIECE_GEMS,
@@ -67,6 +69,7 @@ function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
     setId: item?.setId ?? 'unknown',
     setName: item?.setName ?? 'Сет',
     slot: (item?.slot ?? 'weapon') as EquipSlot,
+    classLabel: classLabel ?? undefined,
   }
 }
 
