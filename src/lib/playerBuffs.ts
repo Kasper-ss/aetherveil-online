@@ -60,6 +60,29 @@ export function getCraftSuccessMultiplier(player: Player): number {
   return getPropertyMultipliers(player).craftSuccess * city.craftSuccess
 }
 
+/** Chance-based duplicate resources from city/property gather bonus. */
+export function rollExtraGatherResources(
+  player: Player,
+  resources: Partial<Record<import('@/types/game').ResourceId, number>>,
+): Partial<Record<import('@/types/game').ResourceId, number>> {
+  const mult = getGatherResourceMultiplier(player)
+  if (mult <= 1) return {}
+  const extra: Partial<Record<import('@/types/game').ResourceId, number>> = {}
+  for (const [resId, amount] of Object.entries(resources)) {
+    if (amount && Math.random() < mult - 1) {
+      extra[resId as import('@/types/game').ResourceId] = amount
+    }
+  }
+  return extra
+}
+
+/** Extra potion/craft output roll from alchemy lab and property bonuses. */
+export function rollCraftBonusExtra(player: Player): boolean {
+  const mult = getCraftSuccessMultiplier(player)
+  if (mult <= 1) return false
+  return Math.random() < Math.min(0.5, mult - 1)
+}
+
 export function getDailyBonusExtra(player: Player): { gold: number; gems: number } {
   if (!isBuffActive(player.buffDailyBonusUntil)) return { gold: 0, gems: 0 }
   return { gold: 50, gems: 5 }

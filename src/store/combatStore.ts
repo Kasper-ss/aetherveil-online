@@ -739,7 +739,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         const isEpic = !!combat.enemy.isEpic
         const isMiniBoss = !!combat.enemy.isMiniBoss
         loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, isEpic, isMiniBoss))
-        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic, isMiniBoss)
+        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic, isMiniBoss, lootMult)
       }
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player

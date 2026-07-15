@@ -51,7 +51,10 @@ export interface CityPlacedBuilding {
   y: number
   level: number
   builtAt: string
+  /** Initial build or upgrade completion time */
   readyAt?: string
+  /** Target level while upgrade is in progress */
+  pendingLevel?: number
 }
 
 export interface CityState {

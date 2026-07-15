@@ -30,7 +30,7 @@ import {
   type CityBuildingId,
 } from '@/data/cityBuildings'
 import { canAffordCityCosts } from '@/lib/cityCosts'
-import { getCityBonusDetailLines } from '@/lib/cityBonuses'
+import { getCityBonusDetailLines, getBuildingBonusLines } from '@/lib/cityBonuses'
 import {
   formatCityCountdown,
   getBuildingAt,
@@ -67,6 +67,7 @@ export function CityPage() {
   const demolishCityBuilding = usePlayerStore((s) => s.demolishCityBuilding)
   const collectCityPassive = usePlayerStore((s) => s.collectCityPassive)
   const tickCityPassive = usePlayerStore((s) => s.tickCityPassive)
+  const tickCityBuildings = usePlayerStore((s) => s.tickCityBuildings)
   const performForestChop = usePlayerStore((s) => s.performForestChop)
   const rushCityBuild = usePlayerStore((s) => s.rushCityBuild)
 
@@ -78,13 +79,15 @@ export function CityPage() {
   useTelegramBackButton(() => navigate('/'), true)
 
   useEffect(() => {
+    tickCityBuildings()
     tickCityPassive()
     const id = setInterval(() => {
+      tickCityBuildings()
       tickCityPassive()
       tick((n) => n + 1)
     }, 30_000)
     return () => clearInterval(id)
-  }, [tickCityPassive])
+  }, [tickCityBuildings, tickCityPassive])
 
   const grouped = useMemo(() => groupByCategory(ALL_CITY_BUILDING_IDS), [])
 
@@ -333,12 +336,23 @@ export function CityPage() {
                   <>
                     <div className="text-center text-4xl">{def.icon}</div>
                     <p className="text-xs text-slate-400 text-center">{def.descriptionRu}</p>
+                    <div className="space-y-1">
+                      {getBuildingBonusLines(
+                        def,
+                        selectedBuilding.level,
+                        selectedBuilding.level < CITY_MAX_BUILDING_LEVEL
+                          ? selectedBuilding.level + 1
+                          : undefined,
+                      ).map((line) => (
+                        <p key={line} className="text-[10px] text-aether-cyan text-center">{line}</p>
+                      ))}
+                    </div>
                     <div className="flex justify-center">
                       <Badge>Ур. {selectedBuilding.level}/{CITY_MAX_BUILDING_LEVEL}</Badge>
                     </div>
                     {!ready && (
                       <p className="text-sm text-amber-400 text-center">
-                        Строится: {formatCityCountdown(remaining)}
+                        {selectedBuilding.pendingLevel ? 'Улучшается' : 'Строится'}: {formatCityCountdown(remaining)}
                       </p>
                     )}
                     {!ready && (

@@ -69,31 +69,45 @@ export function generateCombatResources(
   isBoss: boolean,
   isEpic = false,
   isMiniBoss = false,
+  rareLootMult = 1,
 ): Partial<Record<ResourceId, number>> {
+  const oreMult = Math.min(2.5, Math.max(1, rareLootMult))
   const mult = isBoss ? 3 : isMiniBoss ? 2.5 : isEpic ? 2 : 1
   const meat = Math.max(1, Math.floor((2 + floor * 0.8) * mult + Math.random() * 2))
   const hide = Math.max(1, Math.floor((1 + floor * 0.5) * mult))
 
   const res: Partial<Record<ResourceId, number>> = { meat, hide }
 
-  const dustChance = isBoss ? 0.5 : isMiniBoss ? 0.32 : isEpic ? 0.18 : 0.05
-  if (Math.random() < dustChance) {
+  const dustChance = (isBoss ? 0.5 : isMiniBoss ? 0.32 : isEpic ? 0.18 : 0.05) * oreMult
+  if (Math.random() < Math.min(0.95, dustChance)) {
     res.aether_dust = isBoss ? 2 + Math.floor(Math.random() * 2) : isMiniBoss ? 1 + Math.floor(Math.random() * 2) : 1
   }
 
   if (isBoss) {
     res.upgrade_core = 1 + Math.floor(floor / 3)
-    if (Math.random() > 0.5) res.star_shard = 1
-    Object.assign(res, rollJewelLoot(0.5, 1 + Math.floor(Math.random() * 2), true))
+    if (Math.random() > 0.5 / oreMult) res.star_shard = 1
+    Object.assign(res, rollJewelLoot(Math.min(1, 0.5 * oreMult), 1 + Math.floor(Math.random() * 2), true))
+    if (Math.random() < 0.35 * (oreMult - 1)) {
+      res.iron_ore = (res.iron_ore ?? 0) + 1 + Math.floor(Math.random() * 2)
+    }
+    if (Math.random() < 0.2 * (oreMult - 1)) {
+      res.gold_ore = (res.gold_ore ?? 0) + 1
+    }
   } else if (isMiniBoss) {
-    if (Math.random() < 0.45) res.gem_shard = 1 + Math.floor(Math.random() * 2)
-    if (Math.random() < 0.22) res.star_shard = 1
-    if (Math.random() < 0.18) res.upgrade_core = 1
-    Object.assign(res, rollJewelLoot(0.38, 1, true))
+    if (Math.random() < Math.min(0.9, 0.45 * oreMult)) res.gem_shard = 1 + Math.floor(Math.random() * 2)
+    if (Math.random() < Math.min(0.8, 0.22 * oreMult)) res.star_shard = 1
+    if (Math.random() < Math.min(0.7, 0.18 * oreMult)) res.upgrade_core = 1
+    Object.assign(res, rollJewelLoot(Math.min(1, 0.38 * oreMult), 1, true))
+    if (Math.random() < 0.25 * (oreMult - 1)) res.iron_ore = (res.iron_ore ?? 0) + 1
   } else if (isEpic) {
-    Object.assign(res, rollJewelLoot(0.1, 1, false))
-  } else if (Math.random() < 0.01 + floor * 0.0006) {
-    Object.assign(res, rollJewelLoot(1, 1, floor >= 15))
+    Object.assign(res, rollJewelLoot(Math.min(1, 0.1 * oreMult), 1, false))
+    if (Math.random() < 0.15 * (oreMult - 1)) res.iron_ore = (res.iron_ore ?? 0) + 1
+  } else {
+    const baseOreChance = 0.01 + floor * 0.0006
+    if (Math.random() < Math.min(0.25, baseOreChance * oreMult)) {
+      Object.assign(res, rollJewelLoot(1, 1, floor >= 15))
+    }
+    if (Math.random() < 0.08 * (oreMult - 1)) res.iron_ore = (res.iron_ore ?? 0) + 1
   }
 
   return res

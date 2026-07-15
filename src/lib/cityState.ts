@@ -9,6 +9,46 @@ import {
 
 export const CITY_PASSIVE_CAP_HOURS = 24
 
+/** Building gives stat bonuses (keeps current level during upgrade). */
+export function isCityBuildingActiveForBonuses(building: CityPlacedBuilding): boolean {
+  if (!building.readyAt) return true
+  if (new Date(building.readyAt).getTime() <= Date.now()) return true
+  return !!building.pendingLevel
+}
+
+/** Building is fully operational (passive production, no construction). */
+export function isCityBuildingReady(building: CityPlacedBuilding): boolean {
+  if (!building.readyAt) return true
+  return new Date(building.readyAt).getTime() <= Date.now()
+}
+
+export function getCityBuildingEffectiveLevel(building: CityPlacedBuilding): number {
+  if (
+    building.pendingLevel
+    && building.readyAt
+    && new Date(building.readyAt).getTime() > Date.now()
+  ) {
+    return building.level
+  }
+  return building.level
+}
+
+export function finalizeCityBuildings(buildings: CityPlacedBuilding[]): CityPlacedBuilding[] {
+  const now = Date.now()
+  return buildings.map((building) => {
+    if (!building.readyAt || new Date(building.readyAt).getTime() > now) return building
+    if (building.pendingLevel) {
+      return {
+        ...building,
+        level: building.pendingLevel,
+        pendingLevel: undefined,
+        readyAt: undefined,
+      }
+    }
+    return { ...building, readyAt: undefined }
+  })
+}
+
 export function defaultCityState(): CityState {
   return {
     buildings: [],
@@ -28,11 +68,6 @@ export function cellKey(x: number, y: number): string {
 export function getBuildingAt(player: Player, x: number, y: number): CityPlacedBuilding | null {
   const key = cellKey(x, y)
   return getCityState(player).buildings.find((b) => cellKey(b.x, b.y) === key) ?? null
-}
-
-export function isCityBuildingReady(building: CityPlacedBuilding): boolean {
-  if (!building.readyAt) return true
-  return new Date(building.readyAt).getTime() <= Date.now()
 }
 
 export function getCityBuildRemainingMs(building: CityPlacedBuilding): number {
@@ -76,7 +111,7 @@ export function calcPassiveAccrual(
     if (!isCityBuildingReady(placed)) continue
     const def = getCityBuildingDef(placed.buildingId as CityBuildingId)
     if (!def.passiveRates) continue
-    const rates = scalePassiveRates(def.passiveRates, placed.level)
+    const rates = scalePassiveRates(def.passiveRates, getCityBuildingEffectiveLevel(placed))
     for (const [rid, perHour] of Object.entries(rates)) {
       if (!perHour) continue
       const id = rid as ResourceId
@@ -102,7 +137,7 @@ export function getPassiveRatesPerHour(player: Player): Partial<Record<ResourceI
     if (!isCityBuildingReady(placed)) continue
     const def = getCityBuildingDef(placed.buildingId as CityBuildingId)
     if (!def.passiveRates) continue
-    const rates = scalePassiveRates(def.passiveRates, placed.level)
+    const rates = scalePassiveRates(def.passiveRates, getCityBuildingEffectiveLevel(placed))
     for (const [rid, perHour] of Object.entries(rates)) {
       if (!perHour) continue
       const id = rid as ResourceId

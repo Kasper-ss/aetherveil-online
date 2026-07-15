@@ -1,11 +1,17 @@
-import type { Player } from '@/types/game'
+import type { Player, ResourceId } from '@/types/game'
+import { RESOURCES } from '@/data/classes'
 import {
   getCityBuildingDef,
   getCityLevelMultiplier,
   type CityBuildingBonuses,
+  type CityBuildingDef,
   type CityBuildingId,
 } from '@/data/cityBuildings'
-import { getCompletedCityBuildings, isCityBuildingReady } from '@/lib/cityState'
+import {
+  getCompletedCityBuildings,
+  getCityBuildingEffectiveLevel,
+  isCityBuildingActiveForBonuses,
+} from '@/lib/cityState'
 
 export interface CityMultipliers {
   energyRegen: number
@@ -54,11 +60,69 @@ function applyBonusField(
 export function getCityMultipliers(player: Player): CityMultipliers {
   const result = { ...NEUTRAL }
   for (const placed of getCompletedCityBuildings(player)) {
-    if (!isCityBuildingReady(placed)) continue
+    if (!isCityBuildingActiveForBonuses(placed)) continue
     const def = getCityBuildingDef(placed.buildingId as CityBuildingId)
-    applyBonusField(result, def.bonuses, getCityLevelMultiplier(placed.level))
+    applyBonusField(
+      result,
+      def.bonuses,
+      getCityLevelMultiplier(getCityBuildingEffectiveLevel(placed)),
+    )
   }
   return result
+}
+
+const BONUS_LABELS: Partial<Record<keyof CityBuildingBonuses, string>> = {
+  energyRegen: 'восстановлению энергии',
+  maxEnergy: 'макс. энергии',
+  mobGold: 'золоту',
+  def: 'защите',
+  atk: 'атаке',
+  exp: 'опыту',
+  gatherResources: 'ресурсам',
+  craftSuccess: 'крафту и зельям',
+  rareLoot: 'редкой руде с мобов',
+  allRewards: 'всем наградам',
+}
+
+export function scaleBuildingBonusValue(baseMult: number, level: number): number {
+  return 1 + (baseMult - 1) * getCityLevelMultiplier(level)
+}
+
+export function formatBuildingBonusPct(baseMult: number, level: number): string {
+  const scaled = scaleBuildingBonusValue(baseMult, level)
+  return `+${Math.round((scaled - 1) * 100)}%`
+}
+
+export function getBuildingBonusLines(
+  def: CityBuildingDef,
+  level: number,
+  nextLevel?: number,
+): string[] {
+  const lines: string[] = []
+  for (const [key, label] of Object.entries(BONUS_LABELS) as [keyof CityBuildingBonuses, string][]) {
+    const base = def.bonuses[key]
+    if (!base) continue
+    let line = `${formatBuildingBonusPct(base, level)} к ${label}`
+    if (nextLevel && nextLevel > level) {
+      line += ` → ${formatBuildingBonusPct(base, nextLevel)}`
+    }
+    lines.push(line)
+  }
+  if (def.passiveRates) {
+    for (const [rid, rate] of Object.entries(def.passiveRates)) {
+      if (!rate) continue
+      const resId = rid as ResourceId
+      const label = RESOURCES[resId]?.nameRu ?? rid
+      const current = rate * getCityLevelMultiplier(level)
+      let line = `${current.toFixed(1)}/ч ${label}`
+      if (nextLevel && nextLevel > level) {
+        const next = rate * getCityLevelMultiplier(nextLevel)
+        line += ` → ${next.toFixed(1)}/ч`
+      }
+      lines.push(line)
+    }
+  }
+  return lines
 }
 
 function pct(mult: number): string {

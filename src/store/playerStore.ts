@@ -30,7 +30,7 @@ import { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getCombatMax
 import { getMissingCosts, type MissingCost } from '@/lib/craftCosts'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 import { syncPlayerToServer, buyServerMarketListing } from '@/lib/multiplayerSync'
-import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, getGatherResourceMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
+import { extendBuff, getDailyBonusExtra, getExpMultiplier, getGoldMultiplier, rollExtraGatherResources, rollCraftBonusExtra, getCraftSuccessMultiplier, hasInfiniteEnergy } from '@/lib/playerBuffs'
 import { calcFairPayout, spinFairWheel, type FairColor } from '@/lib/fairGame'
 import {
   canDrawFateCard, FATE_CARD_BUFF_DURATION_MS,
@@ -128,7 +128,7 @@ import {
 import { canAffordCityCosts } from '@/lib/cityCosts'
 import {
   calcPassiveAccrual, canPlaceAt, getBuildingAt,
-  getCityState, isCityBuildingReady,
+  getCityState, isCityBuildingReady, finalizeCityBuildings,
 } from '@/lib/cityState'
 
 export interface DismantleSummary {
@@ -291,6 +291,7 @@ interface PlayerState {
   demolishCityBuilding: (x: number, y: number) => boolean
   collectCityPassive: () => boolean
   tickCityPassive: () => void
+  tickCityBuildings: () => void
   performForestChop: () => { ok: boolean; amount?: number }
   rushCityBuild: (x: number, y: number) => Promise<boolean>
   awardJewelerExp: (amount: number) => void
@@ -391,6 +392,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
+      get().tickCityBuildings()
       get().checkPetRewards({ showModal: !idle })
       void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
@@ -414,6 +416,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
       get().tryRegenVitals()
+      get().tickCityBuildings()
       get().checkPetRewards({ showModal: !idle })
       registerOnlinePlayer(player)
       void get().syncPlayerState()
@@ -873,6 +876,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().tryRegenHp()
     get().tryRegenMana()
     get().accrueBankInterest()
+    get().tickCityBuildings()
     get().tickCityPassive()
     get().tickGemStudies()
     get().checkPetRewards({ showModal: true })
@@ -1292,14 +1296,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     get().addResources(activity.rewards)
-    const gatherMult = getGatherResourceMultiplier(player)
-    if (gatherMult > 1) {
-      for (const [resId, amount] of Object.entries(activity.rewards)) {
-        if (amount && Math.random() < gatherMult - 1) {
-          get().addResources({ [resId as import('@/types/game').ResourceId]: amount })
-        }
-      }
-    }
+    const extraGather = rollExtraGatherResources(player, activity.rewards)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     if (activity.id === 'herb_gather' || activity.id === 'herb_rare') {
       const extra = getHerbGatherBonus(player)
       if (extra > 0) get().addResources({ herb: extra })
@@ -1330,6 +1328,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isVein } = rollMineRewards(mineWithBonus)
     get().addResources(resources)
+    const extraGather = rollExtraGatherResources(get().player!, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getMineHerbXpGain(level)
     const newXp = (player.mineDigXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1372,10 +1372,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (fish) {
       get().addResources({ [fish.id]: 1 })
-      const gatherMult = getGatherResourceMultiplier(player)
-      if (gatherMult > 1 && Math.random() < gatherMult - 1) {
-        get().addResources({ [fish.id]: 1 })
-      }
+      const extraGather = rollExtraGatherResources(player, { [fish.id]: 1 })
+      if (Object.keys(extraGather).length) get().addResources(extraGather)
       const xpGain = getGrindProfessionXp(spotLevel)
       const fishBonus = fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0
       const profXp = xpGain + fishBonus
@@ -1407,6 +1405,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollHuntRewards(hunt)
     get().addResources(resources)
+    const extraGather = rollExtraGatherResources(player, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.huntXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1432,6 +1432,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollGemSiteRewards(site)
     get().addResources(resources)
+    const extraGather = rollExtraGatherResources(player, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.gemSiteXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1456,6 +1458,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollAetherRiftRewards(rift)
     get().addResources(resources)
+    const extraGather = rollExtraGatherResources(player, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.aetherRiftXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1487,6 +1491,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       resources[primary] = (resources[primary] ?? 0) + bonus
     }
     get().addResources(resources)
+    const extraGather = rollExtraGatherResources(player, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getMineHerbXpGain(level)
     const newXp = (player.fieldGatherXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1511,15 +1517,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return false
     }
     if (needsBrewTimer(recipe)) {
+      const craftMult = getCraftSuccessMultiplier(player)
+      const brewMs = Math.max(30_000, Math.floor((recipe.brewTimeMs ?? 0) / craftMult))
       const brews = [
         ...(player.activeBrews ?? []),
-        { recipeId, readyAt: new Date(Date.now() + (recipe.brewTimeMs ?? 0)).toISOString() },
+        { recipeId, readyAt: new Date(Date.now() + brewMs).toISOString() },
       ]
       get().updatePlayer({ activeBrews: brews })
       return true
     }
     const inst = createItemInstance(recipe.resultItemId)
-    if (inst) get().addItem(inst)
+    if (inst) {
+      get().addItem(inst)
+      if (rollCraftBonusExtra(player)) {
+        const extra = createItemInstance(recipe.resultItemId)
+        if (extra) get().addItem(extra)
+      }
+    }
     return !!inst
   },
 
@@ -1535,6 +1549,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (inst) {
         get().addItem(inst)
         collected++
+        if (rollCraftBonusExtra(player)) {
+          const extra = createItemInstance(inst.id)
+          if (extra) {
+            get().addItem(extra)
+            collected++
+          }
+        }
       }
     }
     const remaining = (player.activeBrews ?? []).filter((b) => !readyIds.has(b.recipeId + b.readyAt))
@@ -2329,9 +2350,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         const placed = getBuildingAt(player, rush.x, rush.y)
         if (!placed || isCityBuildingReady(placed)) return false
         const state = getCityState(player)
-        const buildings = state.buildings.map((b) =>
-          b.x === rush.x && b.y === rush.y ? { ...b, readyAt: new Date().toISOString() } : b,
-        )
+        const buildings = state.buildings.map((b) => {
+          if (b.x !== rush.x || b.y !== rush.y) return b
+          if (b.pendingLevel) {
+            return {
+              ...b,
+              level: b.pendingLevel,
+              pendingLevel: undefined,
+              readyAt: undefined,
+            }
+          }
+          return { ...b, readyAt: undefined }
+        })
         get().updatePlayer({ cityState: { ...state, buildings } })
         set({ pendingCityRush: null })
         break
@@ -2799,7 +2829,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       y,
       level: 1,
       builtAt: new Date().toISOString(),
-      readyAt: new Date(Date.now() + def.buildTimeMs).toISOString(),
+      readyAt: def.isDecoration
+        ? undefined
+        : new Date(Date.now() + def.buildTimeMs).toISOString(),
     }
     get().updatePlayer({
       cityState: { ...state, buildings: [...state.buildings, placed] },
@@ -2813,6 +2845,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const placed = getBuildingAt(player, x, y)
     if (!placed || !isCityBuildingReady(placed)) return false
+    if (placed.pendingLevel) return false
     if (placed.level >= CITY_MAX_BUILDING_LEVEL) return false
     const def = getCityBuildingDef(placed.buildingId as CityBuildingId)
     const goldCost = getUpgradeGoldCost(def, placed.level)
@@ -2829,7 +2862,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       b.x === x && b.y === y
         ? {
             ...b,
-            level: b.level + 1,
+            pendingLevel: b.level + 1,
             readyAt: new Date(Date.now() + timeMs).toISOString(),
           }
         : b,
@@ -2854,6 +2887,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       ...syncEnergyFields(player),
     })
     return true
+  },
+
+  tickCityBuildings: () => {
+    const { player } = get()
+    if (!player?.cityState?.buildings?.length) return
+    const finalized = finalizeCityBuildings(getCityState(player).buildings)
+    const changed = JSON.stringify(finalized) !== JSON.stringify(player.cityState.buildings)
+    if (!changed) return
+    get().updatePlayer({
+      cityState: { ...getCityState(player), buildings: finalized },
+      ...syncEnergyFields(get().player!),
+    })
   },
 
   tickCityPassive: () => {
@@ -2891,7 +2936,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return { ok: false }
     if (!hasInfiniteEnergy(player) && !get().spendEnergy(FOREST_CHOP_ENERGY)) return { ok: false }
     const amount = 2 + Math.floor(Math.random() * 3)
-    get().addResources({ wood_plank: amount })
+    const resources = { wood_plank: amount }
+    get().addResources(resources)
+    const extraGather = rollExtraGatherResources(player, resources)
+    if (Object.keys(extraGather).length) get().addResources(extraGather)
     return { ok: true, amount }
   },
 
