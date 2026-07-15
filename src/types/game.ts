@@ -599,8 +599,11 @@ export interface PublicPlayerProfile {
   level: number
   highestFloor: number
   classId?: PlayerClass
+  gold: number
+  gems: number
   stats: { atk: number; def: number; hp: number; crit: number; speed: number }
-  equipped: Array<{ slot: string; name: string; rarity: ItemRarity }>
+  equipped: Array<{ slot: string; name: string; rarity: ItemRarity; setId?: string }>
+  activeSets: Array<{ name: string; description: string }>
   cosmeticAvatarId?: string
   profileFrameId?: string
   profileTitleId?: string

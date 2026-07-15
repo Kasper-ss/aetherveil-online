@@ -103,7 +103,7 @@ function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffec
 } {
   if (combat.isPvp) {
     const enemyDmg = calcMitigatedDamage(combat.enemy.stats.atk, stats.def, PLAYER_DEF_MITIGATION)
-    const dodge = rollDodge(stats)
+    const dodge = rollDodge(stats, usePlayerStore.getState().player?.classId)
     if (dodge) {
       return {
         playerHp: combat.playerHp,
@@ -120,7 +120,7 @@ function resolveEnemyTurn(combat: CombatState, stats: ReturnType<typeof getEffec
     }
   }
 
-  const result = executeEnemyAttack(combat, stats)
+  const result = executeEnemyAttack(combat, stats, usePlayerStore.getState().player?.classId)
   if (result.debuffPresets?.length) {
     const store = usePlayerStore.getState()
     for (const d of result.debuffPresets) {

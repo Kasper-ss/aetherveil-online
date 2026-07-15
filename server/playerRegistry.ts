@@ -241,6 +241,13 @@ export async function syncPublicPlayer(input: {
         })),
       )
     }
+    if (input.publicProfile) {
+      await supabase.from('player_profiles').upsert({
+        telegram_id: input.telegramId,
+        profile: input.publicProfile,
+        updated_at: now,
+      })
+    }
   }
 
   const playerMap = prunePlayers(players())
@@ -374,8 +381,11 @@ export async function getPlayerProfileRecord(telegramId: number): Promise<Record
     level: player.level,
     highestFloor: player.highest_floor,
     guildId: player.guild_id,
+    gold: 0,
+    gems: 0,
     stats: { atk: 0, def: 0, hp: 0, crit: 0, speed: 0 },
     equipped: [],
+    activeSets: [],
     pvpWins: 0,
     pvpLosses: 0,
   }

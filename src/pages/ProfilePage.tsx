@@ -252,7 +252,7 @@ export function ProfilePage() {
               <div className="text-[10px] text-slate-500">КРИТ</div>
             </div>
             <div className="bg-aether-bg rounded-lg p-2">
-              <div className="text-lg font-bold text-emerald-400">{formatDodgePercent(stats)}%</div>
+              <div className="text-lg font-bold text-emerald-400">{formatDodgePercent(stats, player.classId)}%</div>
               <div className="text-[10px] text-slate-500">УКЛОН</div>
             </div>
           </div>

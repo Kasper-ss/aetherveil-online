@@ -6,7 +6,7 @@ import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
-import { isHighCritClass } from '@/lib/classCompat'
+import { getMaxCritChanceForClass, getMaxDodgeChanceForClass } from '@/lib/classCompat'
 import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
 import { getRacialStatPassives } from '@/lib/racialAbilities'
 
@@ -27,16 +27,11 @@ export const BASE_HP_REGEN_MS = 60_000
 
 /** Legacy default; use getMaxCritChanceForClass for per-class caps. */
 export const MAX_CRIT_CHANCE = 45
-/** Max dodge chance (0–1) from any source (gear, stats, buffs). */
+/** Legacy default dodge cap (0–1); use getMaxDodgeChanceForClass per class. */
 export const MAX_DODGE_CHANCE = 0.7
 /** Dodge chance = speed × DODGE_SPEED_FACTOR + stealth × DODGE_STEALTH_FACTOR */
 export const DODGE_SPEED_FACTOR = 0.008
 export const DODGE_STEALTH_FACTOR = 0.012
-/** Max crit % by class: hunter/rogue/monk line 80%, others 45%. */
-export function getMaxCritChanceForClass(classId?: PlayerClass): number {
-  if (isHighCritClass(classId)) return 80
-  return 45
-}
 
 export function capCritChance(crit: number, classId?: PlayerClass): number {
   return Math.min(getMaxCritChanceForClass(classId), Math.max(0, crit))
@@ -46,18 +41,26 @@ export function rollCrit(critChance: number, classId?: PlayerClass): boolean {
   return Math.random() * 100 < capCritChance(critChance, classId)
 }
 
-export function getDodgeChance(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
+export function getDodgeChance(
+  stats: Pick<EffectiveStats, 'speed' | 'stealth'>,
+  classId?: PlayerClass,
+): number {
   const raw = stats.speed * DODGE_SPEED_FACTOR + stats.stealth * DODGE_STEALTH_FACTOR
-  return Math.min(MAX_DODGE_CHANCE, Math.max(0, raw))
+  return Math.min(getMaxDodgeChanceForClass(classId), Math.max(0, raw))
 }
 
-/** Display dodge as 0–70% (probability × 100, capped). */
-export function formatDodgePercent(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): number {
-  return Math.round(getDodgeChance(stats) * 1000) / 10
+export function formatDodgePercent(
+  stats: Pick<EffectiveStats, 'speed' | 'stealth'>,
+  classId?: PlayerClass,
+): number {
+  return Math.round(getDodgeChance(stats, classId) * 1000) / 10
 }
 
-export function rollDodge(stats: Pick<EffectiveStats, 'speed' | 'stealth'>): boolean {
-  return Math.random() < getDodgeChance(stats)
+export function rollDodge(
+  stats: Pick<EffectiveStats, 'speed' | 'stealth'>,
+  classId?: PlayerClass,
+): boolean {
+  return Math.random() < getDodgeChance(stats, classId)
 }
 
 export const ALLOC_STAT_LABELS: Record<AllocStatKey, string> = {

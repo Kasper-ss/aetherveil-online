@@ -37,8 +37,37 @@ export function getLegacyClassBucket(classId: PlayerClass | undefined): LegacyCl
 }
 
 export function isHighCritClass(classId: PlayerClass | undefined): boolean {
+  return getMaxCritChanceForClass(classId) >= 80
+}
+
+const CRIT_CAP_BY_BUCKET: Record<LegacyClassBucket, number> = {
+  archer: 80,
+  assassin: 80,
+  warrior: 45,
+  mage: 45,
+  summoner: 50,
+  knight: 40,
+}
+
+const DODGE_CAP_BY_BUCKET: Record<LegacyClassBucket, number> = {
+  archer: 0.55,
+  assassin: 0.60,
+  warrior: 0.35,
+  mage: 0.30,
+  summoner: 0.40,
+  knight: 0.45,
+}
+
+export function getMaxCritChanceForClass(classId?: PlayerClass): number {
   const bucket = getLegacyClassBucket(classId)
-  return bucket === 'archer' || bucket === 'assassin'
+  if (!bucket) return 45
+  return CRIT_CAP_BY_BUCKET[bucket]
+}
+
+export function getMaxDodgeChanceForClass(classId?: PlayerClass): number {
+  const bucket = getLegacyClassBucket(classId)
+  if (!bucket) return 0.35
+  return DODGE_CAP_BY_BUCKET[bucket]
 }
 
 export function isManaClass(classId: PlayerClass | undefined): boolean {

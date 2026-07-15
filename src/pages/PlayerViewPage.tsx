@@ -12,7 +12,15 @@ import { getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
 import { getTitleLabel, getTitleColorClass } from '@/data/achievementTitles'
 import { RARITY_LABELS_RU } from '@/data/items'
+import { SET_DATA } from '@/data/items'
+import { formatNumber } from '@/lib/utils'
 import type { PublicPlayerProfile } from '@/types/game'
+
+function getSetLabel(setId?: string): string | null {
+  if (!setId) return null
+  const set = SET_DATA.find((s) => s.id === setId)
+  return set?.name ?? setId
+}
 
 export function PlayerViewPage() {
   const navigate = useNavigate()
@@ -67,7 +75,11 @@ export function PlayerViewPage() {
       {loading && <p className="text-center text-slate-500 py-8">Загрузка...</p>}
 
       {!loading && !profile && (
-        <p className="text-center text-slate-500 py-8">Профиль не найден или игрок ещё не синхронизировался</p>
+        <div className="p-4 text-center space-y-3">
+          <p className="text-slate-500">Профиль не найден или игрок ещё не синхронизировался</p>
+          <p className="text-[10px] text-slate-600">Игрок должен хотя бы раз зайти в игру после обновления</p>
+          <Button variant="outline" onClick={() => navigate('/leaderboard')}>Назад к рейтингу</Button>
+        </div>
       )}
 
       {profile && (
@@ -91,6 +103,22 @@ export function PlayerViewPage() {
 
           <Card>
             <CardContent className="p-4">
+              <p className="text-sm font-medium text-white mb-2">Ресурсы</p>
+              <div className="grid grid-cols-2 gap-2 text-center text-sm">
+                <div className="bg-aether-bg rounded p-2">
+                  <span className="text-aether-gold font-bold">🪙 {formatNumber(profile.gold)}</span>
+                  <div className="text-[10px] text-slate-500">Золото</div>
+                </div>
+                <div className="bg-aether-bg rounded p-2">
+                  <span className="text-fuchsia-400 font-bold">💎 {formatNumber(profile.gems)}</span>
+                  <div className="text-[10px] text-slate-500">Гемы</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
               <p className="text-sm font-medium text-white mb-2">Характеристики</p>
               <div className="grid grid-cols-2 gap-2 text-center text-sm">
                 <div className="bg-aether-bg rounded p-2"><span className="text-orange-400 font-bold">{profile.stats.atk}</span> АТК</div>
@@ -104,6 +132,22 @@ export function PlayerViewPage() {
             </CardContent>
           </Card>
 
+          {profile.activeSets.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm font-medium text-white mb-2">Активные сеты</p>
+                <div className="space-y-2">
+                  {profile.activeSets.map((set) => (
+                    <div key={set.name} className="bg-aether-bg rounded p-2">
+                      <p className="text-xs font-medium text-aether-gold">{set.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{set.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-4">
               <p className="text-sm font-medium text-white mb-2">Снаряжение</p>
@@ -112,12 +156,21 @@ export function PlayerViewPage() {
               ) : (
                 <div className="space-y-1.5">
                   {profile.equipped.map((item) => (
-                    <div key={`${item.slot}-${item.name}`} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">{item.slot}</span>
-                      <span className="text-white truncate mx-2 flex-1">{item.name}</span>
-                      <Badge variant={item.rarity} className="text-[8px]">
-                        {RARITY_LABELS_RU[item.rarity] ?? item.rarity}
-                      </Badge>
+                    <div key={`${item.slot}-${item.name}`} className="flex items-start justify-between gap-2 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-slate-500">{item.slot}</span>
+                          <span className="text-white truncate">{item.name}</span>
+                          <Badge variant={item.rarity} className="text-[8px]">
+                            {RARITY_LABELS_RU[item.rarity] ?? item.rarity}
+                          </Badge>
+                        </div>
+                        {item.setId && (
+                          <p className="text-[9px] text-aether-purple mt-0.5">
+                            Сет: {getSetLabel(item.setId)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

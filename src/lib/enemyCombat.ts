@@ -1,7 +1,8 @@
 import type { CombatLogEntry, CombatState, FloorEnemy } from '@/types/game'
 import { rollDodge, type EffectiveStats } from '@/lib/playerStats'
 import { calcMitigatedDamage, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
-import type { EFFECT_PRESETS } from '@/lib/activeEffects'
+import { EFFECT_PRESETS } from '@/lib/activeEffects'
+import type { PlayerClass } from '@/types/game'
 
 export interface EnemyAbility {
   id: string
@@ -119,6 +120,7 @@ function getPhase2Abilities(floor: number): EnemyAbility[] {
 export function executeEnemyAttack(
   combat: CombatState,
   playerStats: EffectiveStats,
+  classId?: PlayerClass,
 ): EnemyAttackResult {
   const enemy = combat.enemy
   const floor = combat.floor
@@ -273,7 +275,7 @@ export function executeEnemyAttack(
     PLAYER_DEF_MITIGATION,
   )
 
-  const dodge = rollDodge(playerStats)
+  const dodge = rollDodge(playerStats, classId)
 
   if (dodge) {
     logs.push(log(`💨 Вы уклонились от атаки ${enemy.name}!`, 'system'))

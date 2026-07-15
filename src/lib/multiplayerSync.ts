@@ -2,6 +2,7 @@ import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile
 import type { ReferralInviteSummary } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
+import { loadPlayerFromSupabase } from '@/lib/supabase'
 import { buildVitalSyncPayload } from '@/lib/botNotifications'
 
 function mapListing(raw: MarketListing): MarketListing {
@@ -200,11 +201,19 @@ export async function fetchPlayerProfile(telegramId: number): Promise<PublicPlay
   try {
     const res = await fetch(`/api/multiplayer/profile?telegramId=${telegramId}`)
     const data = await res.json() as { profile?: PublicPlayerProfile }
-    if (!res.ok || !data.profile) return null
-    return data.profile
-  } catch {
-    return null
+    if (res.ok && data.profile) return data.profile
+  } catch (error) {
+    console.warn('[multiplayer] profile fetch failed', error)
   }
+
+  try {
+    const player = await loadPlayerFromSupabase(telegramId)
+    if (player) return buildPublicProfile(player)
+  } catch (error) {
+    console.warn('[multiplayer] profile supabase fallback failed', error)
+  }
+
+  return null
 }
 
 export async function buyServerMarketListing(listingId: string): Promise<MarketListing | null> {
