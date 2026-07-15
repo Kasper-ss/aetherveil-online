@@ -3,6 +3,17 @@ import type { EquipSlot } from '@/data/items'
 
 const PIECES: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon']
 
+const PIECE_NAMES_RU: Record<EquipSlot, string> = {
+  helmet: 'Шлем',
+  chestplate: 'Нагрудник',
+  leggings: 'Поножи',
+  boots: 'Ботинки',
+  necklace: 'Ожерелье',
+  ring: 'Кольцо',
+  weapon: 'Оружие',
+  pet: 'Питомец',
+}
+
 /** Lightweight class metadata — kept here to avoid circular imports with classes/items. */
 export const CLASS_META: Array<{ id: PlayerClass; nameRu: string; icon: string }> = [
   { id: 'warrior', nameRu: 'Воин', icon: '⚔️' },
@@ -34,6 +45,47 @@ const SET_THEMES: Record<PlayerClass, [string, string, string]> = {
   monk: ['Монах', 'Адепт', 'Мастер кулака'],
 }
 
+const THEME_GENITIVE: Record<string, string> = {
+  'Страж': 'Стража',
+  'Берсерк': 'Берсерка',
+  'Защитник': 'Защитника',
+  'Паладин': 'Паладина',
+  'Святой рыцарь': 'Святого рыцаря',
+  'Щитоносец': 'Щитоносца',
+  'Охотник': 'Охотника',
+  'Следопыт': 'Следопыта',
+  'Меткий стрелок': 'Меткого стрелка',
+  'Разбойник': 'Разбойника',
+  'Тень': 'Тени',
+  'Убийца': 'Убийцы',
+  'Жрец': 'Жреца',
+  'Целитель': 'Целителя',
+  'Светоч': 'Светоча',
+  'Шаман': 'Шамана',
+  'Тотемник': 'Тотемника',
+  'Дух ветра': 'Духа ветра',
+  'Маг': 'Мага',
+  'Чародей': 'Чародея',
+  'Арканист': 'Арканиста',
+  'Колдун': 'Колдуна',
+  'Повелитель тьмы': 'Повелителя тьмы',
+  'Демонолог': 'Демонолога',
+  'Друид': 'Друида',
+  'Хранитель рощи': 'Хранителя рощи',
+  'Звероликий': 'Звероликого',
+  'Монах': 'Монаха',
+  'Адепт': 'Адепта',
+  'Мастер кулака': 'Мастера кулака',
+}
+
+function themeGenitive(theme: string): string {
+  return THEME_GENITIVE[theme] ?? `${theme}а`
+}
+
+function pieceName(slot: EquipSlot, theme: string): string {
+  return `${PIECE_NAMES_RU[slot]} ${themeGenitive(theme)}`
+}
+
 function pieceStats(slot: EquipSlot, themeIndex: number): Partial<import('@/types/game').Stats> {
   const t = themeIndex + 1
   switch (slot) {
@@ -63,11 +115,11 @@ export const CLASS_COMMON_SETS: ClassSetDef[] = CLASS_META.flatMap((cls) => {
     return {
       id: setId,
       classId: cls.id,
-      name: `${theme} · ${cls.nameRu}`,
-      bonus: `Сет ${cls.nameRu}: +${4 + themeIndex}% к основным статам при полной экипировке`,
+      name: theme,
+      bonus: `Сет «${theme}» (${cls.nameRu}): +${4 + themeIndex}% к основным статам при полной экипировке`,
       pieces: PIECES.map((slot) => ({
         slot,
-        name: `${theme} — ${slot === 'weapon' ? cls.nameRu : theme}`,
+        name: pieceName(slot, theme),
         icon: cls.icon,
         stats: pieceStats(slot, themeIndex),
       })),

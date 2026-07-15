@@ -26,7 +26,7 @@ import {
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
-import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta } from '@/data/items'
+import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
 import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
@@ -559,7 +559,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player) return
     const base = item.instanceId ? item : { ...item, instanceId: `${item.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
-    const inst = ensureItemDurability(base)
+    const inst = ensureItemDurability(stampItemClassBinding(base))
     get().updatePlayer({ inventory: [...player.inventory, inst] })
   },
 
@@ -1930,14 +1930,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     const craftTemplate = ALL_ITEMS[recipe.resultItemId]
-    const classBound = !!(recipe.setCraftRarity && craftTemplate?.requiredClass)
-    let inst = createItemInstance(recipe.resultItemId, { classBound })
+    let inst = createItemInstance(recipe.resultItemId)
+    if (inst && craftTemplate?.requiredClass) {
+      inst = stampItemClassBinding(inst)
+    }
     if (inst) {
       inst = applyBlacksmithCraftBonuses(player, inst)
       get().addItem(inst)
       if (Math.random() < getBlacksmithDoubleCraftChance(player)) {
-        const duplicate = applyBlacksmithCraftBonuses(player, createItemInstance(recipe.resultItemId, { classBound })!)
-        if (duplicate) get().addItem(duplicate)
+        let duplicate = createItemInstance(recipe.resultItemId)
+        if (duplicate && craftTemplate?.requiredClass) duplicate = stampItemClassBinding(duplicate)
+        if (duplicate) {
+          duplicate = applyBlacksmithCraftBonuses(player, duplicate)
+          get().addItem(duplicate)
+        }
       }
     }
     return !!inst

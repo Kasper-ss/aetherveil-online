@@ -1,8 +1,8 @@
 import type { Player } from '@/types/game'
 import { createDefaultPlayer } from '@/data/gameData'
 
-/** Bump when migration logic changes. v12 = free gear class binding removed. */
-export const SAVE_VERSION = 12
+/** Bump when migration logic changes. v13 = class-bound gear sets restored. */
+export const SAVE_VERSION = 13
 
 export function wipePlayerToFresh(player: Player): Player {
   const fresh = createDefaultPlayer(player.telegramId, player.displayName, player.username)

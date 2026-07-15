@@ -10,6 +10,8 @@ import { SHOP_ITEMS } from '@/data/gameData'
 import { RESOURCES } from '@/data/classes'
 import { ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, type EquipSlot } from '@/data/items'
 import { SET_SCROLL_PRODUCTS, getScrollSetFilters } from '@/data/setScrolls'
+import { CLASS_META, SET_CLASS_MAP } from '@/data/classSets'
+import { formatItemClassRestriction } from '@/lib/classGear'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { hapticSuccess, hapticError, hapticImpact, showTelegramAlert } from '@/lib/telegram'
@@ -62,6 +64,14 @@ function getShopItemSetName(shopItem: typeof SHOP_ITEMS[0]): string {
   return template?.setName ?? 'Обычное снаряжение'
 }
 
+function getShopItemClassId(shopItem: typeof SHOP_ITEMS[0]): string {
+  const template = shopItem.itemId ? ALL_ITEMS[shopItem.itemId] : null
+  if (!template) return '__no_class__'
+  if (template.requiredClass) return template.requiredClass
+  if (template.setId && SET_CLASS_MAP[template.setId]) return SET_CLASS_MAP[template.setId]
+  return '__no_class__'
+}
+
 function sortEquipmentShopItems(items: typeof EQUIP_NPC): typeof EQUIP_NPC {
   const slotIndex = (slot: EquipSlot) => {
     const idx = EQUIP_SLOT_ORDER.indexOf(slot)
@@ -70,6 +80,16 @@ function sortEquipmentShopItems(items: typeof EQUIP_NPC): typeof EQUIP_NPC {
   return [...items].sort((a, b) => {
     const ta = a.itemId ? ALL_ITEMS[a.itemId] : null
     const tb = b.itemId ? ALL_ITEMS[b.itemId] : null
+    const classA = getShopItemClassId(a)
+    const classB = getShopItemClassId(b)
+    if (classA !== classB) {
+      if (classA === '__no_class__') return 1
+      if (classB === '__no_class__') return -1
+      const nameA = CLASS_META.find((c) => c.id === classA)?.nameRu ?? classA
+      const nameB = CLASS_META.find((c) => c.id === classB)?.nameRu ?? classB
+      const classCmp = nameA.localeCompare(nameB, 'ru')
+      if (classCmp !== 0) return classCmp
+    }
     const setCmp = getShopItemSetName(a).localeCompare(getShopItemSetName(b), 'ru')
     if (setCmp !== 0) return setCmp
     const slotA = ta?.slot ? slotIndex(ta.slot as EquipSlot) : 99
@@ -107,6 +127,7 @@ export function ShopPage() {
   const [scrollRarityFilter, setScrollRarityFilter] = useState<ScrollRarityFilter>('all')
   const [scrollSetFilter, setScrollSetFilter] = useState<string>('all')
   const [equipmentSetFilter, setEquipmentSetFilter] = useState<string>('all')
+  const [equipmentClassFilter, setEquipmentClassFilter] = useState<string>('all')
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -289,9 +310,19 @@ export function ShopPage() {
       .sort((a, b) => (order.get(a.scrollId!) ?? 0) - (order.get(b.scrollId!) ?? 0))
   }, [filteredScrolls])
 
+  const equipmentClassFilters = useMemo(() => {
+    const ids = new Set<string>()
+    for (const item of EQUIP_NPC) {
+      const classId = getShopItemClassId(item)
+      if (classId !== '__no_class__') ids.add(classId)
+    }
+    return CLASS_META.filter((c) => ids.has(c.id))
+  }, [])
+
   const equipmentSetFilters = useMemo(() => {
     const map = new Map<string, string>()
     for (const item of EQUIP_NPC) {
+      if (equipmentClassFilter !== 'all' && getShopItemClassId(item) !== equipmentClassFilter) continue
       const setId = getShopItemSetId(item)
       const setName = getShopItemSetName(item)
       if (!map.has(setId)) map.set(setId, setName)
@@ -299,15 +330,18 @@ export function ShopPage() {
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-  }, [])
+  }, [equipmentClassFilter])
 
   const filteredEquipmentShop = useMemo(() => {
     let items = EQUIP_NPC
+    if (equipmentClassFilter !== 'all') {
+      items = items.filter((item) => getShopItemClassId(item) === equipmentClassFilter)
+    }
     if (equipmentSetFilter !== 'all') {
       items = items.filter((item) => getShopItemSetId(item) === equipmentSetFilter)
     }
     return sortEquipmentShopItems(items)
-  }, [equipmentSetFilter])
+  }, [equipmentClassFilter, equipmentSetFilter])
 
   const groupedEquipmentShop = useMemo(() => {
     const groups = new Map<string, typeof EQUIP_NPC>()
@@ -369,6 +403,11 @@ export function ShopPage() {
               )}
               {template?.setName && item.type === 'equipment' && (
                 <Badge className="text-[8px] border border-aether-border">{template.setName}</Badge>
+              )}
+              {template && item.type === 'equipment' && formatItemClassRestriction(template) && (
+                <Badge className="text-[8px] border border-amber-500/40 text-amber-300">
+                  {formatItemClassRestriction(template)}
+                </Badge>
               )}
             </div>
             {template && Object.keys(template.stats).length > 0 && (
@@ -486,6 +525,27 @@ export function ShopPage() {
             </TabsContent>
             <TabsContent value="equipment">
               <p className="text-[10px] text-slate-500 mb-2">Обычные и редкие предметы — цена выше, чем с фарма.</p>
+              <div className="flex gap-1 overflow-x-auto pb-1 mb-2">
+                <Button
+                  variant={equipmentClassFilter === 'all' ? 'default' : 'secondary'}
+                  size="sm"
+                  className="h-7 text-[10px] shrink-0"
+                  onClick={() => { setEquipmentClassFilter('all'); setEquipmentSetFilter('all') }}
+                >
+                  Все классы
+                </Button>
+                {equipmentClassFilters.map((c) => (
+                  <Button
+                    key={c.id}
+                    variant={equipmentClassFilter === c.id ? 'default' : 'secondary'}
+                    size="sm"
+                    className="h-7 text-[10px] shrink-0"
+                    onClick={() => { setEquipmentClassFilter(c.id); setEquipmentSetFilter('all') }}
+                  >
+                    {c.icon} {c.nameRu}
+                  </Button>
+                ))}
+              </div>
               <div className="flex gap-1 overflow-x-auto pb-1 mb-3">
                 <Button
                   variant={equipmentSetFilter === 'all' ? 'default' : 'secondary'}

@@ -413,6 +413,7 @@ for (const set of CLASS_COMMON_SETS) {
       sellPrice: 80,
       setId: set.id,
       setName: set.name,
+      requiredClass: set.classId,
       upgradeLevel: 1,
       starLevel: 0,
     }
@@ -518,7 +519,7 @@ export function getItemTemplate(id: string): Item | undefined {
   return ALL_ITEMS[id]
 }
 
-export function createItemInstance(templateId: string, opts?: { classBound?: boolean }): Item | null {
+export function createItemInstance(templateId: string): Item | null {
   const template = ALL_ITEMS[templateId]
   if (!template) return null
   const base: Item = {
@@ -527,12 +528,7 @@ export function createItemInstance(templateId: string, opts?: { classBound?: boo
     upgradeLevel: template.upgradeLevel ?? 1,
     starLevel: template.starLevel ?? 0,
   }
-  const inst = ensureItemDurability(base)
-  if (!opts?.classBound && inst.requiredClass) {
-    const { requiredClass: _rc, ...rest } = inst
-    return rest as Item
-  }
-  return inst
+  return ensureItemDurability(base)
 }
 
 export function getUpgradeLevelStepPercent(level: number): number {
