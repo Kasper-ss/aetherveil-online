@@ -48,6 +48,37 @@ const RESOURCE_NPC = SHOP_ITEMS.filter((i) => i.type === 'resource' || i.id === 
 const SCROLL_NPC = SHOP_ITEMS.filter((i) => i.type === 'scroll')
 const EQUIP_NPC = SHOP_ITEMS.filter((i) => i.type === 'equipment')
 
+const EQUIP_SLOT_ORDER: EquipSlot[] = [
+  'helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet',
+]
+
+function getShopItemSetId(shopItem: typeof SHOP_ITEMS[0]): string {
+  const template = shopItem.itemId ? ALL_ITEMS[shopItem.itemId] : null
+  return template?.setId ?? '__no_set__'
+}
+
+function getShopItemSetName(shopItem: typeof SHOP_ITEMS[0]): string {
+  const template = shopItem.itemId ? ALL_ITEMS[shopItem.itemId] : null
+  return template?.setName ?? 'Обычное снаряжение'
+}
+
+function sortEquipmentShopItems(items: typeof EQUIP_NPC): typeof EQUIP_NPC {
+  const slotIndex = (slot: EquipSlot) => {
+    const idx = EQUIP_SLOT_ORDER.indexOf(slot)
+    return idx >= 0 ? idx : 99
+  }
+  return [...items].sort((a, b) => {
+    const ta = a.itemId ? ALL_ITEMS[a.itemId] : null
+    const tb = b.itemId ? ALL_ITEMS[b.itemId] : null
+    const setCmp = getShopItemSetName(a).localeCompare(getShopItemSetName(b), 'ru')
+    if (setCmp !== 0) return setCmp
+    const slotA = ta?.slot ? slotIndex(ta.slot as EquipSlot) : 99
+    const slotB = tb?.slot ? slotIndex(tb.slot as EquipSlot) : 99
+    if (slotA !== slotB) return slotA - slotB
+    return (ta?.name ?? '').localeCompare(tb?.name ?? '', 'ru')
+  })
+}
+
 type ScrollRarityFilter = 'all' | 'epic' | 'legendary' | 'mythic'
 
 export function ShopPage() {
@@ -75,6 +106,7 @@ export function ShopPage() {
   const [resourceAmount, setResourceAmount] = useState('1')
   const [scrollRarityFilter, setScrollRarityFilter] = useState<ScrollRarityFilter>('all')
   const [scrollSetFilter, setScrollSetFilter] = useState<string>('all')
+  const [equipmentSetFilter, setEquipmentSetFilter] = useState<string>('all')
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -257,6 +289,37 @@ export function ShopPage() {
       .sort((a, b) => (order.get(a.scrollId!) ?? 0) - (order.get(b.scrollId!) ?? 0))
   }, [filteredScrolls])
 
+  const equipmentSetFilters = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const item of EQUIP_NPC) {
+      const setId = getShopItemSetId(item)
+      const setName = getShopItemSetName(item)
+      if (!map.has(setId)) map.set(setId, setName)
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  }, [])
+
+  const filteredEquipmentShop = useMemo(() => {
+    let items = EQUIP_NPC
+    if (equipmentSetFilter !== 'all') {
+      items = items.filter((item) => getShopItemSetId(item) === equipmentSetFilter)
+    }
+    return sortEquipmentShopItems(items)
+  }, [equipmentSetFilter])
+
+  const groupedEquipmentShop = useMemo(() => {
+    const groups = new Map<string, typeof EQUIP_NPC>()
+    for (const item of filteredEquipmentShop) {
+      const setName = getShopItemSetName(item)
+      const list = groups.get(setName) ?? []
+      list.push(item)
+      groups.set(setName, list)
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'ru'))
+  }, [filteredEquipmentShop])
+
   function renderNpcCard(item: typeof SHOP_ITEMS[0]) {
     const template = item.itemId ? ALL_ITEMS[item.itemId] : null
     const ownedTool = item.toolId && (
@@ -418,8 +481,44 @@ export function ShopPage() {
             </TabsContent>
             <TabsContent value="equipment">
               <p className="text-[10px] text-slate-500 mb-2">Обычные и редкие предметы — цена выше, чем с фарма.</p>
-              <div className="space-y-3 max-h-[55vh] overflow-y-auto">
-                {EQUIP_NPC.map(renderNpcCard)}
+              <div className="flex gap-1 overflow-x-auto pb-1 mb-3">
+                <Button
+                  variant={equipmentSetFilter === 'all' ? 'default' : 'secondary'}
+                  size="sm"
+                  className="h-7 text-[10px] shrink-0"
+                  onClick={() => setEquipmentSetFilter('all')}
+                >
+                  Все сеты
+                </Button>
+                {equipmentSetFilters.map((s) => (
+                  <Button
+                    key={s.id}
+                    variant={equipmentSetFilter === s.id ? 'default' : 'secondary'}
+                    size="sm"
+                    className="h-7 text-[10px] shrink-0"
+                    onClick={() => setEquipmentSetFilter(s.id)}
+                  >
+                    {s.name}
+                  </Button>
+                ))}
+              </div>
+              <div className="max-h-[55vh] overflow-y-auto">
+                {filteredEquipmentShop.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-8">Нет снаряжения по фильтру</p>
+                ) : equipmentSetFilter === 'all' ? (
+                  <div className="space-y-4">
+                    {groupedEquipmentShop.map(([setName, items]) => (
+                      <div key={setName}>
+                        <h3 className="text-xs font-medium text-aether-cyan mb-2 sticky top-0 bg-aether-bg/95 py-1 z-[1]">
+                          {setName}
+                        </h3>
+                        <div className="space-y-3">{items.map(renderNpcCard)}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">{filteredEquipmentShop.map(renderNpcCard)}</div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
