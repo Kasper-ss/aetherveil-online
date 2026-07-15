@@ -1,6 +1,7 @@
 import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/game'
 import { ensureItemDurability, getDurabilityStatMult, getMaxDurability } from '@/lib/equipmentDurability'
 import { LUCKY_SETS } from '@/data/luckySets'
+import { CLASS_COMMON_SETS, SET_CLASS_MAP } from '@/data/classSets'
 
 export type EquipSlot = Exclude<ItemSlot, 'consumable'>
 
@@ -137,9 +138,16 @@ for (const slot of Object.keys(SLOT_NAMES_RU) as EquipSlot[]) {
 }
 
 // Legendary sets — craft-only in forge
-const SETS = [
+const SETS: Array<{
+  id: string
+  name: string
+  bonus: string
+  classId?: import('@/types/game').PlayerClass
+  pieces: Array<{ slot: EquipSlot; name: string; icon: string; stats: Partial<Stats> }>
+}> = [
   {
     id: 'shadow_ascension',
+    classId: 'rogue',
     name: 'Восхождение в Тени',
     bonus: 'Полный сет: +25% крит, +15% уклонение, +10% урон из тени',
     pieces: [
@@ -154,6 +162,7 @@ const SETS = [
   },
   {
     id: 'solo_leveling',
+    classId: 'mage',
     name: 'Поднятие уровня в одиночку',
     bonus: 'Полный сет: +20% опыт, +15% ATK, +10% HP за каждый уровень выше врага',
     pieces: [
@@ -168,6 +177,7 @@ const SETS = [
   },
   {
     id: 'one_punch',
+    classId: 'monk',
     name: 'Ванпанчмен',
     bonus: 'Полный сет: +50% ATK, шанс мгновенного убийства обычных мобов (5%)',
     pieces: [
@@ -182,6 +192,7 @@ const SETS = [
   },
   {
     id: 'telegram_hero',
+    classId: 'hunter',
     name: 'Герой Телеграм',
     bonus: 'Полный сет: +20% ATK, +15% CRIT, уникальная аура ✈️',
     pieces: [
@@ -197,9 +208,16 @@ const SETS = [
 ]
 
 // Эпические сеты — отдельные от легендарных (Тени, Одиночка, Ванпанчмен)
-const EPIC_SETS = [
+const EPIC_SETS: Array<{
+  id: string
+  name: string
+  bonus: string
+  classId?: import('@/types/game').PlayerClass
+  pieces: Array<{ slot: EquipSlot; name: string; icon: string; stats: Partial<Stats> }>
+}> = [
   {
     id: 'storm_breaker',
+    classId: 'warrior',
     name: 'Громобой',
     bonus: 'Полный сет: +12% ATK, +8% крит, +5% скорость',
     pieces: [
@@ -214,6 +232,7 @@ const EPIC_SETS = [
   },
   {
     id: 'crystal_guard',
+    classId: 'paladin',
     name: 'Кристальный Страж',
     bonus: 'Полный сет: +15% DEF, +80 HP, +6% сопротивление',
     pieces: [
@@ -228,6 +247,7 @@ const EPIC_SETS = [
   },
   {
     id: 'beast_master',
+    classId: 'hunter',
     name: 'Повелитель Зверей',
     bonus: 'Полный сет: +10% урон питомцу, +12% дроп, +8% скорость',
     pieces: [
@@ -242,6 +262,7 @@ const EPIC_SETS = [
   },
   {
     id: 'assassin',
+    classId: 'rogue',
     name: 'Ассасин',
     bonus: 'Полный сет: +35% к шансу крита и +20% к урону от скрытых атак',
     pieces: [
@@ -259,6 +280,7 @@ const EPIC_SETS = [
 const MYTHIC_SETS = [
   {
     id: 'penivise',
+    classId: 'warlock' as import('@/types/game').PlayerClass,
     name: 'Пенивайз',
     bonus: 'Полный сет: +50% урон по одной цели, +25% восстановление энергии, страх на врагов',
     pieces: [
@@ -291,6 +313,7 @@ for (const set of SETS) {
       sellPrice: 2000,
       setId: set.id,
       setName: set.name,
+      requiredClass: set.classId ?? SET_CLASS_MAP[set.id],
       upgradeLevel: 1,
       starLevel: 0,
     }
@@ -315,6 +338,7 @@ for (const set of EPIC_SETS) {
       sellPrice: 900,
       setId: set.id,
       setName: set.name,
+      requiredClass: set.classId ?? SET_CLASS_MAP[set.id],
       upgradeLevel: 1,
       starLevel: 0,
     }
@@ -339,6 +363,7 @@ for (const set of MYTHIC_SETS) {
       sellPrice: 5000,
       setId: set.id,
       setName: set.name,
+      requiredClass: set.classId ?? SET_CLASS_MAP[set.id],
       upgradeLevel: 1,
       starLevel: 0,
     }
@@ -363,13 +388,39 @@ for (const set of LUCKY_SETS) {
       sellPrice: 3500,
       setId: set.id,
       setName: set.name,
+      requiredClass: set.classId,
       upgradeLevel: 1,
       starLevel: 0,
     }
   }
 }
 
-export const SET_DATA = [...SETS, ...EPIC_SETS, ...MYTHIC_SETS, ...LUCKY_SETS]
+for (const set of CLASS_COMMON_SETS) {
+  for (const piece of set.pieces) {
+    const id = `${set.id}_${piece.slot}`
+    const statDesc = Object.entries(piece.stats).map(([k, v]) => {
+      const labels: Record<string, string> = { atk: 'АТК', def: 'ЗАЩ', hp: 'HP', crit: 'КРИТ', speed: 'СКР', stealth: 'СКРЫТ' }
+      return `${labels[k] ?? k} +${v}`
+    }).join(', ')
+    generated[id] = {
+      id,
+      name: piece.name,
+      description: `Сет «${set.name}». ${statDesc}. ${set.bonus}`,
+      slot: piece.slot,
+      rarity: 'common',
+      stats: piece.stats,
+      icon: piece.icon,
+      sellPrice: 80,
+      setId: set.id,
+      setName: set.name,
+      requiredClass: set.classId,
+      upgradeLevel: 1,
+      starLevel: 0,
+    }
+  }
+}
+
+export const SET_DATA = [...SETS, ...EPIC_SETS, ...MYTHIC_SETS, ...LUCKY_SETS, ...CLASS_COMMON_SETS]
 
 export const CONSUMABLES: Record<string, Item> = {
   hp_potion: {
@@ -597,15 +648,33 @@ export function getLootTableForFloor(floor: number): string[] {
   return slots.map((s) => `${s}_t${Math.max(1, Math.min(10, tier + Math.floor(Math.random() * 2) + 1))}`)
 }
 
-export function rollEquipmentDrop(floor: number, isBoss: boolean, lootMult = 1): Item | null {
+export function rollEquipmentDrop(
+  floor: number,
+  isBoss: boolean,
+  lootMult = 1,
+  classId?: import('@/types/game').PlayerClass,
+): Item | null {
   const chance = Math.min(0.98, (isBoss ? 0.85 : 0.45) * lootMult)
   if (Math.random() > chance) return null
+
+  if (classId && Math.random() < 0.18) {
+    const sets = CLASS_COMMON_SETS.filter((s) => s.classId === classId)
+    if (sets.length > 0) {
+      const set = sets[Math.floor(Math.random() * sets.length)]
+      const piece = set.pieces[Math.floor(Math.random() * set.pieces.length)]
+      const inst = createItemInstance(`${set.id}_${piece.slot}`)
+      if (inst) return inst
+    }
+  }
+
   const dropTier = Math.floor(Math.random() * 4) + Math.min(8, Math.floor(floor / 4))
   const tier = Math.min(10, Math.max(1, dropTier))
   const slots: EquipSlot[] = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet']
   const slot = slots[Math.floor(Math.random() * slots.length)]
   const id = `${slot}_t${tier + 1}`
-  return createItemInstance(id)
+  const item = createItemInstance(id)
+  if (item && classId) return { ...item, requiredClass: classId }
+  return item
 }
 
 export const EMPTY_EQUIPPED: EquippedItems = {

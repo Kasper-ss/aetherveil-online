@@ -4,6 +4,17 @@ import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FL
 import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
 import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
 import { pickNewerPlayer, SAVE_VERSION } from '@/lib/playerMigration'
+import { canPlayerEquipItem } from '@/lib/classGear'
+import { getPromoReward, normalizePromoCode } from '@/data/promoCodes'
+import {
+  createGuildOnServer,
+  joinGuildOnServer,
+  leaveGuildOnServer,
+  fetchGuildList,
+  checkSameGuild,
+  CREATE_GUILD_COST,
+  CREATE_GUILD_MIN_FLOOR,
+} from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
@@ -55,7 +66,7 @@ import { bumpQuestEvent, normalizeQuestState, isQuestClaimed, getQuestProgress }
 import { DAILY_QUESTS, WEEKLY_QUESTS, GUILD_QUESTS } from '@/data/quests'
 import {
   addGuildQuestProgress, getGuildQuestProgress, inviteToGuildById,
-  acceptGuildInvite as acceptGuildInviteMp, declineGuildInvite, getGuildInvitesFor, isInGuildRoster,
+  acceptGuildInvite as acceptGuildInviteMp, declineGuildInvite, getGuildInvitesFor,
 } from '@/lib/multiplayer'
 import { PROFESSION_ACTIVITIES } from '@/data/professionActivities'
 import { playerHasTool, getMineDoubleBonus, getFishingJunkReduction, getHerbGatherBonus } from '@/data/tools'
@@ -293,6 +304,12 @@ interface PlayerState {
   declineGuildInvite: (guildId: string) => void
   getPendingGuildInvites: () => import('@/lib/multiplayer').GuildInvite[]
   sendGuildGift: (toId: number, item: Item) => Promise<boolean>
+  createPlayerGuild: (name: string) => Promise<{ ok: boolean; error?: string }>
+  joinPlayerGuild: (guildId: string) => Promise<{ ok: boolean; error?: string }>
+  leavePlayerGuild: () => Promise<boolean>
+  fetchGuildDirectory: () => Promise<import('@/lib/guildApi').GuildListEntry[]>
+  redeemPromoCode: (code: string) => { ok: boolean; error?: string }
+  completeWelcome: () => void
   sellResourceToNpc: (resourceId: ResourceId, amount: number) => boolean
   sellItemToNpc: (item: Item) => boolean
   claimMonthlyReward: (categoryId: string, rank: 1 | 2 | 3) => boolean
@@ -555,6 +572,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   equipItem: (item) => {
     const { player } = get()
     if (!player || item.slot === 'consumable') return
+    const classCheck = canPlayerEquipItem(item, player)
+    if (!classCheck.ok) {
+      void showTelegramAlert(`Этот предмет предназначен только для ${classCheck.className}`)
+      return
+    }
     const slot = getEquipSlotForItem(item, player.classId)
     if (!slot) return
     const equipped = { ...player.equipped }
@@ -2771,8 +2793,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   sendGuildGift: async (toId, item) => {
     const { player } = get()
     if (!player || !item.instanceId || item.slot === 'consumable') return false
-    if (!isInGuildRoster(toId) || toId === player.telegramId) return false
+    if (!player.guildId || toId === player.telegramId) return false
     if (!player.inventory.some((i) => i.instanceId === item.instanceId)) return false
+
+    const sameGuild = await checkSameGuild(toId)
+    if (!sameGuild) return false
 
     const initData = getInitData()
     if (!initData) return false
@@ -2793,6 +2818,84 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().addItem(item)
       return false
     }
+  },
+
+  createPlayerGuild: async (name) => {
+    const { player } = get()
+    if (!player) return { ok: false, error: 'Нет игрока' }
+    if (player.guildId) return { ok: false, error: 'Вы уже в гильдии' }
+    if (player.highestFloor < CREATE_GUILD_MIN_FLOOR) {
+      return { ok: false, error: `Создание доступно с ${CREATE_GUILD_MIN_FLOOR} этажа` }
+    }
+    if (player.gold < CREATE_GUILD_COST) {
+      return { ok: false, error: `Нужно ${CREATE_GUILD_COST.toLocaleString('ru-RU')} монет` }
+    }
+    try {
+      const res = await createGuildOnServer(name, player.highestFloor, player.gold)
+      if (!res?.guild) return { ok: false, error: 'Не удалось создать гильдию' }
+      if (!get().spendGold(CREATE_GUILD_COST)) return { ok: false, error: 'Недостаточно золота' }
+      get().updatePlayer({ guildId: res.guild.id, guildJoinedAt: new Date().toISOString() })
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Ошибка' }
+    }
+  },
+
+  joinPlayerGuild: async (guildId) => {
+    const { player } = get()
+    if (!player) return { ok: false, error: 'Нет игрока' }
+    if (player.guildId) return { ok: false, error: 'Вы уже в гильдии' }
+    try {
+      const res = await joinGuildOnServer(guildId)
+      if (!res?.guild) return { ok: false, error: 'Не удалось вступить' }
+      get().updatePlayer({ guildId: res.guild.id, guildJoinedAt: new Date().toISOString() })
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Ошибка' }
+    }
+  },
+
+  leavePlayerGuild: async () => {
+    const { player } = get()
+    if (!player?.guildId) return false
+    await leaveGuildOnServer()
+    get().updatePlayer({ guildId: undefined, guildJoinedAt: undefined })
+    return true
+  },
+
+  fetchGuildDirectory: async () => {
+    const data = await fetchGuildList()
+    return data?.guilds ?? []
+  },
+
+  redeemPromoCode: (code) => {
+    const { player } = get()
+    if (!player) return { ok: false, error: 'Нет игрока' }
+    const normalized = normalizePromoCode(code)
+    const reward = getPromoReward(normalized)
+    if (!reward) return { ok: false, error: 'Промокод не найден' }
+    const redeemed = player.redeemedPromoCodes ?? []
+    if (redeemed.includes(normalized)) return { ok: false, error: 'Промокод уже использован' }
+
+    if (reward.gold) get().addGold(reward.gold)
+    if (reward.gems) get().updatePlayer({ gems: player.gems + reward.gems })
+
+    const updates: Partial<Player> = {
+      redeemedPromoCodes: [...redeemed, normalized],
+    }
+    if (reward.goldBuffPct && reward.goldBuffHours) {
+      updates.buffPromoGoldMult = 1 + reward.goldBuffPct / 100
+      updates.buffPromoGoldUntil = extendBuff(
+        player.buffPromoGoldUntil,
+        reward.goldBuffHours * 60 * 60 * 1000,
+      )
+    }
+    get().updatePlayer(updates)
+    return { ok: true }
+  },
+
+  completeWelcome: () => {
+    get().updatePlayer({ welcomeShown: true })
   },
 
   sellResourceToNpc: (resourceId, amount) => {

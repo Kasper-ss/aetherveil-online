@@ -36,11 +36,12 @@ export function getExpMultiplier(player: Player): number {
 export function getGoldMultiplier(player: Player): number {
   const buff = isBuffActive(player.buffTripleGoldUntil) ? 3 : 1
   const fate = isBuffActive(player.buffFateGoldUntil) ? FATE_GOLD_MULTIPLIER : 1
+  const promo = isBuffActive(player.buffPromoGoldUntil) ? (player.buffPromoGoldMult ?? 1) : 1
   const ach = getAchievementMultipliers(player).gold
   const prop = getPropertyMultipliers(player)
   const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return buff * fate * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * city.mobGold * city.allRewards * vip.gold
+  return buff * fate * promo * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * city.mobGold * city.allRewards * vip.gold
 }
 
 export function getLootMultiplier(player: Player): number {
@@ -125,6 +126,10 @@ export function getActiveBuffs(player: Player): ActiveBuffInfo[] {
   }
   if (isBuffActive(player.buffFateExpUntil)) {
     buffs.push({ id: 'fateExp', label: 'Карта: опыт', until: player.buffFateExpUntil! })
+  }
+  if (isBuffActive(player.buffPromoGoldUntil)) {
+    const pct = Math.round(((player.buffPromoGoldMult ?? 1) - 1) * 100)
+    buffs.push({ id: 'promoGold', label: `Промокод: +${pct}% Gold`, until: player.buffPromoGoldUntil! })
   }
   return buffs
 }

@@ -8,6 +8,7 @@ import { PetRewardModal } from '@/pages/PetRewardModal'
 import { ClassSelectModal } from '@/pages/ClassSelectModal'
 import { SecondaryClassSelectModal } from '@/pages/SecondaryClassSelectModal'
 import { RaceSelectModal } from '@/pages/RaceSelectModal'
+import { WelcomeModal } from '@/pages/WelcomeModal'
 import { HomePage } from '@/pages/HomePage'
 import { TowerPage } from '@/pages/TowerPage'
 import { CombatPage } from '@/pages/CombatPage'
@@ -50,6 +51,7 @@ function AppRoutes() {
       <ClassSelectModal />
       <SecondaryClassSelectModal />
       <RaceSelectModal />
+      <WelcomeModal />
       <TutorialModal />
       <DailyRewardModal />
       <StatDistributionModal />

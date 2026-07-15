@@ -214,6 +214,7 @@ export interface Item {
   maxDurability?: number
   socketedGems?: SocketGemId[]
   supremeEnchantId?: string
+  requiredClass?: PlayerClass
 }
 
 export interface Skill {
@@ -388,6 +389,10 @@ export interface Player {
   fairStats?: FairGameStats
   questState?: QuestState
   guildJoinedAt?: string
+  welcomeShown?: boolean
+  redeemedPromoCodes?: string[]
+  buffPromoGoldUntil?: string
+  buffPromoGoldMult?: number
   monthlyStats?: MonthlyStats
   monthlyRewardsClaimed?: string[]
   achievementsClaimed?: string[]

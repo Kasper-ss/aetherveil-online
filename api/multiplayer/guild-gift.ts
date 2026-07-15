@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { validateInitData, getBotToken } from '../../server/telegram.js'
 import { queueGuildGift } from '../../server/guildGifts.js'
+import { areSameGuild } from '../../server/guildRegistry.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -25,6 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (!body.item?.id) {
       return res.status(400).json({ error: 'Нет предмета для отправки' })
+    }
+    if (!areSameGuild(user.id, toId)) {
+      return res.status(403).json({ error: 'Игроки не в одной гильдии' })
     }
 
     const gift = queueGuildGift({

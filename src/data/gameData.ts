@@ -119,6 +119,7 @@ export function generateVictoryLoot(
   lootMult = 1,
   isEpic = false,
   isMiniBoss = false,
+  classId?: import('@/types/game').PlayerClass,
 ): Item[] {
   const loot: Item[] = []
   const bonusMult = isMiniBoss ? 1.65 : isEpic ? 1.5 : 1
@@ -127,14 +128,14 @@ export function generateVictoryLoot(
 
   if (!boostedRoll && Math.random() > 0.1) return loot
 
-  const drop = rollEquipmentDrop(floor, isBoss || isEpic || isMiniBoss, effectiveMult)
+  const drop = rollEquipmentDrop(floor, isBoss || isEpic || isMiniBoss, effectiveMult, classId)
   if (drop) loot.push(drop)
 
   if (isBoss && Math.random() > 0.35) {
-    const bonus = rollEquipmentDrop(floor, true, effectiveMult)
+    const bonus = rollEquipmentDrop(floor, true, effectiveMult, classId)
     if (bonus) loot.push(bonus)
   } else if (boostedRoll && Math.random() > (isMiniBoss ? 0.35 : 0.5)) {
-    const bonus = rollEquipmentDrop(floor, isBoss || isMiniBoss, effectiveMult)
+    const bonus = rollEquipmentDrop(floor, isBoss || isMiniBoss, effectiveMult, classId)
     if (bonus) loot.push(bonus)
   }
 
@@ -240,7 +241,12 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     buffFateGoldUntil: base.buffFateGoldUntil,
     buffFateExpUntil: base.buffFateExpUntil,
     fateCardLastUsedAt: base.fateCardLastUsedAt,
-    guildId: base.guildId ?? GUILD_ID,
+    guildId: base.guildId === GUILD_ID && !base.guildJoinedAt ? undefined : base.guildId,
+    guildJoinedAt: base.guildJoinedAt,
+    welcomeShown: base.welcomeShown ?? false,
+    redeemedPromoCodes: base.redeemedPromoCodes ?? [],
+    buffPromoGoldUntil: base.buffPromoGoldUntil,
+    buffPromoGoldMult: base.buffPromoGoldMult,
     buffInfiniteEnergyUntil: base.buffInfiniteEnergyUntil,
     buffDoubleExpUntil: base.buffDoubleExpUntil,
     buffTripleGoldUntil: base.buffTripleGoldUntil,
@@ -344,7 +350,6 @@ export function createDefaultPlayer(telegramId: number, displayName: string, use
     underwearEasterEggClaimed: false,
     bankBalance: 0,
     bankLastInterestAt: new Date().toISOString(),
-    guildId: GUILD_ID,
     friendIds: [],
     fairStats: { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
   }

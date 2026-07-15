@@ -808,7 +808,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           : 1
         const lootMult = lootMultBase * portalMult
         const treatAsEpic = isEpic || (combat.isPortal && combat.portalType === 'red' && !combat.isBoss)
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss))
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss, pvePlayer?.classId))
         resources = generateCombatResources(combat.floor, combat.isBoss, treatAsEpic, isMiniBoss, lootMult)
       }
     } else if (combat.isPvp) {

@@ -26,10 +26,13 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
   const addFriendById = usePlayerStore((s) => s.addFriendById)
   const removeFriend = usePlayerStore((s) => s.removeFriend)
   const claimReferralRewards = usePlayerStore((s) => s.claimReferralRewards)
+  const redeemPromoCode = usePlayerStore((s) => s.redeemPromoCode)
   const syncPlayerState = usePlayerStore((s) => s.syncPlayerState)
   const [friendIdInput, setFriendIdInput] = useState('')
+  const [promoInput, setPromoInput] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [claiming, setClaiming] = useState(false)
+  const [redeemingPromo, setRedeemingPromo] = useState(false)
 
   if (!player) return null
   const p = player
@@ -93,6 +96,28 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
     } finally {
       setClaiming(false)
     }
+  }
+
+  function handleRedeemPromo() {
+    if (redeemingPromo) return
+    const code = promoInput.trim()
+    if (!code) {
+      setMessage('Введите промокод')
+      hapticError()
+      return
+    }
+    setRedeemingPromo(true)
+    const res = redeemPromoCode(code)
+    if (res.ok) {
+      setPromoInput('')
+      setMessage('Промокод активирован! +50 000 🪙, +20 💎, +70% Gold на 2 ч.')
+      hapticSuccess()
+    } else {
+      setMessage(res.error ?? 'Ошибка')
+      hapticError()
+    }
+    setRedeemingPromo(false)
+    setTimeout(() => setMessage(null), 3000)
   }
 
   function handleAddFriend() {
@@ -166,6 +191,21 @@ export function InviteFriendDialog({ open, onOpenChange }: InviteFriendDialogPro
             <Share2 className="h-4 w-4" />
             {t('friends.inviteToGame')}
           </Button>
+
+          <div className="rounded-lg bg-aether-bg border border-aether-border p-3 space-y-2">
+            <p className="text-xs text-slate-400">Промокод</p>
+            <input
+              type="text"
+              placeholder="Введите промокод"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value)}
+              className="w-full bg-aether-surface border border-aether-border rounded-lg px-3 py-2 text-sm text-white uppercase"
+            />
+            <Button className="w-full" disabled={redeemingPromo} onClick={handleRedeemPromo}>
+              <Gift className="h-4 w-4" />
+              {redeemingPromo ? '...' : 'Активировать'}
+            </Button>
+          </div>
 
           <Card className={hasUncollected ? 'border-aether-gold/40' : undefined}>
             <CardContent className="p-3 space-y-2">

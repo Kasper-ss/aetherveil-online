@@ -79,7 +79,7 @@ export function registerOnlinePlayer(player: Player) {
     maxHp: getCombatMaxHp(player),
     lastSeen: new Date().toISOString(),
     inArena: false,
-    guildId: player.guildId ?? GUILD_ID,
+    guildId: player.guildId ?? '',
   }
   const registry = pruneOnline(readOnline())
   registry[String(player.telegramId)] = snapshot

@@ -5,6 +5,19 @@ import { createStarInvoice, fulfillStarPurchase, handleTelegramWebhook } from '.
 import { setWebhook, getMiniAppUrl } from './server/telegram.js'
 import { syncPublicPlayer, getLeaderboardRecords, getMarketListingRecords, buyMarketListing } from './server/playerRegistry.js'
 import { validateInitData, getBotToken } from './server/telegram.js'
+import {
+  listGuilds,
+  createGuild,
+  joinGuild,
+  leaveGuild,
+  getGuildForMember,
+  sendGuildChat,
+  getGuildChat,
+  areSameGuild,
+  CREATE_GUILD_COST,
+  CREATE_GUILD_MIN_FLOOR,
+} from './server/guildRegistry.js'
+import { queueGuildGift } from './server/guildGifts.js'
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -176,6 +189,149 @@ export function starsApiPlugin(): Plugin {
               return
             }
             sendJson(res, 200, { ok: true, listing })
+            return
+          }
+
+          if (req.method === 'POST' && req.url === '/api/multiplayer/guild') {
+            const body = await readJsonBody(req) as {
+              initData?: string
+              action?: string
+              name?: string
+              guildId?: string
+              text?: string
+              after?: string
+              highestFloor?: number
+              gold?: number
+            }
+            const user = validateInitData(body.initData ?? '', getBotToken())
+            if (!user) {
+              sendJson(res, 401, { error: 'Недействительные данные Telegram' })
+              return
+            }
+            const action = body.action ?? 'list'
+            if (action === 'list') {
+              sendJson(res, 200, { ok: true, guilds: listGuilds(), myGuild: getGuildForMember(user.id) })
+              return
+            }
+            if (action === 'create') {
+              const floor = Number(body.highestFloor ?? 1)
+              const gold = Number(body.gold ?? 0)
+              if (floor < CREATE_GUILD_MIN_FLOOR) {
+                sendJson(res, 400, { error: `Создание доступно с ${CREATE_GUILD_MIN_FLOOR} этажа` })
+                return
+              }
+              if (gold < CREATE_GUILD_COST) {
+                sendJson(res, 400, { error: `Нужно ${CREATE_GUILD_COST.toLocaleString('ru-RU')} монет` })
+                return
+              }
+              const result = createGuild({
+                telegramId: user.id,
+                displayName: user.first_name,
+                username: user.username ?? `user_${user.id}`,
+                name: body.name ?? '',
+              })
+              if (!result.ok) {
+                sendJson(res, 400, { error: result.error })
+                return
+              }
+              sendJson(res, 200, { ok: true, guild: result.guild, goldSpent: CREATE_GUILD_COST })
+              return
+            }
+            if (action === 'join') {
+              const result = joinGuild({
+                telegramId: user.id,
+                displayName: user.first_name,
+                username: user.username ?? `user_${user.id}`,
+                guildId: String(body.guildId ?? ''),
+              })
+              if (!result.ok) {
+                sendJson(res, 400, { error: result.error })
+                return
+              }
+              sendJson(res, 200, { ok: true, guild: result.guild })
+              return
+            }
+            if (action === 'leave') {
+              leaveGuild(user.id)
+              sendJson(res, 200, { ok: true })
+              return
+            }
+            if (action === 'my') {
+              sendJson(res, 200, { ok: true, guild: getGuildForMember(user.id) })
+              return
+            }
+            if (action === 'chat_send') {
+              const myGuild = getGuildForMember(user.id)
+              if (!myGuild) {
+                sendJson(res, 400, { error: 'Вы не в гильдии' })
+                return
+              }
+              const msg = sendGuildChat({
+                guildId: myGuild.id,
+                senderId: user.id,
+                senderName: user.first_name,
+                text: body.text ?? '',
+              })
+              if (!msg) {
+                sendJson(res, 400, { error: 'Не удалось отправить' })
+                return
+              }
+              sendJson(res, 200, { ok: true, message: msg })
+              return
+            }
+            if (action === 'chat_poll') {
+              const myGuild = getGuildForMember(user.id)
+              if (!myGuild) {
+                sendJson(res, 200, { ok: true, messages: [] })
+                return
+              }
+              sendJson(res, 200, {
+                ok: true,
+                messages: getGuildChat(myGuild.id, body.after),
+                guildId: myGuild.id,
+              })
+              return
+            }
+            if (action === 'same_guild') {
+              const toId = Math.floor(Number(body.guildId))
+              sendJson(res, 200, { ok: true, same: areSameGuild(user.id, toId) })
+              return
+            }
+            sendJson(res, 400, { error: 'Unknown action' })
+            return
+          }
+
+          if (req.method === 'POST' && req.url === '/api/multiplayer/guild-gift') {
+            const body = await readJsonBody(req) as {
+              initData?: string
+              toId?: number
+              item?: Record<string, unknown>
+            }
+            const user = validateInitData(body.initData ?? '', getBotToken())
+            if (!user) {
+              sendJson(res, 401, { error: 'Недействительные данные Telegram' })
+              return
+            }
+            const toId = Math.floor(Number(body.toId))
+            if (!toId || toId === user.id) {
+              sendJson(res, 400, { error: 'Некорректный получатель' })
+              return
+            }
+            if (!body.item?.id) {
+              sendJson(res, 400, { error: 'Нет предмета для отправки' })
+              return
+            }
+            if (!areSameGuild(user.id, toId)) {
+              sendJson(res, 403, { error: 'Игроки не в одной гильдии' })
+              return
+            }
+            const gift = queueGuildGift({
+              fromId: user.id,
+              fromName: user.first_name,
+              toId,
+              item: body.item as import('./server/guildGifts.js').GuildGiftItem,
+            })
+            sendJson(res, 200, { ok: true, giftId: gift.id })
             return
           }
 
