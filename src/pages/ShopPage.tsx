@@ -18,6 +18,7 @@ import { formatNumber } from '@/lib/utils'
 import { useT } from '@/hooks/useT'
 import { createItemInstance } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
+import { formatItemClassRestriction } from '@/lib/classGear'
 import { STAR_SHOP_PRODUCTS, formatStarsPriceLabel } from '@/data/starShop'
 import { getVipTier, getNextVipLevel, getVipUpgradeStars } from '@/data/vipTiers'
 import { getVipMultipliers } from '@/lib/vipBonuses'
@@ -364,6 +365,11 @@ export function ShopPage() {
               )}
               {template?.setName && (
                 <Badge className="text-[8px] border border-aether-border">{template.setName}</Badge>
+              )}
+              {template && formatItemClassRestriction(template) && (
+                <Badge className="text-[8px] border border-amber-500/40 text-amber-300">
+                  {formatItemClassRestriction(template)}
+                </Badge>
               )}
             </div>
             {template && Object.keys(template.stats).length > 0 && (

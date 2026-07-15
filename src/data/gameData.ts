@@ -1,5 +1,5 @@
 import type { ShopItem, DailyReward, ResourceId, Item } from '@/types/game'
-import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta } from '@/data/items'
+import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
 import { EMPTY_ALLOCATED, getMaxEnergy } from '@/lib/playerStats'
 import { ensureItemDurability } from '@/lib/equipmentDurability'
 import { getMaxMana, usesMana } from '@/lib/mana'
@@ -142,7 +142,10 @@ export function generateVictoryLoot(
   return loot
 }
 
-function sanitizeItem(i: import('@/types/game').Item): import('@/types/game').Item {
+function sanitizeItem(
+  i: import('@/types/game').Item,
+  classId?: import('@/types/game').PlayerClass,
+): import('@/types/game').Item {
   const base = {
     ...i,
     stats: i.stats ?? {},
@@ -150,14 +153,17 @@ function sanitizeItem(i: import('@/types/game').Item): import('@/types/game').It
     upgradeLevel: i.upgradeLevel ?? 1,
     starLevel: i.starLevel ?? 0,
   }
-  return refreshItemMeta(ensureItemDurability(base))
+  return refreshItemMeta(ensureItemDurability(stampItemClassBinding(base, classId)))
 }
 
-function sanitizeEquipped(equipped: Partial<import('@/types/game').EquippedItems>): import('@/types/game').EquippedItems {
+function sanitizeEquipped(
+  equipped: Partial<import('@/types/game').EquippedItems>,
+  classId?: import('@/types/game').PlayerClass,
+): import('@/types/game').EquippedItems {
   const result = { ...EMPTY_EQUIPPED }
   for (const slot of Object.keys(EMPTY_EQUIPPED) as (keyof import('@/types/game').EquippedItems)[]) {
     const item = equipped[slot]
-    result[slot] = item ? sanitizeItem(item) : null
+    result[slot] = item ? sanitizeItem(item, classId) : null
   }
   return result
 }
@@ -214,11 +220,11 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     farmFloor: base.farmFloor ?? base.currentFloor ?? 1,
     floorMobKills: base.floorMobKills ?? {},
     floorMiniBossKills: base.floorMiniBossKills ?? {},
-    equipped: sanitizeEquipped(base.equipped ?? {}),
+    equipped: sanitizeEquipped(base.equipped ?? {}, normalizedClassId),
     inventory: (base.inventory ?? []).filter((i) => {
       const valid = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet', 'consumable']
       return valid.includes(i.slot)
-    }).map(sanitizeItem),
+    }).map((i) => sanitizeItem(i, normalizedClassId)),
     statPoints: base.statPoints ?? 0,
     allocatedStats: { ...EMPTY_ALLOCATED, ...base.allocatedStats },
     professionLevels: base.professionLevels ?? {},
@@ -301,10 +307,23 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     activeBrews: base.activeBrews ?? [],
     pendingSecretCave: base.pendingSecretCave ?? null,
     pendingPortal: base.pendingPortal ?? null,
-    portalRun: base.portalRun ?? null,
+    portalRun: base.portalRun
+      ? {
+          ...base.portalRun,
+          accumulatedLoot: (base.portalRun.accumulatedLoot ?? []).map((i) => sanitizeItem(i, normalizedClassId)),
+        }
+      : null,
     secondaryClassId: base.secondaryClassId,
     activeRaidId: base.activeRaidId ?? null,
-    raidProgress: base.raidProgress ?? {},
+    raidProgress: Object.fromEntries(
+      Object.entries(base.raidProgress ?? {}).map(([raidId, progress]) => [
+        raidId,
+        {
+          ...progress,
+          accumulatedLoot: (progress.accumulatedLoot ?? []).map((i) => sanitizeItem(i, normalizedClassId)),
+        },
+      ]),
+    ),
     raidDeathCooldowns: base.raidDeathCooldowns ?? {},
     completedRaids: base.completedRaids ?? [],
     cityState: base.cityState ?? defaultCityState(),

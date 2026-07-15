@@ -11,6 +11,7 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { SKILLS } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
 import { SLOT_LABELS_RU, formatItemStats, RARITY_LABELS_RU, sortGearItems, type GearSortMode } from '@/data/items'
+import { formatItemClassRestriction } from '@/lib/classGear'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
 import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
@@ -136,6 +137,9 @@ export function InventoryPage() {
                       <div className="text-xs font-medium text-white truncate">{item?.name ?? 'Пусто'}</div>
                       {item && (
                         <>
+                          {formatItemClassRestriction(item) && (
+                            <div className="text-[9px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
+                          )}
                           <div className="text-[9px] text-aether-cyan truncate">{formatItemStats(item)}</div>
                           {maxSockets > 0 && (
                             <div className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
@@ -244,6 +248,9 @@ export function InventoryPage() {
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-white truncate">{item.name}</div>
                       <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                      {formatItemClassRestriction(item) && (
+                        <div className="text-[9px] text-amber-400/90 mt-0.5">{formatItemClassRestriction(item)}</div>
+                      )}
                       {getItemMaxGemSockets(item) > 0 && (
                         <div className="text-[9px] text-slate-400 mt-0.5">
                           Слоты камней: {formatGemSocketSummary(item)}

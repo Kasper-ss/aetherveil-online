@@ -635,11 +635,35 @@ export function buildItemBonusDescription(item: Item): string {
 }
 
 export function refreshItemMeta(item: Item): Item {
+  const stamped = stampItemClassBinding(item)
   return {
-    ...item,
-    name: formatItemDisplayName(item),
-    description: buildItemBonusDescription(item),
+    ...stamped,
+    name: formatItemDisplayName(stamped),
+    description: buildItemBonusDescription(stamped),
   }
+}
+
+export function resolveItemRequiredClass(
+  item: Pick<Item, 'id' | 'requiredClass' | 'setId' | 'slot'>,
+  fallbackClassId?: import('@/types/game').PlayerClass,
+): import('@/types/game').PlayerClass | undefined {
+  if (item.requiredClass) return item.requiredClass
+  const template = ALL_ITEMS[item.id]
+  if (template?.requiredClass) return template.requiredClass
+  const setId = item.setId ?? template?.setId
+  if (setId && SET_CLASS_MAP[setId]) return SET_CLASS_MAP[setId]
+  if (fallbackClassId && item.slot !== 'consumable') return fallbackClassId
+  return undefined
+}
+
+export function stampItemClassBinding(
+  item: Item,
+  fallbackClassId?: import('@/types/game').PlayerClass,
+): Item {
+  if (item.slot === 'consumable') return item
+  const requiredClass = resolveItemRequiredClass(item, fallbackClassId)
+  if (!requiredClass || item.requiredClass === requiredClass) return item
+  return { ...item, requiredClass }
 }
 
 export function getLootTableForFloor(floor: number): string[] {
@@ -673,8 +697,8 @@ export function rollEquipmentDrop(
   const slot = slots[Math.floor(Math.random() * slots.length)]
   const id = `${slot}_t${tier + 1}`
   const item = createItemInstance(id)
-  if (item && classId) return { ...item, requiredClass: classId }
-  return item
+  if (!item) return null
+  return classId ? stampItemClassBinding(item, classId) : item
 }
 
 export const EMPTY_EQUIPPED: EquippedItems = {

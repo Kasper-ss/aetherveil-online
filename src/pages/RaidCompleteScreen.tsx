@@ -10,6 +10,7 @@ import { RESOURCES } from '@/data/classes'
 import { formatNumber } from '@/lib/utils'
 import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
 import { formatItemStats } from '@/data/items'
+import { formatItemClassRestriction } from '@/lib/classGear'
 import { hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import type { EquipSlot, ResourceId } from '@/types/game'
@@ -80,6 +81,9 @@ export function RaidCompleteScreen() {
                   <span className="text-2xl">{item.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{item.name}</div>
+                    {formatItemClassRestriction(item) && (
+                      <div className="text-[10px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
+                    )}
                     <div className="text-[10px] text-aether-cyan">{formatItemStats(item)}</div>
                   </div>
                   <Badge>{item.rarity}</Badge>

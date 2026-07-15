@@ -15,7 +15,8 @@ import { formatNumber } from '@/lib/utils'
 import { hapticSuccess, hapticImpact } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
-import { formatItemStats } from '@/data/items'
+import { formatItemClassRestriction } from '@/lib/classGear'
+import { ItemSummary } from '@/components/ui/ItemSummary'
 import type { EquipSlot, ResourceId } from '@/types/game'
 
 export function LootScreen() {
@@ -97,8 +98,11 @@ export function LootScreen() {
                   <span className="text-3xl">{item.icon}</span>
                   <div className="flex-1">
                     <div className="text-sm font-bold text-white">{item.name}</div>
+                    {formatItemClassRestriction(item) && (
+                      <div className="text-[10px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
+                    )}
                     <div className="text-[10px] text-slate-400">{item.description}</div>
-                    <div className="text-[10px] text-aether-cyan mt-1">{formatItemStats(item)}</div>
+                    <ItemSummary item={item} showUpgrade={false} />
                   </div>
                 </CardContent>
               </Card>

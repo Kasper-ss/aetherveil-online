@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { formatItemStats, RARITY_LABELS_RU, SLOT_LABELS_RU } from '@/data/items'
+import { formatItemClassRestriction } from '@/lib/classGear'
 import { formatGemSocketSummary, getItemSockets } from '@/lib/gemSockets'
 import { SOCKET_GEMS } from '@/data/socketGems'
 import type { Item, EquipSlot } from '@/types/game'
@@ -47,6 +48,9 @@ export function EquipSlotSwapDialog({
                   <Badge variant={equipped.rarity} className="text-[8px] mt-0.5">
                     {RARITY_LABELS_RU[equipped.rarity]}
                   </Badge>
+                  {formatItemClassRestriction(equipped) && (
+                    <p className="text-[10px] text-amber-400/90 mt-1">{formatItemClassRestriction(equipped)}</p>
+                  )}
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(equipped)}</p>
                   <p className="text-[10px] text-slate-400 mt-1">
                     Слоты камней: {formatGemSocketSummary(equipped)}
@@ -83,6 +87,9 @@ export function EquipSlotSwapDialog({
                   <Badge variant={item.rarity} className="text-[8px] mt-0.5">
                     {RARITY_LABELS_RU[item.rarity]}
                   </Badge>
+                  {formatItemClassRestriction(item) && (
+                    <p className="text-[10px] text-amber-400/90 mt-1">{formatItemClassRestriction(item)}</p>
+                  )}
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(item)}</p>
                   <p className="text-[10px] text-slate-400">Слоты: {formatGemSocketSummary(item)}</p>
                 </div>
