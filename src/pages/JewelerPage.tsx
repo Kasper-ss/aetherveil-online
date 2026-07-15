@@ -85,7 +85,7 @@ export function JewelerPage() {
       return
     }
     if (item.resourceBundle) {
-      addResources(item.resourceBundle)
+      addResources(item.resourceBundle, { skipGatherBonus: true })
       awardJewelerExp(countJewelsFromBundle(item.resourceBundle) * 8)
     }
     hapticSuccess()

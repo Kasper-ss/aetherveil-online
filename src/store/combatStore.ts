@@ -720,8 +720,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           : { exp: rawExp, gold: rawGold }
         exp = eased.exp
         gold = eased.gold
-        loot.push(...generateRaidLoot(combat.floor, isBoss))
-        resources = generateRaidResources(combat.floor, isBoss)
+        const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
+        loot.push(...generateRaidLoot(combat.floor, isBoss, lootMult))
+        resources = generateRaidResources(combat.floor, isBoss, lootMult)
       } else {
         const pvePlayer = usePlayerStore.getState().player
         const rawExp = combat.enemy.expReward

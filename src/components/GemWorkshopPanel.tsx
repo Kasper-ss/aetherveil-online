@@ -142,15 +142,15 @@ export function GemWorkshopPanel({ selectedItem, onSelectItem, gear }: GemWorksh
               </div>
               {countEmptySockets(selectedItem) > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && canSocketGem(selectedItem, g.id)).map((g) => (
+                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && isGemStudied(player, g.id) && canSocketGem(selectedItem, g.id)).map((g) => (
                     <Button key={g.id} size="sm" variant="outline" className="text-[10px] h-7" onClick={() => handleSocket(g.id)}>
                       {g.icon} вставить
                     </Button>
                   ))}
-                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && !canSocketGem(selectedItem, g.id) && g.rarity === selectedItem.rarity).length === 0
+                  {SOCKET_GEMS.filter((g) => jewelCount(g.id) > 0 && isGemStudied(player, g.id) && canSocketGem(selectedItem, g.id)).length === 0
                     && countEmptySockets(selectedItem) > 0 && (
                     <p className="text-[9px] text-amber-400 w-full">
-                      Нет камней редкости «{RARITY_LABELS_RU[selectedItem.rarity]}» для вставки
+                      Нет изученных камней редкости «{RARITY_LABELS_RU[selectedItem.rarity]}» для вставки
                     </p>
                   )}
                 </div>

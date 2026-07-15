@@ -130,7 +130,7 @@ export function ShopPage() {
     } else if (shopItem.type === 'scroll' && shopItem.scrollId) {
       updatePlayer({ unlockedSetScrolls: [...(p.unlockedSetScrolls ?? []), shopItem.scrollId] })
     } else if (shopItem.resourceBundle) {
-      usePlayerStore.getState().addResources(shopItem.resourceBundle)
+      usePlayerStore.getState().addResources(shopItem.resourceBundle, { skipGatherBonus: true })
       const jewelCount = Object.entries(shopItem.resourceBundle).reduce((s, [rid, amt]) => {
         if (!amt || !rid.startsWith('jewel_')) return s
         return s + amt

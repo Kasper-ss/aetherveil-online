@@ -65,8 +65,12 @@ export function buildRaidEnemy(floor: number, raidIndex: number, isBoss: boolean
   }
 }
 
-export function generateRaidResources(floor: number, isBoss: boolean): Partial<Record<ResourceId, number>> {
-  const base = generateCombatResources(floor, isBoss, false, isBoss)
+export function generateRaidResources(
+  floor: number,
+  isBoss: boolean,
+  rareLootMult = 1,
+): Partial<Record<ResourceId, number>> {
+  const base = generateCombatResources(floor, isBoss, false, isBoss, rareLootMult)
   const mult = isBoss ? 2.8 : 1.7
   const res: Partial<Record<ResourceId, number>> = {}
   for (const [k, v] of Object.entries(base)) {
@@ -81,8 +85,8 @@ export function generateRaidResources(floor: number, isBoss: boolean): Partial<R
   return res
 }
 
-export function generateRaidLoot(floor: number, isBoss: boolean): Item[] {
-  return generateVictoryLoot(floor, isBoss, 2.4, false, isBoss)
+export function generateRaidLoot(floor: number, isBoss: boolean, lootMult = 1): Item[] {
+  return generateVictoryLoot(floor, isBoss, 2.4 * lootMult, false, isBoss)
 }
 
 export function getRaidCompletionBonus(floor: number): { gold: number; gems: number } {

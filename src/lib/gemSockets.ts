@@ -2,6 +2,7 @@ import type { Item, Player, SocketGemId, Stats, ItemRarity } from '@/types/game'
 import { getGemStatValue, getMaxSockets, getSocketGemDef, SOCKET_GEMS } from '@/data/socketGems'
 import { RARITY_LABELS_RU } from '@/data/items'
 import { jewelResourceId } from '@/lib/jewelResources'
+import { isGemStudied } from '@/lib/gemStudy'
 
 export function getItemSockets(item: Item): SocketGemId[] {
   return item.socketedGems ?? []
@@ -45,12 +46,19 @@ export function formatGemSocketSummary(item: Item): string {
 export function getSocketableGemIdsForItem(
   player: Player,
   item: Item,
+  options?: { studiedOnly?: boolean },
 ): SocketGemId[] {
   if (countEmptySockets(item) <= 0) return []
   return SOCKET_GEMS
+    .filter((g) => !options?.studiedOnly || isGemStudied(player, g.id))
     .filter((g) => (player.resources?.[jewelResourceId(g.id)] ?? 0) > 0)
     .filter((g) => canSocketGem(item, g.id))
     .map((g) => g.id)
+}
+
+export function getEquippedItemsWithEmptyGemSockets(player: Player): Item[] {
+  return (Object.values(player.equipped).filter(Boolean) as Item[])
+    .filter((item) => getItemMaxGemSockets(item) > 0 && countEmptySockets(item) > 0)
 }
 
 export function applySocketGemStats(base: Stats, player: Player, item: Item): Stats {

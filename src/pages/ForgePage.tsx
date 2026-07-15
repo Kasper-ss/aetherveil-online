@@ -29,6 +29,8 @@ import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { Item } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 import { GemWorkshopPanel } from '@/components/GemWorkshopPanel'
+import { EquipGemSocketDialog } from '@/components/ui/EquipGemSocketDialog'
+import { getEquippedItemsWithEmptyGemSockets } from '@/lib/gemSockets'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
 import { getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import type { MissingCost } from '@/lib/craftCosts'
@@ -63,6 +65,7 @@ export function ForgePage() {
   const [upgradeSource, setUpgradeSource] = useState<'inventory' | 'equipped'>('inventory')
   const [missingModal, setMissingModal] = useState<{ title: string; missing: MissingCost[] } | null>(null)
   const [dismantleSummary, setDismantleSummary] = useState<DismantleSummary | null>(null)
+  const [gemSocketOpen, setGemSocketOpen] = useState(false)
   const detailRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => navigate('/'), true)
@@ -93,6 +96,7 @@ export function ForgePage() {
     ).filter((i) => canUpgradeRarity(i)),
     raritySort,
   )
+  const equippedGemSlotCount = getEquippedItemsWithEmptyGemSockets(player).length
 
   function showMissing(title: string, missing: MissingCost[]) {
     if (missing.length === 0) return false
@@ -426,6 +430,17 @@ export function ForgePage() {
         </TabsContent>
 
         <TabsContent value="gems" className="mt-2">
+          <Button
+            className="w-full mb-3"
+            variant="gold"
+            onClick={() => setGemSocketOpen(true)}
+          >
+            💎 Вставить камень в экипировку
+            {equippedGemSlotCount > 0 && (
+              <span className="ml-2 text-[10px] opacity-80">({equippedGemSlotCount} предм.)</span>
+            )}
+          </Button>
+          <EquipGemSocketDialog open={gemSocketOpen} onOpenChange={setGemSocketOpen} />
           <GemWorkshopPanel
             selectedItem={gemItem}
             onSelectItem={setGemItem}

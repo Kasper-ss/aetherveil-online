@@ -102,6 +102,7 @@ import { JEWELER_XP, jewelSellXp } from '@/lib/jewelerXp'
 import { parseJewelResourceId } from '@/lib/jewelResources'
 import { maybeNotifyGemStudyComplete } from '@/lib/vitalNotifications'
 import { canSocketGem } from '@/lib/gemSockets'
+import { isGemStudied } from '@/lib/gemStudy'
 import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
 import type { SocketGemId } from '@/types/game'
@@ -185,7 +186,7 @@ interface PlayerState {
   selectClass: (classId: PlayerClass) => void
   useRacialAbility: () => boolean
   resolveCannibalize: (eat: boolean) => void
-  addResources: (resources: Partial<Record<ResourceId, number>>) => void
+  addResources: (resources: Partial<Record<ResourceId, number>>, options?: { skipGatherBonus?: boolean }) => void
   spendResources: (resources: Partial<Record<ResourceId, number>>) => boolean
   upgradeProfessionSkill: (professionId: ProfessionId, skillIndex: number) => boolean
   setProfession: (professionId: ProfessionId) => void
@@ -1214,11 +1215,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  addResources: (resources) => {
+  addResources: (resources, options) => {
     const { player } = get()
     if (!player) return
+    const merged = { ...resources }
+    if (!options?.skipGatherBonus) {
+      const extra = rollExtraGatherResources(player, resources)
+      for (const [key, amount] of Object.entries(extra)) {
+        if (!amount) continue
+        merged[key as ResourceId] = (merged[key as ResourceId] ?? 0) + amount
+      }
+    }
     const updated = { ...player.resources }
-    for (const [key, amount] of Object.entries(resources)) {
+    for (const [key, amount] of Object.entries(merged)) {
       if (!amount) continue
       updated[key as ResourceId] = (updated[key as ResourceId] ?? 0) + amount
     }
@@ -1296,8 +1305,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     get().addResources(activity.rewards)
-    const extraGather = rollExtraGatherResources(player, activity.rewards)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     if (activity.id === 'herb_gather' || activity.id === 'herb_rare') {
       const extra = getHerbGatherBonus(player)
       if (extra > 0) get().addResources({ herb: extra })
@@ -1328,8 +1335,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isVein } = rollMineRewards(mineWithBonus)
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(get().player!, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getMineHerbXpGain(level)
     const newXp = (player.mineDigXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1372,8 +1377,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (fish) {
       get().addResources({ [fish.id]: 1 })
-      const extraGather = rollExtraGatherResources(player, { [fish.id]: 1 })
-      if (Object.keys(extraGather).length) get().addResources(extraGather)
       const xpGain = getGrindProfessionXp(spotLevel)
       const fishBonus = fish.rarity === 'legendary' ? 8 : fish.rarity === 'epic' ? 5 : fish.rarity === 'rare' ? 2 : 0
       const profXp = xpGain + fishBonus
@@ -1405,8 +1408,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollHuntRewards(hunt)
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(player, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.huntXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1432,8 +1433,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollGemSiteRewards(site)
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(player, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.gemSiteXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1458,8 +1457,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     const { resources, isDouble, isSpecial } = rollAetherRiftRewards(rift)
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(player, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.aetherRiftXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1491,8 +1488,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       resources[primary] = (resources[primary] ?? 0) + bonus
     }
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(player, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     const xpGain = getMineHerbXpGain(level)
     const newXp = (player.fieldGatherXp ?? 0) + xpGain
     get().updatePlayer({
@@ -1622,7 +1617,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return null
     }
     const item = findItem()
-    if (!item || !canSocketGem(item, gemId)) return false
+    if (!item || !isGemStudied(player, gemId) || !canSocketGem(item, gemId)) return false
     const updated: Item = {
       ...item,
       socketedGems: [...(item.socketedGems ?? []), gemId],
@@ -1979,7 +1974,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const listing = player.marketListings.find((l) => l.id === listingId)
     if (listing?.item) get().addItem(listing.item)
     if (listing?.resourceId && listing.resourceAmount) {
-      get().addResources({ [listing.resourceId]: listing.resourceAmount })
+      get().addResources({ [listing.resourceId]: listing.resourceAmount }, { skipGatherBonus: true })
     }
     get().updatePlayer({ marketListings: player.marketListings.filter((l) => l.id !== listingId) })
     void get().syncPlayerState()
@@ -2108,7 +2103,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const yield_ = getDismantleYield(item)
     get().removeItemByInstance(item.instanceId)
     if (yield_.gold > 0) get().addGold(yield_.gold)
-    if (Object.keys(yield_.resources).length > 0) get().addResources(yield_.resources)
+    if (Object.keys(yield_.resources).length > 0) get().addResources(yield_.resources, { skipGatherBonus: true })
     return true
   },
 
@@ -2158,7 +2153,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     if (bought.item) get().addItem(bought.item)
     if (bought.resourceId && bought.resourceAmount) {
-      get().addResources({ [bought.resourceId]: bought.resourceAmount })
+      get().addResources({ [bought.resourceId]: bought.resourceAmount }, { skipGatherBonus: true })
     }
     return true
   },
@@ -2310,7 +2305,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         get().updatePlayer({ auraEffectId: 'telegram_hero', cosmeticAvatarId: 'telegram_hero' })
         break
       case 'mythic_craft_pack':
-        get().addResources({ ...MYTHIC_UPGRADE_COST.resources })
+        get().addResources({ ...MYTHIC_UPGRADE_COST.resources }, { skipGatherBonus: true })
         break
       case 'triple_gold_3d':
         get().updatePlayer({
@@ -2924,7 +2919,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const pending = state.pendingPassive
     const total = Object.values(pending).reduce((s, v) => s + (v ?? 0), 0)
     if (total <= 0) return false
-    get().addResources(pending)
+    get().addResources(pending, { skipGatherBonus: true })
     get().updatePlayer({
       cityState: { ...state, pendingPassive: {}, passiveLastTickAt: new Date().toISOString() },
     })
@@ -2938,8 +2933,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const amount = 2 + Math.floor(Math.random() * 3)
     const resources = { wood_plank: amount }
     get().addResources(resources)
-    const extraGather = rollExtraGatherResources(player, resources)
-    if (Object.keys(extraGather).length) get().addResources(extraGather)
     return { ok: true, amount }
   },
 
