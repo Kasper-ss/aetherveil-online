@@ -26,10 +26,12 @@ export function PlayerViewPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const self = usePlayerStore((s) => s.player)
-  const [profile, setProfile] = useState<PublicPlayerProfile | null>(null)
+  const [remoteProfile, setRemoteProfile] = useState<PublicPlayerProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
   const telegramId = Number(id)
+  const isOwnProfile = Boolean(self?.telegramId === telegramId && !Number.isNaN(telegramId))
+  const profile = isOwnProfile && self ? buildPublicProfile(self) : remoteProfile
 
   useTelegramBackButton(() => navigate('/leaderboard'), true)
 
@@ -39,18 +41,25 @@ export function PlayerViewPage() {
       return
     }
 
-    if (self?.telegramId === telegramId) {
-      setProfile(buildPublicProfile(self))
+    if (isOwnProfile) {
       setLoading(false)
       return
     }
 
+    let cancelled = false
+    setRemoteProfile(null)
     setLoading(true)
+
     fetchPlayerProfile(telegramId).then((p) => {
-      setProfile(p)
+      if (cancelled) return
+      setRemoteProfile(p)
       setLoading(false)
     })
-  }, [telegramId, self])
+
+    return () => {
+      cancelled = true
+    }
+  }, [telegramId, isOwnProfile])
 
   if (!telegramId || Number.isNaN(telegramId)) {
     return (
@@ -64,7 +73,7 @@ export function PlayerViewPage() {
   const className = profile?.classId ? getClassData(profile.classId).nameRu : '—'
 
   return (
-    <div className="h-full overflow-y-auto page-enter">
+    <div className="h-full overflow-y-auto">
       <div className="flex items-center gap-3 p-4 border-b border-aether-border">
         <Button variant="ghost" size="icon" onClick={() => navigate('/leaderboard')}>
           <ArrowLeft className="h-5 w-5" />
