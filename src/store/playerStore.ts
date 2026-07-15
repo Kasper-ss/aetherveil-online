@@ -1940,7 +1940,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return null
     }
-    return refreshItemMeta(ensureItemDurability({ ...item, starLevel: stars + 1 }))
+    return refreshItemMeta(ensureItemDurability({ ...item, starLevel: stars + 1, upgradeLevel: 1 }))
   },
 
   listOnMarket: (item, price) => {

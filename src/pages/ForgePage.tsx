@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
 import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
-import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
+import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
   canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
@@ -362,10 +362,18 @@ export function ForgePage() {
                     <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, upgradeLevel: (selectedItem.upgradeLevel ?? 1) + 1 })}</p>
                     {(() => {
                       const c = getUpgradeLevelCost(selectedItem)
+                      const starMult = getStarLevelUpgradeCostMult(selectedItem.starLevel ?? 0)
                       return (
-                        <p className="text-[10px] text-slate-500 mb-2">
-                          🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
-                        </p>
+                        <>
+                          {starMult > 1 && (
+                            <p className="text-[10px] text-amber-400 mb-1">
+                              Стоимость ×{starMult.toFixed(1)} из-за ★{selectedItem.starLevel}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-500 mb-2">
+                            🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
+                          </p>
+                        </>
                       )
                     })()}
                     <Button className="w-full" size="sm" onClick={handleLevelUpgrade}>
@@ -380,7 +388,16 @@ export function ForgePage() {
                     <p className="text-[10px] text-aether-gold mb-1">
                       +{getStarStepPercent((selectedItem.starLevel ?? 0) + 1)}% к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'star'))}
                     </p>
-                    <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, starLevel: (selectedItem.starLevel ?? 0) + 1 })}</p>
+                    <p className="text-[10px] text-amber-400 mb-1">
+                      ⚠️ Уровень предмета сбросится до 1
+                    </p>
+                    <p className="text-[10px] text-slate-400 mb-2">
+                      После улучшения: {formatItemStats({
+                        ...selectedItem,
+                        starLevel: (selectedItem.starLevel ?? 0) + 1,
+                        upgradeLevel: 1,
+                      })}
+                    </p>
                     {(() => {
                       const c = getStarUpgradeCost(selectedItem)
                       return (
