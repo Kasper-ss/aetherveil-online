@@ -77,6 +77,25 @@ export interface SecretCaveState {
   claimedIndices: number[]
 }
 
+export type PortalType = 'blue' | 'red'
+
+export interface PendingPortalState {
+  type: PortalType
+  floor: number
+}
+
+export interface PortalRunProgress {
+  type: PortalType
+  floor: number
+  mobsKilled: number
+  mobsRequired: number
+  bossDefeated: boolean
+  accumulatedExp: number
+  accumulatedGold: number
+  accumulatedLoot: Item[]
+  accumulatedResources: Partial<Record<ResourceId, number>>
+}
+
 export type EffectStat = 'atk' | 'def' | 'hp' | 'crit' | 'speed' | 'all'
 
 export interface ActiveEffect {
@@ -306,6 +325,7 @@ export interface Player {
   pvpLosses: number
   classId?: PlayerClass
   classSelected: boolean
+  secondaryClassId?: PlayerClass
   raceId?: PlayerRace
   raceSelected: boolean
   racialCooldownUntil?: string
@@ -388,6 +408,8 @@ export interface Player {
   socketGemLevels?: Partial<Record<SocketGemId, number>>
   activeBrews?: ActiveBrew[]
   pendingSecretCave?: SecretCaveState | null
+  pendingPortal?: PendingPortalState | null
+  portalRun?: PortalRunProgress | null
   activeRaidId?: string | null
   raidProgress?: Record<string, import('@/lib/raidProgress').RaidProgress>
   raidDeathCooldowns?: Record<string, string>
@@ -530,6 +552,8 @@ export interface CombatState {
   isWorldBoss?: boolean
   isRaid?: boolean
   raidId?: string
+  isPortal?: boolean
+  portalType?: PortalType
   weakSpotUsed?: boolean
 }
 
@@ -551,6 +575,8 @@ export interface CombatResult {
   isRaid?: boolean
   raidId?: string
   raidComplete?: boolean
+  isPortal?: boolean
+  portalComplete?: boolean
 }
 
 export interface GuildMember {

@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LootScreen } from '@/pages/LootScreen'
 import { RaidCompleteScreen } from '@/pages/RaidCompleteScreen'
+import { PortalCompleteScreen } from '@/pages/PortalCompleteScreen'
 import { useCombatStore } from '@/store/combatStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -39,8 +40,12 @@ export function CombatPage() {
   const result = useCombatStore((s) => s.result)
   const showLootScreen = useCombatStore((s) => s.showLootScreen)
   const showRaidComplete = useCombatStore((s) => s.showRaidComplete)
+  const showPortalComplete = useCombatStore((s) => s.showPortalComplete)
   const raidStepComplete = useCombatStore((s) => s.raidStepComplete)
+  const portalStepComplete = useCombatStore((s) => s.portalStepComplete)
   const clearRaidStep = useCombatStore((s) => s.clearRaidStep)
+  const clearPortalStep = useCombatStore((s) => s.clearPortalStep)
+  const startPortalCombat = useCombatStore((s) => s.startPortalCombat)
   const playerAttack = useCombatStore((s) => s.playerAttack)
   const playerWeakSpot = useCombatStore((s) => s.playerWeakSpot)
   const playerSkill = useCombatStore((s) => s.playerSkill)
@@ -53,11 +58,11 @@ export function CombatPage() {
   const logRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => {
-    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete) {
+    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete) {
       clearCombat()
-      navigate(combat?.isRaid ? '/raids' : '/tower')
+      navigate(combat?.isRaid ? '/raids' : combat?.isPortal ? '/tower' : '/tower')
     }
-  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete)
+  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete)
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
@@ -69,6 +74,9 @@ export function CombatPage() {
   }
 
   const isRaidCombat = combat.isRaid
+  const isPortalCombat = combat.isPortal
+
+  if (showPortalComplete && result?.victory) return <PortalCompleteScreen />
 
   if (showRaidComplete && result?.victory) return <RaidCompleteScreen />
 
@@ -119,13 +127,22 @@ export function CombatPage() {
 
   function handleDefeatContinue() {
     clearCombat()
-    navigate(isRaidCombat ? '/raids' : '/tower')
+    navigate(isRaidCombat ? '/raids' : isPortalCombat ? '/tower' : '/tower')
   }
 
   function handleRaidStepContinue() {
     clearRaidStep()
     clearCombat()
     navigate('/raids')
+  }
+
+  function handlePortalStepContinue() {
+    clearPortalStep()
+    if (!startPortalCombat()) {
+      clearCombat()
+      navigate('/tower')
+      return
+    }
   }
 
   return (
@@ -138,6 +155,8 @@ export function CombatPage() {
             <p className="text-[10px] text-slate-500">
               {combat.isRaid
                 ? `🏰 Рейд · ${combat.isBoss ? 'Босс' : 'Моб'}`
+                : combat.isPortal
+                ? `${combat.portalType === 'blue' ? '🌀' : '🔥'} Портал · ${combat.isBoss ? 'Босс' : 'Моб'}`
                 : combat.isWorldBoss
                 ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
                 : combat.isBoss
@@ -337,6 +356,10 @@ export function CombatPage() {
               <p className="text-sm text-red-400">
                 Рейд провален. Прогресс сброшен — повтор через 1 час.
               </p>
+            ) : combat.isPortal ? (
+              <p className="text-sm text-red-400">
+                Портал провален. Накопленный лут потерян.
+              </p>
             ) : (
               <p className="text-sm text-slate-400">
                 Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.
@@ -361,6 +384,25 @@ export function CombatPage() {
             </p>
             <p className="text-xs text-slate-400">Лут добавлен в сундук рейда. Продолжайте зачистку!</p>
             <Button onClick={handleRaidStepContinue} className="w-full">К рейду</Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {portalStepComplete && result?.victory && (
+        <Dialog open onOpenChange={() => handlePortalStepContinue()}>
+          <DialogContent className="text-center">
+            <DialogHeader>
+              <DialogTitle className="text-aether-cyan">Победа в портале</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-300">
+              Противник повержен. Лут добавлен в сундук портала.
+            </p>
+            <p className="text-xs text-slate-400">
+              {player?.portalRun
+                ? `Прогресс: ${player.portalRun.mobsKilled}/${player.portalRun.mobsRequired} мобов${player.portalRun.bossDefeated ? ' · босс убит' : ''}`
+                : ''}
+            </p>
+            <Button onClick={handlePortalStepContinue} className="w-full">Следующий бой</Button>
           </DialogContent>
         </Dialog>
       )}

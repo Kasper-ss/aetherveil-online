@@ -6,6 +6,7 @@ import { StatDistributionModal } from '@/pages/StatDistributionModal'
 import { IdleRewardModal } from '@/pages/IdleRewardModal'
 import { PetRewardModal } from '@/pages/PetRewardModal'
 import { ClassSelectModal } from '@/pages/ClassSelectModal'
+import { SecondaryClassSelectModal } from '@/pages/SecondaryClassSelectModal'
 import { RaceSelectModal } from '@/pages/RaceSelectModal'
 import { HomePage } from '@/pages/HomePage'
 import { TowerPage } from '@/pages/TowerPage'
@@ -47,6 +48,7 @@ function AppRoutes() {
     <>
       <LoadingScreen />
       <ClassSelectModal />
+      <SecondaryClassSelectModal />
       <RaceSelectModal />
       <TutorialModal />
       <DailyRewardModal />

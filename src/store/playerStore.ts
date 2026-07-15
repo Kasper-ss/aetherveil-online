@@ -4,7 +4,7 @@ import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FL
 import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
 import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
 import { pickNewerPlayer, SAVE_VERSION } from '@/lib/playerMigration'
-import { getSkillUpgradeCost, syncPlayerSkills, SKILL_MAX_LEVEL } from '@/data/playerSkills'
+import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import { getTelegramUser, getInitData } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
@@ -85,6 +85,7 @@ import { getWorldBossSchedule } from '@/lib/worldBossSchedule'
 import {
   createRaidProgress, getRaidProgress, isRaidComplete, mergeResources,
 } from '@/lib/raidProgress'
+import { BLUE_PORTAL_MOBS, RED_PORTAL_MOBS, isPortalRunComplete } from '@/data/portals'
 import {
   getRaidCompletionBonus,
   type RaidDefinition,
@@ -206,6 +207,19 @@ interface PlayerState {
   applySupremeEnchant: (instanceId: string, enchantId: string) => boolean
   claimSecretCaveDig: (rewardIndex: number) => boolean
   clearSecretCave: () => void
+  enterPortal: () => boolean
+  declinePortal: () => void
+  clearPortal: () => void
+  recordPortalFightVictory: (payload: {
+    exp: number
+    gold: number
+    loot: Item[]
+    resources: Partial<Record<ResourceId, number>>
+    isBoss: boolean
+  }) => boolean
+  claimPortalRewards: () => void
+  failPortalRun: () => void
+  selectSecondaryClass: (classId: PlayerClass) => void
   cookFood: (recipeId: string) => boolean
   eatFood: (itemId: string) => boolean
   craftItem: (recipeId: string) => boolean
@@ -462,7 +476,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     while (exp >= xpForLevel(level)) { exp -= xpForLevel(level); level++ }
     const levelsGained = level - startLevel
     const statPoints = player.statPoints + levelsGained * 5
-    const synced = syncPlayerSkills(player.classId, level, player.skills, player.skillLevels)
+    const synced = syncPlayerSkillsForPlayer(
+      player.classId,
+      player.secondaryClassId,
+      level,
+      player.skills,
+      player.skillLevels,
+    )
     const updates: Partial<Player> = { exp, level, statPoints, ...synced, ...syncEnergyFields(player) }
     if (usesMana(player)) updates.maxMana = getMaxMana({ ...player, level })
     get().updatePlayer(updates)
@@ -1667,6 +1687,93 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   clearSecretCave: () => {
     get().updatePlayer({ pendingSecretCave: null })
+  },
+
+  enterPortal: () => {
+    const { player } = get()
+    if (!player?.pendingPortal) return false
+    const { type, floor } = player.pendingPortal
+    const mobsRequired = type === 'blue' ? BLUE_PORTAL_MOBS : RED_PORTAL_MOBS
+    get().updatePlayer({
+      pendingPortal: null,
+      portalRun: {
+        type,
+        floor,
+        mobsKilled: 0,
+        mobsRequired,
+        bossDefeated: false,
+        accumulatedExp: 0,
+        accumulatedGold: 0,
+        accumulatedLoot: [],
+        accumulatedResources: {},
+      },
+    })
+    return true
+  },
+
+  declinePortal: () => {
+    get().updatePlayer({ pendingPortal: null })
+  },
+
+  clearPortal: () => {
+    get().updatePlayer({ pendingPortal: null })
+  },
+
+  recordPortalFightVictory: (payload) => {
+    const { player } = get()
+    if (!player?.portalRun) return false
+    const run = player.portalRun
+    const updated = {
+      ...run,
+      accumulatedExp: run.accumulatedExp + payload.exp,
+      accumulatedGold: run.accumulatedGold + payload.gold,
+      accumulatedLoot: [...run.accumulatedLoot, ...payload.loot],
+      accumulatedResources: mergeResources(run.accumulatedResources, payload.resources),
+      mobsKilled: payload.isBoss ? run.mobsKilled : run.mobsKilled + 1,
+      bossDefeated: payload.isBoss ? true : run.bossDefeated,
+    }
+    const complete = isPortalRunComplete(updated)
+    get().updatePlayer({
+      portalRun: complete ? updated : updated,
+    })
+    return complete
+  },
+
+  claimPortalRewards: () => {
+    const { player } = get()
+    if (!player?.portalRun || !isPortalRunComplete(player.portalRun)) return
+    const run = player.portalRun
+    get().addExp(run.accumulatedExp)
+    get().addGold(run.accumulatedGold)
+    run.accumulatedLoot.forEach((item) => get().addItem(item))
+    if (Object.keys(run.accumulatedResources).length) {
+      get().addResources(run.accumulatedResources)
+    }
+    applyQuestTracking(get, 'win_combat', 1)
+    get().updatePlayer({ portalRun: null })
+  },
+
+  failPortalRun: () => {
+    get().updatePlayer({ portalRun: null })
+  },
+
+  selectSecondaryClass: (classId) => {
+    const { player } = get()
+    if (!player?.classId || player.classId === classId) return
+    if (player.highestFloor < 10) return
+    if (player.secondaryClassId) return
+    const level = player.level
+    const synced = syncPlayerSkillsForPlayer(
+      player.classId,
+      classId,
+      level,
+      player.skills,
+      player.skillLevels,
+    )
+    get().updatePlayer({
+      secondaryClassId: classId,
+      ...synced,
+    })
   },
 
   cookFood: (recipeId) => {

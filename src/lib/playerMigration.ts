@@ -1,8 +1,8 @@
 import type { Player } from '@/types/game'
 import { createDefaultPlayer } from '@/data/gameData'
 
-/** Bump when migration logic changes. v8 = 3 professions, VIP, gems, secret cave. */
-export const SAVE_VERSION = 8
+/** Bump when migration logic changes. v9 = portals, dual class. */
+export const SAVE_VERSION = 9
 
 export function wipePlayerToFresh(player: Player): Player {
   const fresh = createDefaultPlayer(player.telegramId, player.displayName, player.username)

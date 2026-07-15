@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { useCombatStore } from '@/store/combatStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { SecretCaveModal } from '@/components/SecretCaveModal'
+import { PortalModal } from '@/components/PortalModal'
 import { getCannibalizeHeal } from '@/lib/racialAbilities'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/localeStore'
@@ -27,9 +28,12 @@ export function LootScreen() {
   const player = usePlayerStore((s) => s.player)
   const resolveCannibalize = usePlayerStore((s) => s.resolveCannibalize)
   const clearSecretCave = usePlayerStore((s) => s.clearSecretCave)
+  const clearPortal = usePlayerStore((s) => s.clearPortal)
   const [caveDismissed, setCaveDismissed] = useState(false)
+  const [portalDismissed, setPortalDismissed] = useState(false)
 
   const showCave = player?.pendingSecretCave && !caveDismissed
+  const showPortal = player?.pendingPortal && !portalDismissed
 
   if (!result?.victory) return null
 
@@ -167,6 +171,16 @@ export function LootScreen() {
           {t('loot.claim')}
         </Button>
       </div>
+
+      {showPortal && player.pendingPortal && (
+        <PortalModal
+          portal={player.pendingPortal}
+          onClose={() => {
+            setPortalDismissed(true)
+            clearPortal()
+          }}
+        />
+      )}
 
       {showCave && player.pendingSecretCave && (
         <SecretCaveModal

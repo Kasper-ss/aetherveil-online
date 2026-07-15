@@ -8,11 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
 import { SKILLS, CLASS_SKILL_TREES, getSkillUpgradeCost, getScaledSkill, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { RESOURCES } from '@/data/classes'
+import { getClassData, RESOURCES } from '@/data/classes'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
-import type { SkillId } from '@/types/game'
+import type { PlayerClass, SkillId } from '@/types/game'
 import type { MissingCost } from '@/lib/craftCosts'
 
 function formatCost(gold: number, resources: Partial<Record<string, number>>): string {
@@ -22,6 +22,77 @@ function formatCost(gold: number, resources: Partial<Record<string, number>>): s
     parts.push(`${RESOURCES[rid as keyof typeof RESOURCES].icon}${amount}`)
   }
   return parts.join(' · ')
+}
+
+function SkillTreeSection({
+  classId,
+  player,
+  onUpgrade,
+  title,
+}: {
+  classId: PlayerClass
+  player: NonNullable<ReturnType<typeof usePlayerStore.getState>['player']>
+  onUpgrade: (skillId: SkillId) => void
+  title: string
+}) {
+  const t = useT()
+  const tree = CLASS_SKILL_TREES[classId]
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-aether-cyan">{title}</h2>
+      {tree.map((node) => {
+        const skill = SKILLS[node.skillId]
+        const unlocked = player.level >= node.unlockLevel
+        const owned = player.skills.includes(node.skillId)
+        const level = player.skillLevels[node.skillId] ?? 0
+        const scaled = owned ? getScaledSkill(skill, level) : null
+        const cost = owned && level < SKILL_MAX_LEVEL ? getSkillUpgradeCost(node.skillId, level) : null
+        const maxed = level >= SKILL_MAX_LEVEL
+
+        return (
+          <Card key={`${classId}_${node.skillId}`} className={!unlocked ? 'opacity-50' : ''}>
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">{skill.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-white">{skill.nameRu}</span>
+                    {owned ? (
+                      <Badge variant="rare">Ур. {level}/{SKILL_MAX_LEVEL}</Badge>
+                    ) : (
+                      <Badge variant="common"><Lock className="h-3 w-3 mr-1" />{t('skills.unlockAt')} {node.unlockLevel}</Badge>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">{skill.descriptionRu}</p>
+                  {scaled && (
+                    <p className="text-[10px] text-aether-cyan mt-1">
+                      {skill.healPercent > 0 && skill.damageMultiplier === 0
+                        ? `Исцеление: ${Math.round(scaled.healPercent * 100)}% HP`
+                        : `Урон ×${scaled.damageMultiplier.toFixed(1)}`}
+                      {' · '}Перезарядка: {scaled.cooldown}с · Энергия: {scaled.energyCost}
+                    </p>
+                  )}
+                  {owned && !maxed && cost && (
+                    <>
+                      <Progress value={(level / SKILL_MAX_LEVEL) * 100} className="mt-2 h-1" />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        {t('skills.upgradeCost')}: {formatCost(cost.gold, cost.resources)}
+                      </p>
+                      <Button size="sm" className="mt-2 w-full" onClick={() => onUpgrade(node.skillId)}>
+                        {t('skills.upgrade')}
+                      </Button>
+                    </>
+                  )}
+                  {maxed && <p className="text-[10px] text-aether-gold mt-2">{t('skills.maxed')}</p>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
 }
 
 export function SkillsPage() {
@@ -36,7 +107,8 @@ export function SkillsPage() {
 
   if (!player || !player.classId) return null
 
-  const tree = CLASS_SKILL_TREES[player.classId]
+  const primaryName = getClassData(player.classId).nameRu
+  const secondaryName = player.secondaryClassId ? getClassData(player.secondaryClassId).nameRu : null
 
   function handleUpgrade(skillId: SkillId) {
     const missing = getPlayerSkillMissing(skillId)
@@ -61,59 +133,26 @@ export function SkillsPage() {
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
-        {tree.map((node) => {
-          const skill = SKILLS[node.skillId]
-          const unlocked = player.level >= node.unlockLevel
-          const owned = player.skills.includes(node.skillId)
-          const level = player.skillLevels[node.skillId] ?? 0
-          const scaled = owned ? getScaledSkill(skill, level) : null
-          const cost = owned && level < SKILL_MAX_LEVEL ? getSkillUpgradeCost(node.skillId, level) : null
-          const maxed = level >= SKILL_MAX_LEVEL
-
-          return (
-            <Card key={node.skillId} className={!unlocked ? 'opacity-50' : ''}>
-              <CardContent className="p-3">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{skill.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-white">{skill.nameRu}</span>
-                      {owned ? (
-                        <Badge variant="rare">Ур. {level}/{SKILL_MAX_LEVEL}</Badge>
-                      ) : (
-                        <Badge variant="common"><Lock className="h-3 w-3 mr-1" />{t('skills.unlockAt')} {node.unlockLevel}</Badge>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">{skill.descriptionRu}</p>
-                    {scaled && (
-                      <p className="text-[10px] text-aether-cyan mt-1">
-                        {skill.healPercent > 0 && skill.damageMultiplier === 0
-                          ? `Исцеление: ${Math.round(scaled.healPercent * 100)}% HP`
-                          : `Урон ×${scaled.damageMultiplier.toFixed(1)}`}
-                        {' · '}Перезарядка: {scaled.cooldown}с · Энергия: {scaled.energyCost}
-                      </p>
-                    )}
-                    {owned && !maxed && (
-                      <>
-                        <Progress value={(level / SKILL_MAX_LEVEL) * 100} className="mt-2 h-1" />
-                        {cost && (
-                          <p className="text-[10px] text-slate-500 mt-1">
-                            {t('skills.upgradeCost')}: {formatCost(cost.gold, cost.resources)}
-                          </p>
-                        )}
-                        <Button size="sm" className="mt-2 w-full" onClick={() => handleUpgrade(node.skillId)}>
-                          {t('skills.upgrade')}
-                        </Button>
-                      </>
-                    )}
-                    {maxed && <p className="text-[10px] text-aether-gold mt-2">{t('skills.maxed')}</p>}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+      <div className="p-4 space-y-6">
+        <SkillTreeSection
+          classId={player.classId}
+          player={player}
+          onUpgrade={handleUpgrade}
+          title={`Основной класс · ${primaryName}`}
+        />
+        {player.secondaryClassId && (
+          <SkillTreeSection
+            classId={player.secondaryClassId}
+            player={player}
+            onUpgrade={handleUpgrade}
+            title={`Второй класс · ${secondaryName}`}
+          />
+        )}
+        {!player.secondaryClassId && player.highestFloor >= 10 && (
+          <p className="text-xs text-slate-500 text-center">
+            Доступен второй класс — выберите его в уведомлении при входе в игру.
+          </p>
+        )}
       </div>
 
       {missingModal && (

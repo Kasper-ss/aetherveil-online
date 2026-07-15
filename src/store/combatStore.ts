@@ -23,6 +23,12 @@ import { applyRacialAbility, canUseRacialAbility, rollDwarfTreasureFind, tickRac
 import { applySetDamageMultipliers, getSetCombatEffects } from '@/lib/setCombatEffects'
 import { rollSecretCaveAfterVictory } from '@/data/secretCave'
 import {
+  buildPortalEnemy,
+  getPortalFightLabel,
+  PORTAL_ENERGY_COST,
+  rollPortalAfterVictory,
+} from '@/data/portals'
+import {
   buildRaidEnemy,
   generateRaidLoot,
   generateRaidResources,
@@ -44,9 +50,12 @@ interface CombatStore {
   showLootScreen: boolean
   showRaidComplete: boolean
   raidStepComplete: boolean
+  showPortalComplete: boolean
+  portalStepComplete: boolean
   tickInterval: ReturnType<typeof setInterval> | null
 
   startCombat: (enemy: FloorEnemy, floor: number, isBoss?: boolean) => void
+  startPortalCombat: () => boolean
   startRaidCombat: (def: RaidDefinition) => boolean
   startWorldBossCombat: () => boolean
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
@@ -60,7 +69,9 @@ interface CombatStore {
   endCombat: (victory: boolean) => void
   claimLoot: () => void
   claimRaidComplete: () => void
+  claimPortalComplete: () => void
   clearRaidStep: () => void
+  clearPortalStep: () => void
   clearCombat: () => void
   tickCooldowns: () => void
 }
@@ -143,6 +154,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   showLootScreen: false,
   showRaidComplete: false,
   raidStepComplete: false,
+  showPortalComplete: false,
+  portalStepComplete: false,
   tickInterval: null,
 
   startCombat: (enemy, floor, isBoss = false) => {
@@ -192,7 +205,57 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
+  },
+
+  startPortalCombat: () => {
+    const playerStore = usePlayerStore.getState()
+    const player = playerStore.player
+    if (!player?.portalRun) return false
+    if (getPlayerCurrentHp(player) < 1) return false
+
+    const run = player.portalRun
+    const isBoss = run.mobsKilled >= run.mobsRequired
+    if (run.bossDefeated) return false
+    if (!playerStore.spendEnergy(PORTAL_ENERGY_COST)) return false
+
+    const enemy = buildPortalEnemy(run.floor, run.type, isBoss, run.mobsKilled)
+    const maxHp = getCombatMaxHp(player)
+    const startHp = Math.max(1, getPlayerCurrentHp(player))
+    const scaledEnemy = scaleEnemyForPlayerPower(enemy, player, run.floor)
+    const label = getPortalFightLabel(run.type, run.mobsKilled, run.mobsRequired, isBoss)
+
+    const startLogs: CombatLogEntry[] = [
+      logEntry(
+        run.type === 'blue' ? '🌀 Синий портал' : '🔥 Красный портал',
+        'system',
+      ),
+      logEntry(`${label}: ${scaledEnemy.name}!`, 'system'),
+    ]
+    const abilityHint = formatEnemyAbilityHint(scaledEnemy, run.floor)
+    if (abilityHint) startLogs.push(logEntry(`⚠️ Способности: ${abilityHint}`, 'system'))
+
+    const combat: CombatState = {
+      enemy: scaledEnemy,
+      playerHp: startHp,
+      playerMaxHp: maxHp,
+      enemyHp: scaledEnemy.stats.hp,
+      enemyMaxHp: scaledEnemy.stats.hp,
+      combo: 0,
+      skillCooldowns: {},
+      isBoss,
+      isPortal: true,
+      portalType: run.type,
+      floor: run.floor,
+      bossPhase: isBoss && run.floor >= 5 ? 1 : undefined,
+      enemyCombat: createEnemyCombatState(),
+      combatLog: startLogs,
+      turn: 1,
+    }
+
+    const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
+    return true
   },
 
   startRaidCombat: (def) => {
@@ -250,7 +313,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
     return true
   },
 
@@ -291,7 +354,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
     return true
   },
 
@@ -335,7 +398,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
-    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, tickInterval })
+    set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
   },
 
   playerAttack: () => {
@@ -656,7 +719,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   fleeCombat: () => {
     const { combat, isActive, tickInterval } = get()
     if (!combat || !isActive || combat.isPvp || combat.isWorldBoss) return
-    if (combat.isBoss && !combat.isRaid) return
+    if (combat.isBoss && !combat.isRaid && !combat.isPortal) return
     if (combat.isRaid && combat.isBoss) return
     if (tickInterval) clearInterval(tickInterval)
 
@@ -665,6 +728,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       currentHp: combat.playerHp,
       hpLastRegenAt: new Date().toISOString(),
     })
+    if (combat.isPortal) playerStore.failPortalRun()
 
     const result: CombatResult = {
       victory: false,
@@ -736,11 +800,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           const treasure = rollDwarfTreasureFind('dwarf')
           if (treasure) gold += treasure.gold
         }
-        const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
+        const lootMultBase = pvePlayer ? getLootMultiplier(pvePlayer) : 1
         const isEpic = !!combat.enemy.isEpic
         const isMiniBoss = !!combat.enemy.isMiniBoss
-        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, isEpic, isMiniBoss))
-        resources = generateCombatResources(combat.floor, combat.isBoss, isEpic, isMiniBoss, lootMult)
+        const portalMult = combat.isPortal
+          ? (combat.portalType === 'red' ? 1.6 : 1.25)
+          : 1
+        const lootMult = lootMultBase * portalMult
+        const treatAsEpic = isEpic || (combat.isPortal && combat.portalType === 'red' && !combat.isBoss)
+        loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss))
+        resources = generateCombatResources(combat.floor, combat.isBoss, treatAsEpic, isMiniBoss, lootMult)
       }
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player
@@ -748,8 +817,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     }
 
     let raidComplete = false
+    let portalComplete = false
     if (victory && combat.isRaid && combat.raidId) {
       raidComplete = usePlayerStore.getState().recordRaidFightVictory(combat.raidId, {
+        exp, gold, loot, resources, isBoss: !!combat.isBoss,
+      })
+    }
+    if (victory && combat.isPortal) {
+      portalComplete = usePlayerStore.getState().recordPortalFightVictory({
         exp, gold, loot, resources, isBoss: !!combat.isBoss,
       })
     }
@@ -762,8 +837,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isRaid: combat.isRaid,
       raidId: combat.raidId,
       raidComplete,
+      isPortal: combat.isPortal,
+      portalComplete,
       lootClaimed: combat.isPvp ? true : false,
-      mobKilled: victory && !combat.isBoss && !combat.isPvp && !combat.isRaid,
+      mobKilled: victory && !combat.isBoss && !combat.isPvp && !combat.isRaid && !combat.isPortal,
       killedBy: !victory ? combat.enemy.name : undefined,
       isEpic: combat.isEpic,
       isMiniBoss: combat.isMiniBoss,
@@ -772,8 +849,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (!victory && combat.isRaid && combat.raidId) {
       usePlayerStore.getState().failRaid(combat.raidId)
     }
+    if (!victory && combat.isPortal) {
+      usePlayerStore.getState().failPortalRun()
+    }
 
-    if (!victory && !combat.isPvp && !combat.isRaid) {
+    if (!victory && !combat.isPvp && !combat.isRaid && !combat.isPortal) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
     } else if (!victory && !combat.isPvp && combat.isRaid) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
@@ -812,22 +892,35 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const showRaidComplete = victory && !!combat.isRaid && raidComplete
     const raidStepComplete = victory && !!combat.isRaid && !raidComplete
+    const showPortalComplete = victory && !!combat.isPortal && portalComplete
+    const portalStepComplete = victory && !!combat.isPortal && !portalComplete
 
     set({
       isActive: false,
       result,
-      showLootScreen: victory && !combat.isPvp && !combat.isRaid,
+      showLootScreen: victory && !combat.isPvp && !combat.isRaid && !combat.isPortal,
       showRaidComplete,
       raidStepComplete,
+      showPortalComplete,
+      portalStepComplete,
       tickInterval: null,
     })
 
-    if (victory && !combat.isPvp && !combat.isRaid) {
+    if (victory && !combat.isPvp && !combat.isRaid && !combat.isPortal) {
       const cave = rollSecretCaveAfterVictory(combat.floor, combat.isBoss)
       if (cave) {
         usePlayerStore.getState().updatePlayer({
           pendingSecretCave: { ...cave, claimedIndices: [] },
         })
+      }
+      const portal = rollPortalAfterVictory({
+        floor: combat.floor,
+        isBoss: !!combat.isBoss,
+        isEpic: !!combat.isEpic,
+        isMiniBoss: !!combat.isMiniBoss,
+      })
+      if (portal) {
+        usePlayerStore.getState().updatePlayer({ pendingPortal: portal })
       }
     }
   },
@@ -866,6 +959,17 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     set({ result: { ...result, lootClaimed: true }, showRaidComplete: false })
   },
 
+  claimPortalComplete: () => {
+    const { result } = get()
+    if (!result?.victory || !result.portalComplete || result.lootClaimed) return
+    usePlayerStore.getState().claimPortalRewards()
+    set({ result: { ...result, lootClaimed: true }, showPortalComplete: false })
+  },
+
+  clearPortalStep: () => {
+    set({ portalStepComplete: false, result: null })
+  },
+
   clearRaidStep: () => {
     set({ raidStepComplete: false, result: null })
   },
@@ -876,6 +980,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     set({
       combat: null, isActive: false, result: null,
       showLootScreen: false, showRaidComplete: false, raidStepComplete: false,
+      showPortalComplete: false, portalStepComplete: false,
       tickInterval: null,
     })
   },

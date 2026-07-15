@@ -286,6 +286,25 @@ export function syncPlayerSkills(
   return { skills: unlocked, skillLevels }
 }
 
+export function syncPlayerSkillsForPlayer(
+  primaryClassId: PlayerClass | undefined,
+  secondaryClassId: PlayerClass | undefined,
+  level: number,
+  currentSkills: SkillId[],
+  currentLevels: Partial<Record<SkillId, number>>,
+): { skills: SkillId[]; skillLevels: Partial<Record<SkillId, number>> } {
+  const primary = syncPlayerSkills(primaryClassId, level, currentSkills, currentLevels)
+  if (!secondaryClassId) return primary
+
+  const secondaryUnlocked = getUnlockedSkillsForLevel(secondaryClassId, level)
+  const skillLevels = { ...primary.skillLevels }
+  for (const sid of secondaryUnlocked) {
+    if (!skillLevels[sid]) skillLevels[sid] = 1
+  }
+  const skills = [...new Set([...primary.skills, ...secondaryUnlocked])]
+  return { skills, skillLevels }
+}
+
 export function getSkillUpgradeCost(skillId: SkillId, currentLevel: number): {
   gold: number
   resources: Partial<Record<ResourceId, number>>
