@@ -27,7 +27,7 @@ import {
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
-import { ensureItemDurability, getRepairCost, repairItemFull, wearItem } from '@/lib/equipmentDurability'
+import { ensureItemDurability, getRepairCost, preserveDurabilityRatio, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
 import {
@@ -1959,7 +1959,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return null
     }
-    return refreshItemMeta(ensureItemDurability({ ...item, upgradeLevel: lvl + 1 }))
+    return refreshItemMeta(preserveDurabilityRatio(item, { upgradeLevel: lvl + 1 }))
   },
 
   upgradeItemStars: (item) => {
@@ -1971,7 +1971,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return null
     }
-    return refreshItemMeta(ensureItemDurability({ ...item, starLevel: stars + 1, upgradeLevel: 1 }))
+    return refreshItemMeta(preserveDurabilityRatio(item, { starLevel: stars + 1, upgradeLevel: 1 }))
   },
 
   listOnMarket: (item, price) => {

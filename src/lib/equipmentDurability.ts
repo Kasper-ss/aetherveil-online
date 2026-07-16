@@ -27,6 +27,20 @@ export function ensureItemDurability(item: Item): Item {
   }
 }
 
+/** Keep wear ratio when upgrade level/stars change max durability. */
+export function preserveDurabilityRatio(item: Item, updates: Partial<Item>): Item {
+  const before = ensureItemDurability(item)
+  const oldMax = before.maxDurability ?? getMaxDurability(before)
+  const oldDur = before.durability ?? oldMax
+  const ratio = oldMax > 0 ? oldDur / oldMax : 1
+
+  const after = ensureItemDurability({ ...item, ...updates })
+  const newMax = after.maxDurability ?? getMaxDurability(after)
+  const newDur = Math.max(0, Math.min(newMax, Math.round(newMax * ratio)))
+
+  return { ...after, durability: newDur }
+}
+
 export function getDurabilityRatio(item: Item): number {
   const max = item.maxDurability ?? getMaxDurability(item)
   if (max <= 0) return 1
