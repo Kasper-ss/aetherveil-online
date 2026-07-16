@@ -3259,7 +3259,9 @@ function grantSetItems(setId: string) {
 }
 
 export function usePlayerStats() {
-  return usePlayerStore((s) => (s.player ? getEffectiveStats(s.player) : null))
+  const player = usePlayerStore((s) => s.player)
+  if (!player) return null
+  return getEffectiveStats(player)
 }
 
 export { getEffectiveStats, getMaxEnergy, getEnergyRegenIntervalMs, getEnergyFullInMs, formatDuration, getCombatMaxHp } from '@/lib/playerStats'
