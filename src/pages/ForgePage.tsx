@@ -8,12 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
 import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
-import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
+import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes, getCraftBlockReason } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
   canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
   getRarityUpgradeBlockReason,
-  RARITY_ITEMS_TOTAL_REQUIRED,
+  RARITY_ITEMS_TOTAL_REQUIRED, RARITY_LEVEL_GATE,
 } from '@/lib/rarityUpgrade'
 import {
   ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, sortGearItems,
@@ -248,6 +248,7 @@ export function ForgePage() {
           <div className="space-y-2">
             {craftRecipes.map((recipe) => {
               const result = ALL_ITEMS[recipe.resultItemId]
+              const craftBlock = getCraftBlockReason(recipe, player)
               return (
                 <Card
                   key={recipe.id}
@@ -295,8 +296,11 @@ export function ForgePage() {
                             {recipe.setCraftRarity === 'epic' ? 'Эпический сет' : recipe.setCraftRarity === 'lucky' ? 'Lucky · легендарный' : 'Легендарный сет'}
                           </Badge>
                         )}
+                        {craftBlock && (
+                          <p className="text-[10px] text-amber-400 mt-1">🔒 {craftBlock}</p>
+                        )}
                       </div>
-                      <Button size="sm" onClick={() => handleCraft(recipe.id)}>{t('forge.craftBtn')}</Button>
+                      <Button size="sm" disabled={!!craftBlock} onClick={() => handleCraft(recipe.id)}>{t('forge.craftBtn')}</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -538,8 +542,13 @@ export function ForgePage() {
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
             Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы.
-            Легендарная и мифическая редкость — с 60 уровня и ранга кузнеца.
+            Улучшение редкости доступно только до {RARITY_LEVEL_GATE} уровня — после этого крафтите эпические предметы во вкладке «Рецепты».
           </p>
+          {player.level > RARITY_LEVEL_GATE && (
+            <p className="text-xs text-amber-400 mb-2">
+              🔒 Вы достигли {RARITY_LEVEL_GATE} уровня — повышение редкости больше недоступно.
+            </p>
+          )}
           <div className="flex gap-2 mb-2">
             <Button
               type="button"

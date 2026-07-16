@@ -47,8 +47,8 @@ export function canUpgradeRarity(item: Item): boolean {
 export function getRarityUpgradeBlockReason(item: Item, player: Player): string | null {
   const next = getNextRarity(item.rarity)
   if (!next) return null
-  if ((next === 'legendary' || next === 'mythic') && player.level < RARITY_LEVEL_GATE) {
-    return `Легендарная и мифическая редкость доступны с ${RARITY_LEVEL_GATE} уровня`
+  if (player.level > RARITY_LEVEL_GATE) {
+    return `Улучшение редкости доступно только до ${RARITY_LEVEL_GATE} уровня`
   }
   if (next === 'legendary' || next === 'mythic') {
     const rank = getProfessionRank(getProfessionExp(player, 'blacksmith'))

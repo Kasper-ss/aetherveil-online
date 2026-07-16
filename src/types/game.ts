@@ -215,6 +215,9 @@ export interface Item {
   socketedGems?: SocketGemId[]
   supremeEnchantId?: string
   requiredClass?: PlayerClass
+  /** Raid boss exclusive — not sold or crafted */
+  raidExclusive?: boolean
+  exclusiveFloor?: number
 }
 
 export interface Skill {

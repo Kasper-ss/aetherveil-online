@@ -33,7 +33,7 @@ const BASE_SHOP: ShopItem[] = [
 ]
 
 const EQUIPMENT_SHOP: ShopItem[] = Object.values(ALL_ITEMS)
-  .filter((i) => (i.rarity === 'common' || i.rarity === 'rare') && i.slot !== 'consumable')
+  .filter((i) => (i.rarity === 'common' || i.rarity === 'rare') && i.slot !== 'consumable' && !i.raidExclusive)
   .map((i) => ({
     id: `shop_${i.id}`,
     name: i.name,

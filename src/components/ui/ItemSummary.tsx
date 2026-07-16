@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatItemStats, RARITY_LABELS_RU } from '@/data/items'
 import { formatDurability, getDurabilityRatio, needsRepair } from '@/lib/equipmentDurability'
 import { formatItemClassRestriction } from '@/lib/classGear'
+import { isRaidExclusiveItem } from '@/data/raidExclusiveGear'
 import type { Item } from '@/types/game'
 
 interface ItemSummaryProps {
@@ -18,6 +19,9 @@ export function ItemSummary({ item, showUpgrade = true }: ItemSummaryProps) {
     <div>
       <div className="flex flex-wrap items-center gap-1">
         <Badge variant={item.rarity} className="text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+        {isRaidExclusiveItem(item) && (
+          <span className="text-[8px] px-1 py-0.5 rounded border border-aether-gold/60 text-aether-gold">Рейдовый</span>
+        )}
         {hasUpgrade && (
           <span className="text-[9px] text-aether-cyan">Ур.{lvl} · ★{stars}</span>
         )}

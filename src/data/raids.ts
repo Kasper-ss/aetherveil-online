@@ -2,6 +2,8 @@ import type { FloorEnemy, Item, ResourceId } from '@/types/game'
 import { makeEnemy } from '@/data/floors'
 import { getFloorData } from '@/data/floors'
 import { generateVictoryLoot, generateCombatResources } from '@/data/gameData'
+import { createItemInstance } from '@/data/items'
+import { rollRaidExclusiveItemId } from '@/data/raidExclusiveGear'
 import { rollJewelLoot } from '@/lib/jewelResources'
 
 export const RAID_MOBS_REQUIRED = 50
@@ -90,7 +92,13 @@ export function generateRaidLoot(
   isBoss: boolean,
   lootMult = 1,
 ): Item[] {
-  return generateVictoryLoot(floor, isBoss, 2.4 * lootMult, false, isBoss)
+  const loot = generateVictoryLoot(floor, isBoss, 2.4 * lootMult, false, isBoss)
+  const exclusiveId = rollRaidExclusiveItemId(floor, isBoss, lootMult)
+  if (exclusiveId) {
+    const exclusive = createItemInstance(exclusiveId)
+    if (exclusive) loot.push(exclusive)
+  }
+  return loot
 }
 
 export function getRaidCompletionBonus(floor: number): { gold: number; gems: number } {
