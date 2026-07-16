@@ -17,14 +17,24 @@ export function getMaxDurability(item: Item): number {
   return base + lvl * 15 + stars * 25
 }
 
+/** Never shrink stored max below formula or blacksmith bonus — avoids stat loss after fights/repair. */
+export function resolveMaxDurability(item: Item): number {
+  if (item.slot === 'consumable') return 0
+  const calcMax = getMaxDurability(item)
+  return Math.max(calcMax, item.maxDurability ?? calcMax)
+}
+
 export function ensureItemDurability(item: Item): Item {
   if (item.slot === 'consumable') return item
-  const max = getMaxDurability(item)
-  const durability = item.durability ?? max
+  const max = resolveMaxDurability(item)
+  const prevMax = item.maxDurability ?? getMaxDurability(item)
+  const prevDur = item.durability ?? prevMax
+  const ratio = prevMax > 0 ? Math.min(1, prevDur / prevMax) : 1
+  const durability = Math.min(max, Math.max(0, Math.round(max * ratio)))
   return {
     ...item,
     maxDurability: max,
-    durability: Math.min(max, Math.max(0, durability)),
+    durability,
   }
 }
 
@@ -43,10 +53,10 @@ export function preserveDurabilityRatio(item: Item, updates: Partial<Item>): Ite
 }
 
 export function getDurabilityRatio(item: Item): number {
-  const max = item.maxDurability ?? getMaxDurability(item)
+  const max = resolveMaxDurability(item)
   if (max <= 0) return 1
   const current = item.durability ?? max
-  return current / max
+  return Math.min(1, current / max)
 }
 
 /** Stat multiplier from durability: 30% at broken → 100% at full */
@@ -57,8 +67,9 @@ export function getDurabilityStatMult(item: Item): number {
 }
 
 export function getRepairCost(item: Item): number {
-  const max = item.maxDurability ?? getMaxDurability(item)
-  const current = item.durability ?? max
+  const normalized = ensureItemDurability(item)
+  const max = normalized.maxDurability ?? resolveMaxDurability(normalized)
+  const current = normalized.durability ?? max
   const missing = max - current
   if (missing <= 0) return 0
   const rarityMult: Record<ItemRarity, number> = {
@@ -69,24 +80,25 @@ export function getRepairCost(item: Item): number {
 }
 
 export function repairItemFull(item: Item): Item {
-  const max = getMaxDurability(item)
+  const max = resolveMaxDurability(item)
   return { ...item, maxDurability: max, durability: max }
 }
 
 export function wearItem(item: Item, amount: number): Item {
-  const max = item.maxDurability ?? getMaxDurability(item)
+  const max = resolveMaxDurability(item)
   const current = item.durability ?? max
   return { ...item, maxDurability: max, durability: Math.max(0, current - amount) }
 }
 
 export function formatDurability(item: Item): string {
-  const max = item.maxDurability ?? getMaxDurability(item)
+  const max = resolveMaxDurability(item)
   const current = item.durability ?? max
   return `${current}/${max}`
 }
 
 export function needsRepair(item: Item): boolean {
-  const max = item.maxDurability ?? getMaxDurability(item)
-  const current = item.durability ?? max
+  const normalized = ensureItemDurability(item)
+  const max = normalized.maxDurability ?? resolveMaxDurability(normalized)
+  const current = normalized.durability ?? max
   return current < max
 }

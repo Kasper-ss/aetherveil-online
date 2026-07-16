@@ -29,7 +29,7 @@ import {
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
 import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
-import { ensureItemDurability, getRepairCost, preserveDurabilityRatio, repairItemFull, wearItem } from '@/lib/equipmentDurability'
+import { ensureItemDurability, getRepairCost, needsRepair, preserveDurabilityRatio, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
 import {
@@ -379,6 +379,18 @@ function applyQuestTracking(
 
 function syncEnergyFields(player: Player): Partial<Player> {
   return { maxEnergy: getMaxEnergy(player) }
+}
+
+function syncHpAfterMaxChange(player: Player, oldMaxHp: number): Partial<Player> {
+  const newMaxHp = getCombatMaxHp(player)
+  const current = getPlayerCurrentHp(player)
+  if (newMaxHp <= oldMaxHp) {
+    return { currentHp: Math.min(newMaxHp, current) }
+  }
+  if (oldMaxHp <= 0) return { currentHp: newMaxHp }
+  return {
+    currentHp: Math.min(newMaxHp, Math.max(1, Math.round(current * (newMaxHp / oldMaxHp)))),
+  }
 }
 
 function applyPropertyOwnershipChange(player: Player, merged: Player): Partial<Player> {
@@ -2822,7 +2834,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     for (const slot of Object.keys(equipped) as (keyof Player['equipped'])[]) {
       const item = equipped[slot]
       if (!item) continue
-      equipped[slot] = wearItem(ensureItemDurability(item), wear)
+      equipped[slot] = wearItem(item, wear)
       changed = true
     }
     if (changed) get().updatePlayer({ equipped })
@@ -2840,19 +2852,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   repairItem: (item) => {
     if (!item.instanceId) return false
-    const cost = getRepairCost(ensureItemDurability(item))
-    if (cost <= 0) return true
-    if (!get().spendGold(cost)) return false
-    get().replaceItemInstance(item.instanceId, repairItemFull(ensureItemDurability(item)))
+    const { player } = get()
+    if (!player) return false
+    const normalized = ensureItemDurability(item)
+    if (!needsRepair(normalized)) return true
+    const cost = getRepairCost(normalized)
+    if (cost > 0 && !get().spendGold(cost)) return false
+    const oldMaxHp = getCombatMaxHp(player)
+    get().replaceItemInstance(item.instanceId, repairItemFull(normalized))
+    const updated = get().player
+    if (updated) {
+      const hpPatch = syncHpAfterMaxChange(updated, oldMaxHp)
+      if (hpPatch.currentHp != null && hpPatch.currentHp !== getPlayerCurrentHp(updated)) {
+        get().updatePlayer(hpPatch)
+      }
+    }
     return true
   },
 
   repairAllItems: () => {
-    const cost = get().getRepairAllCost()
-    if (cost <= 0) return true
-    if (!get().spendGold(cost)) return false
     const { player } = get()
     if (!player) return false
+    const cost = get().getRepairAllCost()
+    if (cost > 0 && !get().spendGold(cost)) return false
+    const oldMaxHp = getCombatMaxHp(player)
     const inventory = player.inventory.map((i) =>
       i.slot === 'consumable' ? i : repairItemFull(ensureItemDurability(i)),
     )
@@ -2861,7 +2884,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const item = equipped[slot]
       if (item) equipped[slot] = repairItemFull(ensureItemDurability(item))
     }
-    get().updatePlayer({ inventory, equipped })
+    const merged = { ...player, inventory, equipped }
+    get().updatePlayer({
+      inventory,
+      equipped,
+      ...syncHpAfterMaxChange(merged, oldMaxHp),
+    })
     return true
   },
 

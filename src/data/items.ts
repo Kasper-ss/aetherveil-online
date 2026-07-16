@@ -1,5 +1,5 @@
 import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/game'
-import { ensureItemDurability, getDurabilityStatMult, getMaxDurability } from '@/lib/equipmentDurability'
+import { ensureItemDurability, getDurabilityStatMult, resolveMaxDurability } from '@/lib/equipmentDurability'
 import { LUCKY_SETS } from '@/data/luckySets'
 import { CLASS_COMMON_SETS, SET_CLASS_MAP } from '@/data/classSets'
 import { MAXIMIT_ITEMS } from '@/data/maximitSet'
@@ -602,7 +602,7 @@ export function formatStatDelta(delta: Partial<Stats>): string {
 export function getEffectiveItemStats(item: Item): Partial<Stats> {
   const mult = getItemStatMultiplier(item)
   const duraMult = getDurabilityStatMult(item)
-  const maxDura = item.maxDurability ?? getMaxDurability(item)
+  const maxDura = resolveMaxDurability(item)
   const currentDura = item.durability ?? maxDura
   const broken = maxDura > 0 && currentDura <= 0
   const result: Partial<Stats> = {}
