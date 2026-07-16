@@ -4,19 +4,19 @@ export const NURSERY_MAX_STAGE = 5
 
 /** Feed points required to advance from stage N to N+1. */
 export const NURSERY_FEED_REQUIRED: Record<number, number> = {
-  1: 10,
-  2: 25,
-  3: 50,
-  4: 100,
+  1: 18,
+  2: 40,
+  3: 75,
+  4: 150,
   5: 0,
 }
 
 /** Gold + meat cost per feed action (scales with stage). */
 export function getNurseryFeedCost(stage: number): { gold: number; meat: number; herb: number } {
   return {
-    gold: 50 + stage * 80,
-    meat: 1 + Math.floor(stage / 2),
-    herb: stage >= 3 ? 1 : 0,
+    gold: 80 + stage * 120,
+    meat: 2 + Math.floor(stage / 2),
+    herb: stage >= 3 ? 2 : stage >= 2 ? 1 : 0,
   }
 }
 
