@@ -108,10 +108,10 @@ export const MAXIMIT_ITEMS: Record<string, Item> = {
 
 export const MAXIMIT_SET_BONUS = {
   name: 'Сет Maximit',
-  description: '7 предметов Maximit: +30% ATK, +30% DEF, +20% CRIT, +200 HP, +15 SPD',
+  description: '7 предметов Maximit: +70% ATK, +70% DEF, +20000 HP',
   effect: {
-    percent: { atk: 30, def: 30, crit: 20 },
-    flat: { hp: 200, speed: 15 },
+    percent: { atk: 70, def: 70 },
+    flat: { hp: 20000 },
   },
 }
 
