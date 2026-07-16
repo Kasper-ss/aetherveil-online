@@ -32,11 +32,12 @@ import {
   buildRaidEnemy,
   generateRaidLoot,
   generateRaidResources,
+  getRaidsForFloor,
   RAID_BOSS_ENERGY,
   RAID_MOB_ENERGY,
   type RaidDefinition,
 } from '@/data/raids'
-import { getRaidFightType, getRaidProgress } from '@/lib/raidProgress'
+import { getRaidFightType, getRaidProgress, parseRaidId } from '@/lib/raidProgress'
 import { getWeakSpotDamageMultiplier, canUseWeakSpot } from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
 
@@ -57,6 +58,7 @@ interface CombatStore {
   startCombat: (enemy: FloorEnemy, floor: number, isBoss?: boolean) => void
   startPortalCombat: () => boolean
   startRaidCombat: (def: RaidDefinition) => boolean
+  continueRaidCombat: () => boolean
   startWorldBossCombat: () => boolean
   startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
   playerAttack: () => void
@@ -315,6 +317,22 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
     set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
     return true
+  },
+
+  continueRaidCombat: () => {
+    const { combat, tickInterval } = get()
+    if (!combat?.isRaid || !combat.raidId) return false
+
+    const parsed = parseRaidId(combat.raidId)
+    if (!parsed) return false
+
+    const def = getRaidsForFloor(parsed.floor)[parsed.index]
+    if (!def) return false
+
+    if (tickInterval) clearInterval(tickInterval)
+    set({ raidStepComplete: false, result: null, tickInterval: null })
+
+    return get().startRaidCombat(def)
   },
 
   startWorldBossCombat: () => {

@@ -532,10 +532,15 @@ export function createItemInstance(templateId: string): Item | null {
   return ensureItemDurability(base)
 }
 
-export function getUpgradeLevelStepPercent(level: number): number {
-  if (level <= 3) return 7
-  if (level <= 7) return 11
-  return 15
+export const UPGRADE_LEVEL_STEP_PERCENT = 3
+
+export function getUpgradeLevelStepPercent(_level: number): number {
+  return UPGRADE_LEVEL_STEP_PERCENT
+}
+
+export function getUpgradeLevelStatBonus(level: number): number {
+  if (level <= 1) return 0
+  return (level - 1) * (UPGRADE_LEVEL_STEP_PERCENT / 100)
 }
 
 /** Per-star quality leap — each star compounds (significant stat tier jump). */
@@ -557,13 +562,6 @@ export function getStarTierMult(stars: number): number {
 /** @deprecated Use getStarStepTierMult — kept for UI percent labels. */
 export function getStarStepPercent(star: number): number {
   return Math.round((getStarStepTierMult(star) - 1) * 100)
-}
-
-export function getUpgradeLevelStatBonus(level: number): number {
-  if (level <= 1) return 0
-  let bonus = 0
-  for (let i = 2; i <= level; i++) bonus += getUpgradeLevelStepPercent(i) / 100
-  return bonus
 }
 
 export function getStarStatBonus(stars: number): number {

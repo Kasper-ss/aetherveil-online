@@ -44,6 +44,7 @@ export function CombatPage() {
   const raidStepComplete = useCombatStore((s) => s.raidStepComplete)
   const portalStepComplete = useCombatStore((s) => s.portalStepComplete)
   const clearRaidStep = useCombatStore((s) => s.clearRaidStep)
+  const continueRaidCombat = useCombatStore((s) => s.continueRaidCombat)
   const clearPortalStep = useCombatStore((s) => s.clearPortalStep)
   const startPortalCombat = useCombatStore((s) => s.startPortalCombat)
   const playerAttack = useCombatStore((s) => s.playerAttack)
@@ -58,18 +59,19 @@ export function CombatPage() {
   const logRef = useRef<HTMLDivElement>(null)
 
   useTelegramBackButton(() => {
-    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete) {
+    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete) {
       clearCombat()
       navigate(combat?.isRaid ? '/raids' : combat?.isPortal ? '/tower' : '/tower')
     }
-  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete)
+  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete)
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [combat?.combatLog.length])
 
   if (!combat) {
-    navigate('/')
+    const state = useCombatStore.getState()
+    navigate(state.result?.isRaid || state.raidStepComplete ? '/raids' : '/')
     return null
   }
 
@@ -131,9 +133,11 @@ export function CombatPage() {
   }
 
   function handleRaidStepContinue() {
-    clearRaidStep()
-    clearCombat()
-    navigate('/raids')
+    if (!continueRaidCombat()) {
+      clearRaidStep()
+      clearCombat()
+      navigate('/raids')
+    }
   }
 
   function handlePortalStepContinue() {
@@ -382,8 +386,8 @@ export function CombatPage() {
             <p className="text-sm text-slate-300">
               +{result.exp} EXP · +{result.gold} 🪙
             </p>
-            <p className="text-xs text-slate-400">Лут добавлен в сундук рейда. Продолжайте зачистку!</p>
-            <Button onClick={handleRaidStepContinue} className="w-full">К рейду</Button>
+            <p className="text-xs text-slate-400">Лут добавлен в сундук рейда. Следующий противник!</p>
+            <Button onClick={handleRaidStepContinue} className="w-full">Следующий бой</Button>
           </DialogContent>
         </Dialog>
       )}
