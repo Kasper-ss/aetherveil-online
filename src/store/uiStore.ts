@@ -3,6 +3,7 @@ import { create } from 'zustand'
 interface UIState {
   isLoading: boolean
   loadingMessage: string
+  telegramAuthError: string | null
   showTutorial: boolean
   showDailyReward: boolean
   setShowDailyReward: (show: boolean) => void
@@ -12,6 +13,7 @@ interface UIState {
   activeModal: string | null
 
   setLoading: (loading: boolean, message?: string) => void
+  setTelegramAuthError: (message: string | null) => void
   setShowTutorial: (show: boolean) => void
   setShowIdleReward: (show: boolean) => void
   setShowPetReward: (show: boolean) => void
@@ -22,6 +24,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   isLoading: true,
   loadingMessage: 'Подключение к Aetherveil...',
+  telegramAuthError: null,
   showTutorial: false,
   showDailyReward: false,
   showIdleReward: false,
@@ -31,6 +34,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   setLoading: (loading, message = 'Подключение к Aetherveil...') =>
     set({ isLoading: loading, loadingMessage: message }),
+  setTelegramAuthError: (message) => set({ telegramAuthError: message }),
   setShowTutorial: (show) => set({ showTutorial: show }),
   setShowDailyReward: (show) => set({ showDailyReward: show }),
   setShowIdleReward: (show) => set({ showIdleReward: show }),

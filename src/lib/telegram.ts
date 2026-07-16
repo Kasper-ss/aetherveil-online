@@ -1,4 +1,4 @@
-import { storageGet, storageSet } from './utils'
+import { storageGet, storageSet, delay } from './utils'
 
 export interface TelegramUser {
   id: number
@@ -83,8 +83,10 @@ declare global {
 }
 
 /** Mock user for local development outside Telegram */
+export const DEV_MOCK_TELEGRAM_ID = 100000001
+
 const DEV_MOCK_USER: TelegramUser = {
-  id: 100000001,
+  id: DEV_MOCK_TELEGRAM_ID,
   first_name: 'Kirito',
   username: 'dev_player',
   language_code: 'en',
@@ -138,19 +140,81 @@ export function getWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null
 }
 
-export function getTelegramUser(): TelegramUser {
-  const webApp = getWebApp()
-  const user = webApp?.initDataUnsafe?.user
-  if (user) return user
+export function isDevMockTelegramId(id: number): boolean {
+  return id === DEV_MOCK_TELEGRAM_ID
+}
 
-  // Dev fallback
+function isLocalDevHost(): boolean {
+  if (import.meta.env.DEV) return true
+  try {
+    const host = window.location.hostname
+    return host === 'localhost' || host === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
+function getDevFallbackUser(): TelegramUser {
   return storageGet<TelegramUser>('dev_user', DEV_MOCK_USER)
+}
+
+/** Parse user JSON from raw initData (fallback when initDataUnsafe.user is empty). */
+export function parseUserFromInitData(initData: string): TelegramUser | null {
+  if (!initData || initData.length < 10) return null
+  try {
+    const params = new URLSearchParams(initData)
+    const userRaw = params.get('user')
+    if (!userRaw) return null
+    const parsed = JSON.parse(userRaw) as TelegramUser
+    if (!parsed?.id) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function resolveTelegramUserFromWebApp(webApp: TelegramWebApp): TelegramUser | null {
+  if (webApp.initDataUnsafe?.user?.id) return webApp.initDataUnsafe.user
+  return parseUserFromInitData(webApp.initData)
+}
+
+/** Resolve real Telegram user, or null if unavailable. Never returns dev mock. */
+export function resolveTelegramUser(): TelegramUser | null {
+  const webApp = getWebApp()
+  if (!webApp) return null
+  return resolveTelegramUserFromWebApp(webApp)
+}
+
+export function getTelegramUser(): TelegramUser {
+  const resolved = resolveTelegramUser()
+  if (resolved) return resolved
+  if (isLocalDevHost() && !isTelegramEnvironment()) return getDevFallbackUser()
+  return getDevFallbackUser()
+}
+
+/** Wait until Telegram user is available (some clients populate initData with delay). */
+export async function waitForTelegramUser(timeoutMs = 5000): Promise<TelegramUser | null> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const user = resolveTelegramUser()
+    if (user?.id) return user
+    await delay(150)
+  }
+  return resolveTelegramUser()
 }
 
 export function isTelegramEnvironment(): boolean {
   const webApp = getWebApp()
   if (!webApp) return false
-  return !!(webApp.initDataUnsafe?.user || (webApp.initData && webApp.initData.length > 10))
+  return !!(
+    webApp.initDataUnsafe?.user
+    || parseUserFromInitData(webApp.initData)
+    || (webApp.initData && webApp.initData.length > 10)
+  )
+}
+
+export function canUseDevMockUser(): boolean {
+  return isLocalDevHost() && !isTelegramEnvironment()
 }
 
 /**

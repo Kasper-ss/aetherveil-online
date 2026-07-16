@@ -3,8 +3,12 @@ import { initTelegramWebApp, getWebApp, preloadBotUsername } from '@/lib/telegra
 import { usePlayerStore } from '@/store/playerStore'
 import { useUIStore } from '@/store/uiStore'
 import { startBgm } from '@/lib/audio'
-import { delay } from '@/lib/utils'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
+
+const TELEGRAM_AUTH_ERROR = [
+  'Telegram не передал данные вашего аккаунта.',
+  'Игра не может подключить сохранение без этого.',
+].join(' ')
 
 export function useTelegramInit() {
   const initStarted = useRef(false)
@@ -15,20 +19,23 @@ export function useTelegramInit() {
 
     async function init() {
       const { loadPlayer } = usePlayerStore.getState()
-      const { setLoading, setShowTutorial, setShowIdleReward, setShowPetReward } = useUIStore.getState()
+      const { setLoading, setTelegramAuthError, setShowTutorial, setShowIdleReward, setShowPetReward } =
+        useUIStore.getState()
 
       try {
+        setTelegramAuthError(null)
         setLoading(true, 'Подключение к Aetherveil...')
         initTelegramWebApp()
         preloadBotUsername()
-        await delay(800)
         setLoading(true, 'Синхронизация нейроинтерфейса...')
-        await delay(600)
 
-        await loadPlayer()
+        const loaded = await loadPlayer()
+        if (!loaded) {
+          setTelegramAuthError(TELEGRAM_AUTH_ERROR)
+          return
+        }
 
         setLoading(true, 'Вход в Башню...')
-        await delay(500)
 
         const player = usePlayerStore.getState().player
         if (player?.classSelected && !player.tutorialCompleted) {
@@ -43,6 +50,7 @@ export function useTelegramInit() {
         startBgm()
       } catch (error) {
         console.error('[Aetherveil] init failed', error)
+        setTelegramAuthError(TELEGRAM_AUTH_ERROR)
       } finally {
         setLoading(false)
       }

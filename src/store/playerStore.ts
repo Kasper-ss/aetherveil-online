@@ -16,7 +16,7 @@ import {
   CREATE_GUILD_MIN_FLOOR,
 } from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { getTelegramUser, getInitData } from '@/lib/telegram'
+import { getInitData, waitForTelegramUser, isDevMockTelegramId, canUseDevMockUser, isTelegramEnvironment } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
@@ -169,7 +169,7 @@ interface PlayerState {
   idleReward: IdleReward | null
   petReward: PetReward | null
 
-  loadPlayer: () => Promise<void>
+  loadPlayer: () => Promise<boolean>
   savePlayer: () => Promise<void>
   updatePlayer: (partial: Partial<Player>) => void
   addExp: (amount: number) => void
@@ -422,13 +422,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadPlayer: async () => {
     set({ isLoading: true })
-    const user = getTelegramUser()
+    const user = await waitForTelegramUser()
+    if (!user) {
+      console.error('[Aetherveil] Telegram user not resolved', {
+        hasWebApp: !!getInitData(),
+        inTelegram: isTelegramEnvironment(),
+      })
+      set({ player: null, isLoading: false, isAuthenticated: false, idleReward: null, petReward: null })
+      return false
+    }
+    if (isDevMockTelegramId(user.id) && !canUseDevMockUser()) {
+      console.error('[Aetherveil] Refusing dev mock user in Telegram/production session')
+      set({ player: null, isLoading: false, isAuthenticated: false, idleReward: null, petReward: null })
+      return false
+    }
     try {
       const remote = await loadPlayerFromSupabase(user.id)
-      const local = storageGet<Player | null>(SAVE_KEY, null)
+      let local = storageGet<Player | null>(SAVE_KEY, null)
+      if (local && local.telegramId !== user.id) {
+        console.warn('[Aetherveil] Ignoring local save for different account', {
+          savedId: local.telegramId,
+          currentId: user.id,
+        })
+        local = null
+      }
       let player = pickNewerPlayer(remote, local)
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
+      } else if (player.telegramId !== user.id) {
+        player = {
+          ...player,
+          telegramId: user.id,
+          username: user.username ?? player.username,
+          displayName: player.displayName || user.first_name,
+        }
       }
       const preVersion = player.saveVersion ?? 0
       const refCode = parseReferralStartParam(getTelegramStartParam())
@@ -447,9 +474,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().checkPetRewards({ showModal: !idle })
       void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
+      return true
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, using local fallback', error)
-      const local = storageGet<Player | null>(SAVE_KEY, null)
+      let local = storageGet<Player | null>(SAVE_KEY, null)
+      if (local && local.telegramId !== user.id) local = null
       let player = local
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
@@ -471,6 +500,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().checkPetRewards({ showModal: !idle })
       registerOnlinePlayer(player)
       void get().syncPlayerState()
+      return true
     }
   },
 

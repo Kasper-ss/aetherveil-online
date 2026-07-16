@@ -34,7 +34,7 @@ class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState>
             type="button"
             className="px-4 py-2 rounded-lg bg-aether-cyan text-aether-bg font-medium"
             onClick={() => {
-              localStorage.removeItem('player')
+              localStorage.removeItem('aetherveil_player')
               window.location.reload()
             }}
           >

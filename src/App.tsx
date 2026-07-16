@@ -40,6 +40,7 @@ import { NurseryPage } from '@/pages/NurseryPage'
 import { ProductionPage } from '@/pages/ProductionPage'
 import { ElementalForgePage } from '@/pages/ElementalForgePage'
 import { SessionGuard } from '@/components/SessionGuard'
+import { TelegramAuthScreen } from '@/components/TelegramAuthScreen'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
 
@@ -62,6 +63,7 @@ function AppRoutes() {
       <PetRewardModal />
 
       <SessionGuard />
+      <TelegramAuthScreen />
 
       <div className="h-full min-h-0 bg-aether-bg overflow-hidden">
         <Routes>
