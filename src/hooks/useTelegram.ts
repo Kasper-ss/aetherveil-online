@@ -5,13 +5,6 @@ import { useUIStore } from '@/store/uiStore'
 import { startBgm } from '@/lib/audio'
 import { registerOnlinePlayer } from '@/lib/multiplayer'
 
-const TELEGRAM_AUTH_ERROR = [
-  'Telegram не передал данные вашего аккаунта.',
-  'Игра не может подключить сохранение без этого.',
-].join(' ')
-
-const LOAD_PLAYER_TIMEOUT_MS = 25_000
-
 export function useTelegramInit() {
   useEffect(() => {
     let cancelled = false
@@ -27,24 +20,9 @@ export function useTelegramInit() {
         initTelegramWebApp()
         preloadBotUsername()
         setLoading(true, 'Синхронизация нейроинтерфейса...')
-
-        const loaded = await Promise.race([
-          loadPlayer(),
-          new Promise<boolean>((resolve) => {
-            window.setTimeout(() => {
-              console.error('[Aetherveil] loadPlayer timed out')
-              usePlayerStore.setState({ isLoading: false })
-              resolve(false)
-            }, LOAD_PLAYER_TIMEOUT_MS)
-          }),
-        ])
+        await loadPlayer()
 
         if (cancelled) return
-
-        if (!loaded) {
-          setTelegramAuthError(TELEGRAM_AUTH_ERROR)
-          return
-        }
 
         setLoading(true, 'Вход в Башню...')
 
@@ -61,7 +39,6 @@ export function useTelegramInit() {
         startBgm()
       } catch (error) {
         console.error('[Aetherveil] init failed', error)
-        if (!cancelled) setTelegramAuthError(TELEGRAM_AUTH_ERROR)
       } finally {
         if (!cancelled) setLoading(false)
       }

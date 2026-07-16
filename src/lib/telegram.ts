@@ -207,8 +207,16 @@ export function resolveTelegramUser(): TelegramUser | null {
 
 export function getTelegramUser(): TelegramUser {
   const resolved = resolveTelegramUser()
-  if (resolved) return resolved
-  if (isLocalDevHost() && !isTelegramEnvironment()) return getDevFallbackUser()
+  if (resolved?.id && !(isDevMockTelegramId(resolved.id) && isTelegramEnvironment())) {
+    return resolved
+  }
+
+  const recovered = recoverUserFromLocalSave()
+  if (recovered) return recovered
+
+  if (canUseDevMockUser()) return getDevFallbackUser()
+
+  if (resolved?.id) return resolved
   return getDevFallbackUser()
 }
 

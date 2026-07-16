@@ -18,7 +18,7 @@ import {
   CREATE_GUILD_MIN_FLOOR,
 } from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { getInitData, resolveLoginUser, isTelegramEnvironment } from '@/lib/telegram'
+import { getInitData, getTelegramUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
@@ -171,7 +171,7 @@ interface PlayerState {
   idleReward: IdleReward | null
   petReward: PetReward | null
 
-  loadPlayer: () => Promise<boolean>
+  loadPlayer: () => Promise<void>
   savePlayer: () => Promise<void>
   updatePlayer: (partial: Partial<Player>) => void
   addExp: (amount: number) => void
@@ -424,15 +424,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadPlayer: async () => {
     set({ isLoading: true })
-    const user = await resolveLoginUser()
-    if (!user) {
-      console.error('[Aetherveil] Telegram user not resolved', {
-        hasWebApp: !!getInitData(),
-        inTelegram: isTelegramEnvironment(),
-      })
-      set({ player: null, isLoading: false, isAuthenticated: false, idleReward: null, petReward: null })
-      return false
-    }
+    const user = getTelegramUser()
     try {
       const remote = await loadPlayerFromSupabase(user.id)
       let local = storageGet<Player | null>(SAVE_KEY, null)
@@ -471,7 +463,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().checkPetRewards({ showModal: !idle })
       void get().syncPlayerState()
       registerOnlinePlayer(get().player ?? player)
-      return true
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, using local fallback', error)
       let local = storageGet<Player | null>(SAVE_KEY, null)
@@ -497,7 +488,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().checkPetRewards({ showModal: !idle })
       registerOnlinePlayer(player)
       void get().syncPlayerState()
-      return true
     }
   },
 

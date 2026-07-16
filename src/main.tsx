@@ -1,7 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import App from './App'
 import './index.css'
-import { initTelegramWebApp } from '@/lib/telegram'
 
 function showBootError(message: string) {
   const root = document.getElementById('root')
@@ -16,12 +14,20 @@ function showBootError(message: string) {
   `
 }
 
-try {
-  initTelegramWebApp()
-  const rootEl = document.getElementById('root')
-  if (!rootEl) throw new Error('Root element not found')
-  createRoot(rootEl).render(<App />)
-} catch (error) {
-  console.error('[Aetherveil] boot failed', error)
-  showBootError(error instanceof Error ? error.message : 'Ошибка запуска приложения')
+async function boot() {
+  try {
+    const { initTelegramWebApp } = await import('@/lib/telegram')
+    initTelegramWebApp()
+
+    const rootEl = document.getElementById('root')
+    if (!rootEl) throw new Error('Root element not found')
+
+    const { default: App } = await import('./App')
+    createRoot(rootEl).render(<App />)
+  } catch (error) {
+    console.error('[Aetherveil] boot failed', error)
+    showBootError(error instanceof Error ? error.message : 'Ошибка запуска приложения')
+  }
 }
+
+void boot()
