@@ -186,6 +186,18 @@ export function CombatPage() {
               <span>{combat.enemyHp}/{combat.enemyMaxHp}</span>
             </div>
             <Progress value={enemyHpPct} indicatorClassName="bg-gradient-to-r from-purple-700 to-red-500" />
+            {(combat.enemyCombat?.playerDebuffs?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {combat.enemyCombat!.playerDebuffs!.map((d, i) => (
+                  <span
+                    key={`${d.type}-${i}`}
+                    className="text-[9px] px-1.5 py-0.5 rounded border border-red-500/40 bg-red-500/10 text-red-300"
+                  >
+                    {d.icon} {d.nameRu} {d.remainingSec}с
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <div className="flex justify-between text-[10px] mb-0.5">

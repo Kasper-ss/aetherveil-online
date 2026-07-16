@@ -40,6 +40,8 @@ import {
 import { getRaidFightType, getRaidProgress, parseRaidId } from '@/lib/raidProgress'
 import { getWeakSpotDamageMultiplier, canUseWeakSpot } from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
+import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs } from '@/lib/skillDebuffs'
+import { getRaceData } from '@/data/races'
 
 /** Global boost to player outgoing damage in combat. */
 const PLAYER_DAMAGE_MULT = 1.12
@@ -571,13 +573,40 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (scaled.healPercent > 0 && skill.damageMultiplier === 0) {
       const heal = Math.floor(combat.playerMaxHp * scaled.healPercent)
+      const stats = getEffectiveStats(player)
+      const debuff = applyPlayerSkillDebuff(
+        combat.enemyCombat,
+        skillId,
+        skillLevel,
+        stats.atk,
+        Math.max(scaled.healPercent, 0.5),
+      )
       logs.push(logEntry(`💚 ${skill.nameRu}: +${heal} HP`, 'heal'))
+      logs.push(logEntry(`✨ ${debuff.log}`, 'skill'))
+
+      const afterHeal = {
+        ...combat,
+        playerHp: Math.min(combat.playerMaxHp, combat.playerHp + heal),
+        enemyCombat: debuff.state,
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+        combatLog: logs.slice(-30),
+      }
+      const enemyTurn = resolveEnemyTurn(afterHeal, stats)
+      logs.push(...enemyTurn.logs)
+
+      if (enemyTurn.playerHp <= 0) {
+        get().endCombat(false)
+        return
+      }
+
       set({
         combat: {
-          ...combat,
-          playerHp: Math.min(combat.playerMaxHp, combat.playerHp + heal),
-          skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+          ...afterHeal,
+          playerHp: enemyTurn.playerHp,
+          enemyHp: enemyTurn.enemyHp,
+          enemyCombat: enemyTurn.enemyCombat,
           combatLog: logs.slice(-30),
+          turn: combat.turn + 1,
         },
       })
       return
@@ -609,19 +638,28 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isCrit ? 'crit' : 'skill'
     ))
 
+    const debuff = applyPlayerSkillDebuff(
+      hit.enemyCombat,
+      skillId,
+      skillLevel,
+      stats.atk,
+      scaled.damageMultiplier,
+    )
+    logs.push(logEntry(debuff.log, 'skill'))
+
     if (newEnemyHp <= 0) {
       if (handleBossDefeated(get, set, combat, logs, {
         enemyHp: 0,
         playerHp: playerHpAfter,
         combo: combat.combo + 3,
-        enemyCombat: hit.enemyCombat,
+        enemyCombat: debuff.state,
         skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
       })) {
         return
       }
     }
 
-    const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: hit.enemyCombat, playerHp: playerHpAfter }
+    const afterHit = { ...combat, enemyHp: newEnemyHp, enemyCombat: debuff.state, playerHp: playerHpAfter }
     const enemyTurn = resolveEnemyTurn(afterHit, stats)
     logs.push(...enemyTurn.logs)
 
@@ -730,6 +768,22 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const applied = applyRacialAbility(player)
     playerStore.updatePlayer(applied.player)
     const logs = [...combat.combatLog, logEntry(applied.log, 'skill')]
+
+    if (player.raceId) {
+      const raceData = getRaceData(player.raceId)
+      const stats = getEffectiveStats(player)
+      const debuff = applyRacialSkillDebuff(
+        combat.enemyCombat,
+        player.raceId,
+        stats.atk,
+        player.level,
+        raceData?.abilityNameRu ?? 'Расовая способность',
+      )
+      logs.push(logEntry(debuff.log, 'skill'))
+      set({ combat: { ...combat, enemyCombat: debuff.state, combatLog: logs.slice(-30) } })
+      return true
+    }
+
     set({ combat: { ...combat, combatLog: logs.slice(-30) } })
     return true
   },
@@ -1004,13 +1058,37 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   tickCooldowns: () => {
-    const { combat } = get()
-    if (!combat) return
+    const { combat, isActive } = get()
+    if (!combat || !isActive || combat.isPvp) return
+
     const cds = { ...combat.skillCooldowns }
-    let changed = false
+    let cdChanged = false
     for (const key of Object.keys(cds) as SkillId[]) {
-      if (cds[key]! > 0) { cds[key] = cds[key]! - 1; changed = true }
+      if (cds[key]! > 0) { cds[key] = cds[key]! - 1; cdChanged = true }
     }
-    if (changed) set({ combat: { ...combat, skillCooldowns: cds } })
+
+    const debuffTick = tickPlayerSkillDebuffs(combat.enemyHp, combat.enemyCombat)
+    if (!cdChanged && debuffTick.totalDamage === 0) return
+
+    const logs = [...combat.combatLog, ...debuffTick.logs]
+    let nextCombat: CombatState = {
+      ...combat,
+      skillCooldowns: cds,
+      enemyHp: debuffTick.enemyHp,
+      enemyCombat: debuffTick.state,
+      combatLog: logs.slice(-30),
+    }
+
+    if (debuffTick.enemyHp <= 0 && debuffTick.totalDamage > 0) {
+      if (handleBossDefeated(get, set, nextCombat, logs, {
+        enemyHp: 0,
+        enemyCombat: debuffTick.state,
+        skillCooldowns: cds,
+      })) {
+        return
+      }
+    }
+
+    set({ combat: nextCombat })
   },
 }))

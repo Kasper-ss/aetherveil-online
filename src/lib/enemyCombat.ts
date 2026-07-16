@@ -17,6 +17,8 @@ export interface EnemyCombatState {
   dotTurns: number
   dotDamage: number
   fearedTurns?: number
+  /** Debuffs applied by player skills / racial abilities */
+  playerDebuffs?: import('@/lib/skillDebuffs').PlayerAppliedDebuff[]
 }
 
 export function createEnemyCombatState(): EnemyCombatState {
@@ -26,6 +28,7 @@ export function createEnemyCombatState(): EnemyCombatState {
     enraged: false,
     dotTurns: 0,
     dotDamage: 0,
+    playerDebuffs: [],
   }
 }
 

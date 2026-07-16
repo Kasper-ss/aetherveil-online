@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { usePlayerStore } from '@/store/playerStore'
 import { SKILLS, CLASS_SKILL_TREES, getSkillUpgradeCost, getScaledSkill, SKILL_MAX_LEVEL } from '@/data/playerSkills'
+import { getSkillDebuffDescription } from '@/lib/skillDebuffs'
 import { getClassData, RESOURCES } from '@/data/classes'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
@@ -65,6 +66,7 @@ function SkillTreeSection({
                     )}
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">{skill.descriptionRu}</p>
+                  <p className="text-[10px] text-amber-400/90 mt-0.5">{getSkillDebuffDescription(node.skillId)}</p>
                   {scaled && (
                     <p className="text-[10px] text-aether-cyan mt-1">
                       {skill.healPercent > 0 && skill.damageMultiplier === 0
