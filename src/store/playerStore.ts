@@ -18,7 +18,7 @@ import {
   CREATE_GUILD_MIN_FLOOR,
 } from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { getInitData, waitForTelegramUser, isDevMockTelegramId, canUseDevMockUser, isTelegramEnvironment } from '@/lib/telegram'
+import { getInitData, resolveLoginUser, isTelegramEnvironment } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
@@ -424,17 +424,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadPlayer: async () => {
     set({ isLoading: true })
-    const user = await waitForTelegramUser()
+    const user = await resolveLoginUser()
     if (!user) {
       console.error('[Aetherveil] Telegram user not resolved', {
         hasWebApp: !!getInitData(),
         inTelegram: isTelegramEnvironment(),
       })
-      set({ player: null, isLoading: false, isAuthenticated: false, idleReward: null, petReward: null })
-      return false
-    }
-    if (isDevMockTelegramId(user.id) && !canUseDevMockUser()) {
-      console.error('[Aetherveil] Refusing dev mock user in Telegram/production session')
       set({ player: null, isLoading: false, isAuthenticated: false, idleReward: null, petReward: null })
       return false
     }

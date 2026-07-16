@@ -14,9 +14,20 @@ function readLock(): { id: string; ts: number } | null {
   }
 }
 
+function createSessionId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch {
+    // ignore
+  }
+  return `${Date.now()}_${Math.random().toString(36).slice(2)}`
+}
+
 export function useSessionLock(): boolean {
   const [blocked, setBlocked] = useState(false)
-  const sessionId = useState(() => crypto.randomUUID())[0]
+  const sessionId = useState(() => createSessionId())[0]
 
   useEffect(() => {
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CHANNEL) : null

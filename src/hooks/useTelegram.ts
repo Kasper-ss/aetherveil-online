@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { initTelegramWebApp, getWebApp, preloadBotUsername } from '@/lib/telegram'
 import { usePlayerStore } from '@/store/playerStore'
 import { useUIStore } from '@/store/uiStore'
@@ -13,11 +13,8 @@ const TELEGRAM_AUTH_ERROR = [
 const LOAD_PLAYER_TIMEOUT_MS = 25_000
 
 export function useTelegramInit() {
-  const initStarted = useRef(false)
-
   useEffect(() => {
-    if (initStarted.current) return
-    initStarted.current = true
+    let cancelled = false
 
     async function init() {
       const { loadPlayer } = usePlayerStore.getState()
@@ -42,6 +39,8 @@ export function useTelegramInit() {
           }),
         ])
 
+        if (cancelled) return
+
         if (!loaded) {
           setTelegramAuthError(TELEGRAM_AUTH_ERROR)
           return
@@ -62,13 +61,16 @@ export function useTelegramInit() {
         startBgm()
       } catch (error) {
         console.error('[Aetherveil] init failed', error)
-        setTelegramAuthError(TELEGRAM_AUTH_ERROR)
+        if (!cancelled) setTelegramAuthError(TELEGRAM_AUTH_ERROR)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 }
 

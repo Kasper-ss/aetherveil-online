@@ -248,6 +248,31 @@ export function canUseDevMockUser(): boolean {
   return isLocalDevHost() && !isTelegramEnvironment()
 }
 
+/** Fallback when Telegram user is delayed — reuse last saved account. */
+export function recoverUserFromLocalSave(): TelegramUser | null {
+  const local = storageGet<{ telegramId?: number; displayName?: string; username?: string } | null>('player', null)
+  if (!local?.telegramId || isDevMockTelegramId(local.telegramId)) return null
+  return {
+    id: local.telegramId,
+    first_name: local.displayName || 'Player',
+    username: local.username ?? `user_${local.telegramId}`,
+  }
+}
+
+export async function resolveLoginUser(): Promise<TelegramUser | null> {
+  let user = await waitForTelegramUser()
+  if (user?.id && !(isDevMockTelegramId(user.id) && !canUseDevMockUser())) return user
+
+  user = recoverUserFromLocalSave()
+  if (user) return user
+
+  user = resolveTelegramUser()
+  if (user?.id && !(isDevMockTelegramId(user.id) && !canUseDevMockUser())) return user
+
+  if (canUseDevMockUser()) return getDevFallbackUser()
+  return null
+}
+
 /**
  * Initialize Telegram WebApp — expand, safe areas, theme sync.
  * Call once on app mount.
@@ -300,7 +325,7 @@ function applyTelegramViewport(webApp: TelegramWebApp) {
 
     const vh = webApp.viewportStableHeight || webApp.viewportHeight
     if (vh > 0) {
-      root.style.setProperty('--tg-viewport-stable-height', `${vh}px`)
+      root.style.setProperty('--tg-viewport-stable-height', `${Math.max(vh, 320)}px`)
     }
   }
 

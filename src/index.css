@@ -45,6 +45,7 @@ body {
 
 #root {
   box-sizing: border-box;
+  min-height: 100dvh;
   height: var(--tg-viewport-stable-height, 100dvh);
   max-height: var(--tg-viewport-stable-height, 100dvh);
   overflow: hidden;
