@@ -7,6 +7,7 @@ const rarityColors: Record<ItemRarity, string> = {
   epic: 'bg-purple-700 text-purple-100',
   legendary: 'bg-amber-600 text-amber-100',
   mythic: 'bg-gradient-to-r from-fuchsia-700 to-cyan-700 text-white',
+  divine: 'bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-500 text-amber-950',
 }
 
 interface BadgeProps {

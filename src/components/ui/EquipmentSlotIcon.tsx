@@ -18,6 +18,7 @@ const RARITY_BG: Record<ItemRarity, string> = {
   epic: 'bg-purple-600/30 text-purple-200',
   legendary: 'bg-amber-600/30 text-amber-200',
   mythic: 'bg-fuchsia-600/30 text-fuchsia-200',
+  divine: 'bg-amber-400/30 text-amber-100',
 }
 
 interface EquipmentSlotIconProps {

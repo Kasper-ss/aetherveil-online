@@ -25,7 +25,7 @@ export function getRarityUpgradeCost(item: Item): {
   if (!next) return { gold: 0, resources: {} }
 
   const mult: Record<ItemRarity, number> = {
-    common: 1, rare: 2, epic: 4, legendary: 8, mythic: 0,
+    common: 1, rare: 2, epic: 4, legendary: 8, mythic: 0, divine: 0,
   }
   const m = mult[item.rarity] ?? 1
 

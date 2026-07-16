@@ -26,6 +26,7 @@ const RARITY_MULT: Record<ItemRarity, number> = {
   epic: 1.7,
   legendary: 2.2,
   mythic: 3,
+  divine: 4,
 }
 
 const RESOURCE_POOL: ResourceId[] = [
@@ -41,7 +42,7 @@ const ITEM_POOL: { itemId: string; weight: number; minRarity?: ItemRarity }[] = 
   { itemId: 'food_fish_grill', weight: 6, minRarity: 'epic' },
 ]
 
-const RARITY_ORDER: ItemRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
+const RARITY_ORDER: ItemRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'divine']
 
 function rarityAtLeast(have: ItemRarity, need: ItemRarity): boolean {
   return RARITY_ORDER.indexOf(have) >= RARITY_ORDER.indexOf(need)

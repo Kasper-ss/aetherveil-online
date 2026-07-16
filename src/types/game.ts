@@ -1,4 +1,4 @@
-export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
+export type ItemRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'divine'
 export type ItemSlot =
   | 'helmet' | 'chestplate' | 'leggings' | 'boots'
   | 'necklace' | 'ring' | 'weapon' | 'pet' | 'consumable'

@@ -6,6 +6,7 @@ const RARITY_DURABILITY: Record<ItemRarity, number> = {
   epic: 220,
   legendary: 320,
   mythic: 500,
+  divine: 750,
 }
 
 export function getMaxDurability(item: Item): number {
@@ -61,7 +62,7 @@ export function getRepairCost(item: Item): number {
   const missing = max - current
   if (missing <= 0) return 0
   const rarityMult: Record<ItemRarity, number> = {
-    common: 1, rare: 1.5, epic: 2.5, legendary: 4, mythic: 6,
+    common: 1, rare: 1.5, epic: 2.5, legendary: 4, mythic: 6, divine: 9,
   }
   const rm = rarityMult[item.rarity] ?? 1
   return Math.ceil(missing * 2 * rm)

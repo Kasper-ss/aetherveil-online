@@ -18,7 +18,9 @@ export function countEmptySockets(item: Item): number {
 }
 
 export function gemMatchesItemRarity(gemId: SocketGemId, itemRarity: ItemRarity): boolean {
-  return getSocketGemDef(gemId).rarity === itemRarity
+  const gemRarity = getSocketGemDef(gemId).rarity
+  if (itemRarity === 'divine') return gemRarity === 'mythic'
+  return gemRarity === itemRarity
 }
 
 export function canSocketGem(item: Item, gemId: SocketGemId): boolean {

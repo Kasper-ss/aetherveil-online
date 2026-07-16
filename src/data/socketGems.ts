@@ -42,6 +42,7 @@ export function getMaxSockets(slot: EquipSlot, rarity: ItemRarity): number {
     epic: 2,
     legendary: 3,
     mythic: 4,
+    divine: 4,
   }
   const slotBonus = (slot === 'weapon' || slot === 'chestplate') ? 1 : 0
   return Math.min(4, base[rarity] + (rarity !== 'common' ? slotBonus : 0))

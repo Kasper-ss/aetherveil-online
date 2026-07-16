@@ -15,6 +15,7 @@ export const ELEMENTAL_BUFF_SLOTS: Record<ItemRarity, number> = {
   epic: 5,
   legendary: 7,
   mythic: 10,
+  divine: 12,
 }
 
 export const ELEMENTAL_BUFFS: ElementalBuffDef[] = [
@@ -43,6 +44,7 @@ const RARITY_COST_MULT: Record<ItemRarity, number> = {
   epic: 5,
   legendary: 10,
   mythic: 20,
+  divine: 30,
 }
 
 export function getElementalBuffDef(id: ElementalBuffId): ElementalBuffDef {

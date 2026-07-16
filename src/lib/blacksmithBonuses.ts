@@ -53,6 +53,7 @@ const RARITY_UP: Record<ItemRarity, ItemRarity | null> = {
   epic: 'legendary',
   legendary: 'mythic',
   mythic: null,
+  divine: null,
 }
 
 function bumpRarity(item: Item): Item {

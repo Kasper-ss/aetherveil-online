@@ -8,6 +8,7 @@ const RARITY_POWER: Record<ItemRarity, number> = {
   epic: 1.45,
   legendary: 1.8,
   mythic: 2.25,
+  divine: 2.75,
 }
 
 const GEAR_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon'] as const

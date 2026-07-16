@@ -50,4 +50,5 @@ export const RARITY_FISH_COLORS: Record<ItemRarity, string> = {
   epic: 'text-purple-400',
   legendary: 'text-amber-400',
   mythic: 'text-fuchsia-400',
+  divine: 'text-amber-300',
 }

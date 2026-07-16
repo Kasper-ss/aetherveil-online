@@ -39,6 +39,7 @@ const RARITY_SET_BONUSES: Record<
     desc: '7 мифических предметов: +20% ATK, +15% DEF, +15% CRIT, +100 HP, +10 SPD',
     effect: { percent: { atk: 20, def: 15, crit: 15 }, flat: { hp: 100, speed: 10 } },
   },
+  divine: null,
 }
 
 function countEquipped(player: Player) {

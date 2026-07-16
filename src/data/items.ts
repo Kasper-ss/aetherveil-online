@@ -24,6 +24,7 @@ export const RARITY_LABELS_RU: Record<import('@/types/game').ItemRarity, string>
   epic: 'Эпический',
   legendary: 'Легендарный',
   mythic: 'Мифический',
+  divine: 'Божественный',
 }
 
 export const RARITY_ORDER: Record<import('@/types/game').ItemRarity, number> = {
@@ -32,6 +33,7 @@ export const RARITY_ORDER: Record<import('@/types/game').ItemRarity, number> = {
   epic: 3,
   legendary: 4,
   mythic: 5,
+  divine: 6,
 }
 
 const EQUIP_SLOT_ORDER: EquipSlot[] = [
@@ -622,6 +624,7 @@ export function getBaseItemName(item: Item): string {
   const template = ALL_ITEMS[item.id]
   if (template) return template.name
   return item.name
+    .replace(/^☀ /, '')
     .replace(/^✦ /, '')
     .replace(/\s+\+\d+/g, '')
     .replace(/\s+★+/g, '')
@@ -632,7 +635,7 @@ export function formatItemDisplayName(item: Item): string {
   const base = getBaseItemName(item)
   const lvl = item.upgradeLevel ?? 1
   const stars = item.starLevel ?? 0
-  let name = item.rarity === 'mythic' ? `✦ ${base}` : base
+  let name = item.rarity === 'divine' ? `☀ ${base}` : item.rarity === 'mythic' ? `✦ ${base}` : base
   if (lvl > 1) name += ` +${lvl}`
   if (stars > 0) name += ` ${'★'.repeat(stars)}`
   return name
@@ -643,7 +646,7 @@ export function buildItemBonusDescription(item: Item): string {
   const prefix = template?.description?.split('Бонусы:')[0]?.trim()
     ?? template?.description?.split('.')[0]?.trim()
     ?? item.name
-  const mythicTag = item.rarity === 'mythic' ? ' [Мифический]' : ''
+  const mythicTag = item.rarity === 'divine' ? ' [Божественный]' : item.rarity === 'mythic' ? ' [Мифический]' : ''
   return `${prefix}. Бонусы: ${formatItemStats(item)}.${mythicTag}`
 }
 
