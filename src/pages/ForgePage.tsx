@@ -544,7 +544,7 @@ export function ForgePage() {
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
             Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы.
-            Через кузницу можно повысить только «Обычный» → «Редкий». Эпик и выше — крафт по свиткам и рецептам.
+            «Обычный» → «Редкий» доступно сразу; с «Редкого» и выше — с 60 уровня.
           </p>
           <div className="flex gap-2 mb-2">
             <Button
