@@ -1,5 +1,6 @@
 import type { FloorData, FloorEnemy } from '@/types/game'
-import { getMobsRequiredForFloor } from '@/data/items'
+
+export const MOBS_REQUIRED_PER_FLOOR = 100
 
 export const MAX_FLOOR = 100
 /** Виртуальный этаж — доступен только во время события «Секретный Этаж». */
@@ -234,7 +235,7 @@ function buildFloor(floor: number): FloorData {
     theme: zone.theme,
     enemies,
     boss: makeEnemy(floor, bossName(floor), 'boss', true),
-    mobsRequired: getMobsRequiredForFloor(floor),
+    mobsRequired: MOBS_REQUIRED_PER_FLOOR,
     idleGoldPerHour: idleGold,
     idleExpPerHour: idleExp,
   }
