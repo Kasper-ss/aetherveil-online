@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Search, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,9 +10,18 @@ import { FloorEventModal, getEventExpAmount, getEventGoldAmount } from '@/compon
 import { usePlayerStore, getMobsRequiredForFloor } from '@/store/playerStore'
 import { useCombatStore } from '@/store/combatStore'
 import { getFloorData } from '@/data/gameData'
-import { makeEpicEnemy, makeLegendaryHuntEnemy, makeMiniBoss, MAX_MINI_BOSSES_PER_FLOOR, MINI_BOSS_SPAWN_CHANCE } from '@/data/floors'
+import {
+  makeEpicEnemy,
+  makeLegendaryHuntEnemy,
+  makeMiniBoss,
+  MAX_MINI_BOSSES_PER_FLOOR,
+  MINI_BOSS_SPAWN_CHANCE,
+  SECRET_FLOOR_NUM,
+  isSecretFloor,
+  resolveTowerFloor,
+} from '@/data/floors'
 import { pickFloorEvent, rollExploreType, type FloorEventChoice } from '@/data/floorEvents'
-import { getLegendaryHuntExploreBonus } from '@shared/eventsSchedule'
+import { getLegendaryHuntExploreBonus, isEventActive } from '@shared/eventsSchedule'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { getPlayerCurrentHp } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
@@ -24,6 +33,7 @@ import type { FloorEnemy } from '@/types/game'
 
 export function TowerPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const t = useT()
   const player = usePlayerStore((s) => s.player)
   const spendEnergy = usePlayerStore((s) => s.spendEnergy)
@@ -45,14 +55,30 @@ export function TowerPage() {
   if (!player.raceSelected || !player.classSelected) { navigate('/'); return null }
 
   const farmFloor = player.farmFloor
-  const floor = getFloorData(farmFloor)
-  const mobsRequired = getMobsRequiredForFloor(farmFloor)
+  const secretEventActive = isEventActive('secret_floor')
+  const onSecretFloor = isSecretFloor(farmFloor)
+  const floor = resolveTowerFloor(farmFloor, player.highestFloor)
+  const mobsRequired = getMobsRequiredForFloor(onSecretFloor ? player.highestFloor : farmFloor)
   const mobsKilled = player.floorMobKills[farmFloor] ?? 0
   const mobPct = (mobsKilled / mobsRequired) * 100
   const miniBossKills = player.floorMiniBossKills?.[farmFloor] ?? 0
   const miniBossLeft = MAX_MINI_BOSSES_PER_FLOOR - miniBossKills
   const canBoss = mobsKilled >= mobsRequired
   const activeEffects = getActiveEffects(player)
+
+  useEffect(() => {
+    const state = location.state as { enterSecretFloor?: boolean } | null
+    if (state?.enterSecretFloor && secretEventActive) {
+      setFarmFloor(SECRET_FLOOR_NUM)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.state, secretEventActive, setFarmFloor, navigate, location.pathname])
+
+  useEffect(() => {
+    if (onSecretFloor && !secretEventActive) {
+      setFarmFloor(player.highestFloor)
+    }
+  }, [onSecretFloor, secretEventActive, player.highestFloor, setFarmFloor])
 
   function beginCombat(enemy: FloorEnemy, floorNum: number, isBoss = false) {
     startCombat(enemy, floorNum, isBoss)
@@ -147,16 +173,50 @@ export function TowerPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto page-enter">
-      <div className="flex items-center gap-3 p-4 border-b border-aether-border">
+    <div className={`h-full overflow-y-auto page-enter ${onSecretFloor ? 'bg-gradient-to-b from-purple-950/30 to-aether-bg' : ''}`}>
+      <div className={`flex items-center gap-3 p-4 border-b ${onSecretFloor ? 'border-amber-500/40 bg-purple-900/20' : 'border-aether-border'}`}>
         <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold">Этаж {floor.floor}</h1>
-          <p className="text-xs text-slate-400">{floor.name}</p>
+          {onSecretFloor ? (
+            <>
+              <h1 className="text-lg font-bold text-amber-300 tracking-wide">🔮 Секретный Этаж</h1>
+              <p className="text-xs text-purple-300">Событие активно · уникальный лут</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-bold">Этаж {floor.floor}</h1>
+              <p className="text-xs text-slate-400">{floor.name}</p>
+            </>
+          )}
         </div>
       </div>
+
+      {secretEventActive && !onSecretFloor && (
+        <div className="mx-4 mt-3 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10">
+          <p className="text-xs text-amber-200 font-medium">🔮 Секретный Этаж открыт!</p>
+          <p className="text-[10px] text-slate-400 mt-1">Выберите его в списке этажей или нажмите кнопку ниже.</p>
+          <Button
+            size="sm"
+            className="mt-2 w-full bg-purple-700 hover:bg-purple-600 text-amber-100"
+            onClick={() => setFarmFloor(SECRET_FLOOR_NUM)}
+          >
+            Войти на секретный этаж
+          </Button>
+        </div>
+      )}
+
+      {onSecretFloor && (
+        <div className="mx-4 mt-3 p-2 rounded-lg border border-purple-500/50 bg-purple-900/30 text-center">
+          <p className="text-[11px] text-amber-300 font-semibold uppercase tracking-wider">
+            Вы на секретном этаже
+          </p>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Сложность по вашему прогрессу (этаж {player.highestFloor}) · +40% дроп
+          </p>
+        </div>
+      )}
 
       {activeEffects.length > 0 && (
         <div className="mx-4 mt-3 p-2 rounded-lg bg-aether-purple/10 border border-aether-purple/30">
@@ -180,6 +240,9 @@ export function TowerPage() {
             {Array.from({ length: player.highestFloor }, (_, i) => i + 1).map((f) => (
               <option key={f} value={f}>Этаж {f} — {getFloorData(f).name}</option>
             ))}
+            {secretEventActive && (
+              <option value={SECRET_FLOOR_NUM}>🔮 Секретный Этаж — событие</option>
+            )}
           </select>
         </div>
       )}
@@ -187,7 +250,9 @@ export function TowerPage() {
       <div className="relative mx-4 mt-4 h-40 rounded-xl overflow-hidden border border-aether-border"
         style={{ background: `linear-gradient(180deg, ${floor.theme} 0%, #0a0a1a 100%)` }}
       >
-        <Badge className="absolute top-3 left-3" variant="rare">Этаж {floor.floor}</Badge>
+        <Badge className={`absolute top-3 left-3 ${onSecretFloor ? 'bg-amber-500/30 text-amber-200 border-amber-500/50' : ''}`} variant={onSecretFloor ? 'legendary' : 'rare'}>
+          {onSecretFloor ? '🔮 Секретный этаж' : `Этаж ${floor.floor}`}
+        </Badge>
         <p className="absolute bottom-2 left-3 right-3 text-[10px] text-slate-400 text-center">{floor.description}</p>
       </div>
 

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent, ItemRarity } from '@/types/game'
+import { SECRET_FLOOR_NUM, isSecretFloor } from '@/data/floors'
+import { isEventActive } from '@shared/eventsSchedule'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
 import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
 import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
@@ -652,7 +654,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setFarmFloor: (floor) => {
     const { player } = get()
-    if (!player || floor < 1 || floor > player.highestFloor) return
+    if (!player) return
+    if (isSecretFloor(floor)) {
+      if (!isEventActive('secret_floor')) return
+      get().updatePlayer({ farmFloor: SECRET_FLOOR_NUM })
+      return
+    }
+    if (floor < 1 || floor > player.highestFloor) return
     get().updatePlayer({ farmFloor: floor })
   },
 

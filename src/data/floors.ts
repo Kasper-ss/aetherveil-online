@@ -2,6 +2,12 @@ import type { FloorData, FloorEnemy } from '@/types/game'
 import { getMobsRequiredForFloor } from '@/data/items'
 
 export const MAX_FLOOR = 100
+/** Виртуальный этаж — доступен только во время события «Секретный Этаж». */
+export const SECRET_FLOOR_NUM = 901
+
+export function isSecretFloor(floor: number): boolean {
+  return floor === SECRET_FLOOR_NUM
+}
 
 const PATTERNS: FloorEnemy['pattern'][] = ['aggressive', 'defensive', 'berserker']
 
@@ -235,6 +241,28 @@ function buildFloor(floor: number): FloorData {
 }
 
 export const FLOORS: FloorData[] = Array.from({ length: MAX_FLOOR }, (_, i) => buildFloor(i + 1))
+
+export function getSecretFloorData(highestFloor: number): FloorData {
+  const scale = Math.max(10, Math.min(MAX_FLOOR, highestFloor))
+  const base = buildFloor(scale)
+  return {
+    ...base,
+    floor: SECRET_FLOOR_NUM,
+    name: 'Секретный Этаж',
+    description: '🔮 Скрытый этаж башни — уникальный лут и усиленные враги. Доступен только во время события.',
+    theme: '#4a1a6a',
+    enemies: base.enemies.map((e) => ({ ...e, name: `✦ ${e.name}` })),
+    boss: {
+      ...base.boss,
+      name: '🔮 Хранитель Секрета',
+    },
+  }
+}
+
+export function resolveTowerFloor(farmFloor: number, highestFloor: number): FloorData {
+  if (isSecretFloor(farmFloor)) return getSecretFloorData(highestFloor)
+  return getFloorData(farmFloor)
+}
 
 export function getFloorData(floor: number): FloorData {
   const clamped = Math.max(1, Math.min(MAX_FLOOR, floor))

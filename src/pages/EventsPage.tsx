@@ -94,7 +94,7 @@ function EventCard({ ev, now }: { ev: ScheduledGameEvent; now: number }) {
             variant="outline"
             onClick={() => {
               hapticImpact('medium')
-              navigate('/tower')
+              navigate('/tower', { state: { enterSecretFloor: true } })
             }}
           >
             <Sparkles className="h-4 w-4 mr-2" />
