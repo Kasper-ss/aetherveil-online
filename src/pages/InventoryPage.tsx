@@ -17,6 +17,8 @@ import { groupConsumableStacks, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { ResourceCatalog } from '@/components/ui/ResourceCatalog'
+import { calcProductionEnergyCap, calcTotalEnergyPerSec, PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
+import { getProductionState } from '@/lib/productionState'
 import { EquipSlotSwapDialog } from '@/components/ui/EquipSlotSwapDialog'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { formatGemSocketSummary, getItemMaxGemSockets } from '@/lib/gemSockets'
@@ -273,7 +275,24 @@ export function InventoryPage() {
         </TabsContent>
 
         <TabsContent value="resources" className="mt-3">
-          <ResourceCatalog resources={player.resources} />
+          <ResourceCatalog
+            resources={player.resources}
+            extraSections={
+              player.highestFloor >= PRODUCTION_UNLOCK_FLOOR
+                ? [{
+                    id: 'electricity',
+                    titleRu: 'Электричество',
+                    items: [{
+                      key: 'production_energy',
+                      icon: '⚡',
+                      nameRu: 'Электричество',
+                      count: Math.floor(getProductionState(player).energyStored),
+                      hint: `${calcTotalEnergyPerSec(getProductionState(player).generators)}/сек · макс. ${calcProductionEnergyCap(getProductionState(player).generators)}`,
+                    }],
+                  }]
+                : []
+            }
+          />
         </TabsContent>
 
         <TabsContent value="skills">

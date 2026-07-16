@@ -13,6 +13,16 @@ export const ORE_RESOURCE_IDS: ResourceId[] = [
   'stone_chunk', 'iron_ore', 'gold_ore', 'raw_diamond', 'mithril_ore', 'adamantite', 'sulfur',
 ]
 
+/** Ресурсы производственной цепочки (газ → Maximit). */
+export const INDUSTRIAL_RESOURCE_IDS: ResourceId[] = [
+  'industrial_gas', 'dark_ore', 'aura_ore', 'goodnes_ore', 'maximit_ore',
+]
+
+/** Стихийные частицы с рейдов и боссов. */
+export const ELEMENT_RESOURCE_IDS: ResourceId[] = [
+  'element_water', 'element_fire', 'element_air', 'element_earth',
+]
+
 export const HERB_RESOURCE_IDS: ResourceId[] = [
   'herb_mint', 'herb', 'herb_lotus', 'herb_phoenix', 'herb_void',
 ]
@@ -29,6 +39,8 @@ export const RESOURCE_SECTIONS: ResourceSection[] = [
   { id: 'wood', titleRu: 'Древесина', resourceIds: WOOD_RESOURCE_IDS },
   { id: 'basic', titleRu: 'Материалы', resourceIds: BASIC_RESOURCE_IDS },
   { id: 'ore', titleRu: 'Руда', resourceIds: ORE_RESOURCE_IDS },
+  { id: 'industrial', titleRu: 'Производство', resourceIds: INDUSTRIAL_RESOURCE_IDS },
+  { id: 'elements', titleRu: 'Стихийные частицы', resourceIds: ELEMENT_RESOURCE_IDS },
   { id: 'herbs', titleRu: 'Травы', resourceIds: HERB_RESOURCE_IDS },
   { id: 'jewels', titleRu: 'Камни (ювелир)', resourceIds: JEWEL_RESOURCE_IDS },
   { id: 'fish', titleRu: 'Рыба', resourceIds: FISH_RESOURCE_IDS },
