@@ -1,6 +1,6 @@
 import type { ResourceId } from '@/types/game'
 
-export const PRODUCTION_UNLOCK_FLOOR = 15
+export const PRODUCTION_UNLOCK_FLOOR = 50
 
 export type EnergyGeneratorId =
   | 'generator'
