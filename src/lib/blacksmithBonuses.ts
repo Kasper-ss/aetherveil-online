@@ -14,8 +14,8 @@ export function getBlacksmithCraftResourceDiscount(player: Player): number {
   return Math.min(0.35, bsLevel(player, 8) * 0.03)
 }
 
-export function getBlacksmithDoubleCraftChance(player: Player): number {
-  return Math.min(0.1, bsLevel(player, 7) * 0.01)
+export function getBlacksmithDoubleCraftChance(_player: Player): number {
+  return 0
 }
 
 export function getBlacksmithRarityUpgradeChance(player: Player): number {

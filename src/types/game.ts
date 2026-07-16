@@ -30,10 +30,42 @@ export type ResourceId =
   | 'jewel_ruby' | 'jewel_sapphire' | 'jewel_emerald' | 'jewel_topaz' | 'jewel_amethyst'
   | 'jewel_onyx' | 'jewel_opal' | 'jewel_jade' | 'jewel_garnet' | 'jewel_diamond'
   | 'wood_plank'
+  | 'industrial_gas' | 'aura_ore' | 'goodnes_ore' | 'dark_ore' | 'maximit_ore'
+  | 'element_water' | 'element_fire' | 'element_air' | 'element_earth'
+
+export type ElementalBuffId =
+  | 'inferno_strike' | 'tidal_edge' | 'gale_fury' | 'stonebreaker' | 'steam_burst'
+  | 'lightning_arc' | 'frozen_heart' | 'magma_core' | 'storm_lance' | 'world_sunder'
+
+export interface ElementalWeaponBuff {
+  id: ElementalBuffId
+  level: number
+}
 
 export type SocketGemId =
   | 'ruby' | 'sapphire' | 'emerald' | 'topaz' | 'amethyst'
   | 'onyx' | 'opal' | 'jade' | 'garnet' | 'diamond'
+
+export interface ProductionJob {
+  id: string
+  machineId: import('@/data/production').ProductionMachineId
+  startedAt: string
+  readyAt: string
+  amount: number
+}
+
+export interface ProductionState {
+  generators: Partial<Record<import('@/data/production').EnergyGeneratorId, number>>
+  machines: Partial<Record<import('@/data/production').ProductionMachineId, number>>
+  energyStored: number
+  lastTickAt: string
+  jobs: ProductionJob[]
+}
+
+export interface NurseryState {
+  stage: number
+  feedProgress: number
+}
 
 export interface ActiveBrew {
   recipeId: string
@@ -218,6 +250,7 @@ export interface Item {
   /** Raid boss exclusive — not sold or crafted */
   raidExclusive?: boolean
   exclusiveFloor?: number
+  elementalBuffs?: ElementalWeaponBuff[]
 }
 
 export interface Skill {
@@ -425,6 +458,8 @@ export interface Player {
   cityState?: CityState
   studiedGems?: SocketGemId[]
   activeGemStudies?: GemStudyEntry[]
+  productionState?: ProductionState
+  nurseryState?: NurseryState
   saveVersion?: number
 }
 

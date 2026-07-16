@@ -5,6 +5,7 @@ import { generateVictoryLoot, generateCombatResources } from '@/data/gameData'
 import { createItemInstance } from '@/data/items'
 import { rollRaidExclusiveItemId } from '@/data/raidExclusiveGear'
 import { rollJewelLoot } from '@/lib/jewelResources'
+import { rollElementParticles } from '@/lib/elementDrops'
 
 export const RAID_MOBS_REQUIRED = 50
 export const RAID_DEATH_COOLDOWN_MS = 60 * 60 * 1000
@@ -79,6 +80,7 @@ export function generateRaidResources(
     if (v) res[k as ResourceId] = Math.max(1, Math.floor(v * mult))
   }
   Object.assign(res, rollJewelLoot(isBoss ? 0.4 : 0.1, isBoss ? 2 : 1, isBoss))
+  Object.assign(res, rollElementParticles(isBoss, rareLootMult))
   if (isBoss) {
     res.upgrade_core = (res.upgrade_core ?? 0) + 2 + Math.floor(floor / 4)
     if (floor >= 5) res.star_shard = (res.star_shard ?? 0) + 1 + Math.floor(floor / 8)

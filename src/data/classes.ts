@@ -1,5 +1,6 @@
 import type { ClassData, Profession, Resource, CraftRecipe, ResourceId, Player, Item, PlayerClass } from '@/types/game'
 import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_RECIPES } from '@/data/setCraftRecipes'
+import { MAXIMIT_CRAFT_RECIPES } from '@/data/maximitSet'
 import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
 import { applyClassCraftModifier } from '@/lib/classCraft'
@@ -52,6 +53,15 @@ export const RESOURCES: Record<ResourceId, Resource> = {
   fish_aether_koi: { id: 'fish_aether_koi', name: 'Aether Koi', nameRu: 'Эфирный карп', icon: '✨' },
   fishing_junk: { id: 'fishing_junk', name: 'Junk', nameRu: 'Мусор', icon: '🥾' },
   wood_plank: { id: 'wood_plank', name: 'Wood Plank', nameRu: 'Доски', icon: '🪵' },
+  industrial_gas: { id: 'industrial_gas', name: 'Industrial Gas', nameRu: 'Газ', icon: '💨' },
+  aura_ore: { id: 'aura_ore', name: 'Aura Ore', nameRu: 'Aura Ore', icon: '✨' },
+  goodnes_ore: { id: 'goodnes_ore', name: 'Goodnes Ore', nameRu: 'Goodnes Ore', icon: '🌟' },
+  dark_ore: { id: 'dark_ore', name: 'Dark Ore', nameRu: 'Dark Ore', icon: '🌑' },
+  maximit_ore: { id: 'maximit_ore', name: 'Maximit Ore', nameRu: 'Maximit Ore', icon: '💠' },
+  element_water: { id: 'element_water', name: 'Water Essence', nameRu: 'Частица воды', icon: '💧' },
+  element_fire: { id: 'element_fire', name: 'Fire Essence', nameRu: 'Частица огня', icon: '🔥' },
+  element_air: { id: 'element_air', name: 'Air Essence', nameRu: 'Частица воздуха', icon: '🌬️' },
+  element_earth: { id: 'element_earth', name: 'Earth Essence', nameRu: 'Частица земли', icon: '🪨' },
   ...JEWEL_RESOURCE_ENTRIES,
 } as Record<ResourceId, Resource>
 
@@ -78,7 +88,7 @@ export const PROFESSIONS: Profession[] = [
       skill('bs_5', 'Master Smith', 'Мастер-кузнец', '+3% craft rarity upgrade chance per level', '+3% шанс улучшить редкость при крафте за уровень', 80, { iron_ore: 5, gem_shard: 2 }),
       skill('bs_6', 'Efficient Smelt', 'Эффективная плавка', '-5% craft cost', '-5% стоимость крафта', 45, { iron_ore: 2 }),
       skill('bs_7', 'Rune Etching', 'Руническая гравировка', '+1 ATK on crafted weapons', '+1 ATK на созданном оружии', 70, { gem_shard: 2, aether_dust: 1 }),
-      skill('bs_8', 'Bulk Production', 'Массовое производство', '10% chance double craft', '10% шанс двойного крафта', 90, { iron_ore: 6 }),
+      { id: 'bs_8', name: 'Elemental Forge', nameRu: 'Стихийная кузня', description: 'Unlock elemental weapon forging (once)', descriptionRu: 'Открывает стихийную кузню (единоразово)', maxLevel: 1, goldCostPerLevel: 50000, resourceCostPerLevel: { aether_dust: 15, star_shard: 10, maximit_ore: 2 } },
       skill('bs_9', 'Legendary Forge', 'Легендарная кузница', '-3% craft resource cost & +2% rarity up per level', '-3% расход ресурсов и +2% шанс редкости за уровень', 120, { gem_shard: 4, aether_dust: 2 }),
       skill('bs_10', 'Aether Smithing', 'Эфирная ковка', '+5% all equipment stats', '+5% ко всем характеристикам', 150, { aether_dust: 5, gem_shard: 3 }),
     ],
@@ -378,8 +388,8 @@ export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
   const scrollRecipes = [...EPIC_SET_CRAFT_RECIPES, ...LEGENDARY_SET_CRAFT_RECIPES, ...MYTHIC_SET_CRAFT_RECIPES]
     .filter((r) => unlockedScrollIds.has(r.id))
   const base = player
-    ? [...CRAFT_RECIPES, ...scrollRecipes, ...getDynamicMythicCraftRecipes(player)]
-    : CRAFT_RECIPES
+    ? [...CRAFT_RECIPES, ...MAXIMIT_CRAFT_RECIPES, ...scrollRecipes, ...getDynamicMythicCraftRecipes(player)]
+    : [...CRAFT_RECIPES, ...MAXIMIT_CRAFT_RECIPES]
   return base
     .filter((r) => !r.requiredClass || r.requiredClass === player?.classId)
     .map((r) => applyClassCraftModifier(r, player?.classId))

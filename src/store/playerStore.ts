@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent } from '@/types/game'
+import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent, ItemRarity } from '@/types/game'
 import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
 import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
 import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
@@ -116,6 +116,18 @@ import { maybeNotifyGemStudyComplete } from '@/lib/vitalNotifications'
 import { canSocketGem } from '@/lib/gemSockets'
 import { isGemStudied } from '@/lib/gemStudy'
 import { applySupremeEnchantment, getEnchantmentsForItem } from '@/data/supremeEnchantments'
+import {
+  NURSERY_FEED_REQUIRED, NURSERY_MAX_STAGE, getNurseryFeedCost,
+} from '@/data/nursery'
+import {
+  ENERGY_GENERATORS, PRODUCTION_MACHINES, calcJobEnergyCost, getMachineDef,
+} from '@/data/production'
+import {
+  canStartProductionJob, createProductionJob, getProductionState, tickProductionState,
+} from '@/lib/productionState'
+import {
+  ELEMENTAL_BUFF_SLOTS, getElementalBuffApplyCost, hasElementalForge,
+} from '@/data/elementalForge'
 import { hasSupremeEnchantments } from '@/lib/professionBonuses'
 import type { SocketGemId } from '@/types/game'
 import { findKitchenRecipe, getKitchenRecipesForPlayer, FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
@@ -216,6 +228,13 @@ interface PlayerState {
   upgradeSocketGem: (gemId: SocketGemId) => boolean
   socketGemIntoItem: (instanceId: string, gemId: SocketGemId) => boolean
   applySupremeEnchant: (instanceId: string, enchantId: string) => boolean
+  feedNursery: () => boolean
+  buyEnergyGenerator: (id: import('@/data/production').EnergyGeneratorId) => boolean
+  buyProductionMachine: (id: import('@/data/production').ProductionMachineId) => boolean
+  startProductionJob: (machineId: import('@/data/production').ProductionMachineId) => boolean
+  applyElementalBuff: (instanceId: string, buffId: import('@/types/game').ElementalBuffId) => boolean
+  upgradeElementalBuff: (instanceId: string, buffId: import('@/types/game').ElementalBuffId) => boolean
+  tickProduction: () => void
   claimSecretCaveDig: (rewardIndex: number) => boolean
   clearSecretCave: () => void
   enterPortal: () => boolean
@@ -922,6 +941,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().tickCityBuildings()
     get().tickCityPassive()
     get().tickGemStudies()
+    get().tickProduction()
     get().checkPetRewards({ showModal: true })
 
     const after = get().player
@@ -1681,6 +1701,142 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!enc || !get().spendGold(enc.goldCost)) return false
     const enchanted = applySupremeEnchantment({ ...item, supremeEnchantId: enchantId }, enchantId)
     get().replaceItemInstance(instanceId, enchanted)
+    return true
+  },
+
+  feedNursery: () => {
+    const { player } = get()
+    if (!player?.equipped.pet) return false
+    const nursery = { stage: 1, feedProgress: 0, ...player.nurseryState }
+    if (nursery.stage >= NURSERY_MAX_STAGE) return false
+    const cost = getNurseryFeedCost(nursery.stage)
+    if (!get().spendGold(cost.gold)) return false
+    if (cost.meat > 0 && !get().spendResources({ meat: cost.meat })) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
+    if (cost.herb > 0 && !get().spendResources({ herb: cost.herb })) {
+      grantGoldRaw(get, cost.gold)
+      if (cost.meat > 0) get().addResources({ meat: cost.meat }, { skipGatherBonus: true })
+      return false
+    }
+    const required = NURSERY_FEED_REQUIRED[nursery.stage] ?? 0
+    let feedProgress = nursery.feedProgress + 1
+    let stage = nursery.stage
+    if (required > 0 && feedProgress >= required) {
+      stage = Math.min(NURSERY_MAX_STAGE, stage + 1)
+      feedProgress = 0
+    }
+    get().updatePlayer({ nurseryState: { stage, feedProgress } })
+    return true
+  },
+
+  buyEnergyGenerator: (id) => {
+    const { player } = get()
+    if (!player) return false
+    const def = ENERGY_GENERATORS.find((g) => g.id === id)
+    if (!def) return false
+    if (!get().spendGold(def.goldCost)) return false
+    const state = getProductionState(player)
+    const generators = { ...state.generators, [id]: (state.generators[id] ?? 0) + 1 }
+    get().updatePlayer({ productionState: { ...state, generators } })
+    return true
+  },
+
+  buyProductionMachine: (id) => {
+    const { player } = get()
+    if (!player) return false
+    const def = PRODUCTION_MACHINES.find((m) => m.id === id)
+    if (!def) return false
+    if (!get().spendGold(def.goldCost)) return false
+    const state = getProductionState(player)
+    const machines = { ...state.machines, [id]: (state.machines[id] ?? 0) + 1 }
+    get().updatePlayer({ productionState: { ...state, machines } })
+    return true
+  },
+
+  startProductionJob: (machineId) => {
+    const { player } = get()
+    if (!player) return false
+    const check = canStartProductionJob(player, machineId)
+    if (!check.ok) return false
+    const machine = getMachineDef(machineId)
+    const energyCost = calcJobEnergyCost(machine)
+    const state = getProductionState(player)
+    if (!get().spendResources(machine.inputs)) return false
+    const job = createProductionJob(machineId)
+    get().updatePlayer({
+      productionState: {
+        ...state,
+        energyStored: state.energyStored - energyCost,
+        jobs: [...state.jobs, job],
+      },
+    })
+    return true
+  },
+
+  tickProduction: () => {
+    const { player } = get()
+    if (!player?.productionState) return
+    const { state, completed } = tickProductionState(getProductionState(player))
+    if (completed.length === 0) {
+      if (state.energyStored !== player.productionState.energyStored
+        || state.lastTickAt !== player.productionState.lastTickAt) {
+        get().updatePlayer({ productionState: state })
+      }
+      return
+    }
+    const resources: Partial<Record<ResourceId, number>> = {}
+    for (const job of completed) {
+      const machine = getMachineDef(job.machineId)
+      resources[machine.output] = (resources[machine.output] ?? 0) + job.amount
+    }
+    get().addResources(resources, { skipGatherBonus: true })
+    get().updatePlayer({ productionState: state })
+  },
+
+  applyElementalBuff: (instanceId, buffId) => {
+    const { player } = get()
+    if (!player || !hasElementalForge(player)) return false
+    const item = player.inventory.find((i) => i.instanceId === instanceId)
+      ?? (Object.values(player.equipped).find((i) => i?.instanceId === instanceId) ?? null)
+    if (!item || item.slot !== 'weapon') return false
+    const maxSlots = ELEMENTAL_BUFF_SLOTS[item.rarity as ItemRarity] ?? 0
+    if (maxSlots <= 0) return false
+    const buffs = [...(item.elementalBuffs ?? [])]
+    if (buffs.some((b) => b.id === buffId)) return false
+    if (buffs.length >= maxSlots) return false
+    const cost = getElementalBuffApplyCost(item.rarity, 1, buffId)
+    if (!get().spendGold(cost.gold)) return false
+    if (!get().spendResources(cost.resources)) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
+    buffs.push({ id: buffId, level: 1 })
+    get().replaceItemInstance(instanceId, { ...item, elementalBuffs: buffs })
+    return true
+  },
+
+  upgradeElementalBuff: (instanceId, buffId) => {
+    const { player } = get()
+    if (!player || !hasElementalForge(player)) return false
+    const item = player.inventory.find((i) => i.instanceId === instanceId)
+      ?? (Object.values(player.equipped).find((i) => i?.instanceId === instanceId) ?? null)
+    if (!item || item.slot !== 'weapon') return false
+    const buffs = [...(item.elementalBuffs ?? [])]
+    const idx = buffs.findIndex((b) => b.id === buffId)
+    if (idx < 0) return false
+    const current = buffs[idx]
+    if (current.level >= 10) return false
+    const nextLevel = current.level + 1
+    const cost = getElementalBuffApplyCost(item.rarity, nextLevel, buffId)
+    if (!get().spendGold(cost.gold)) return false
+    if (!get().spendResources(cost.resources)) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
+    buffs[idx] = { ...current, level: nextLevel }
+    get().replaceItemInstance(instanceId, { ...item, elementalBuffs: buffs })
     return true
   },
 

@@ -1,5 +1,6 @@
 import type { Player, Stats, ItemRarity } from '@/types/game'
 import { SET_DATA } from '@/data/items'
+import { MAXIMIT_SET_BONUS, MAXIMIT_SET_ID } from '@/data/maximitSet'
 import type { EffectiveStats } from '@/lib/playerStats'
 
 const EQUIP_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet'] as const
@@ -59,6 +60,8 @@ function namedSetPieceStats(setId: string, isLucky: boolean): SetBonusEffect {
       return { flat: { atk: 14, crit: 20, stealth: 12, speed: 6 } }
     case 'penivise':
       return { flat: { atk: 28, crit: 18, stealth: 20, speed: 8, hp: 60 } }
+    case MAXIMIT_SET_ID:
+      return MAXIMIT_SET_BONUS.effect
     default:
       return { flat: { crit: 12, speed: 8, atk: 10, def: 6, hp: 40 } }
   }
@@ -79,6 +82,15 @@ export function getActiveSetBonuses(player: Player): ActiveSetBonus[] {
         effect: namedSetPieceStats(set.id, isLucky),
       })
     }
+  }
+
+  if ((bySetId[MAXIMIT_SET_ID] ?? 0) >= 7) {
+    bonuses.push({
+      id: MAXIMIT_SET_ID,
+      name: MAXIMIT_SET_BONUS.name,
+      description: MAXIMIT_SET_BONUS.description,
+      effect: MAXIMIT_SET_BONUS.effect,
+    })
   }
 
   for (const rarity of ['epic', 'legendary', 'mythic'] as ItemRarity[]) {

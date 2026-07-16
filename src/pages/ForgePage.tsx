@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
 import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
+import { hasElementalForge } from '@/data/elementalForge'
 import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
@@ -220,6 +221,11 @@ export function ForgePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">🔨 {t('forge.title')}</h1>
+        {hasElementalForge(player) && (
+          <Button size="sm" variant="purple" className="ml-auto text-xs" onClick={() => navigate('/elemental-forge')}>
+            🔥 Стихийная кузня
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2 px-4 py-2 overflow-x-auto">

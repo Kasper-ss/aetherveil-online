@@ -330,6 +330,14 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     cityState: base.cityState ?? defaultCityState(),
     studiedGems: migrateStudiedGems(base),
     activeGemStudies: base.activeGemStudies ?? [],
+    productionState: base.productionState ?? {
+      generators: {},
+      machines: {},
+      energyStored: 0,
+      lastTickAt: new Date().toISOString(),
+      jobs: [],
+    },
+    nurseryState: base.nurseryState ?? { stage: 1, feedProgress: 0 },
     fairStats: base.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
     saveVersion: SAVE_VERSION,
   }

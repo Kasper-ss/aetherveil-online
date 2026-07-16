@@ -36,6 +36,9 @@ import { RaidsPage } from '@/pages/RaidsPage'
 import { CityPage } from '@/pages/CityPage'
 import { JewelerPage } from '@/pages/JewelerPage'
 import { WorldBossPage } from '@/pages/WorldBossPage'
+import { NurseryPage } from '@/pages/NurseryPage'
+import { ProductionPage } from '@/pages/ProductionPage'
+import { ElementalForgePage } from '@/pages/ElementalForgePage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
 import { AppErrorBoundary } from '@/components/AppErrorBoundary'
@@ -91,6 +94,9 @@ function AppRoutes() {
           <Route path="/raids" element={<RaidsPage />} />
           <Route path="/city" element={<CityPage />} />
           <Route path="/jeweler" element={<JewelerPage />} />
+          <Route path="/nursery" element={<NurseryPage />} />
+          <Route path="/production" element={<ProductionPage />} />
+          <Route path="/elemental-forge" element={<ElementalForgePage />} />
         </Routes>
       </div>
     </>

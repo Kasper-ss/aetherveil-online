@@ -2,6 +2,7 @@ import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/g
 import { ensureItemDurability, getDurabilityStatMult, getMaxDurability } from '@/lib/equipmentDurability'
 import { LUCKY_SETS } from '@/data/luckySets'
 import { CLASS_COMMON_SETS, SET_CLASS_MAP } from '@/data/classSets'
+import { MAXIMIT_ITEMS } from '@/data/maximitSet'
 import { RAID_EXCLUSIVE_ITEMS } from '@/data/raidExclusiveGear'
 
 export type EquipSlot = Exclude<ItemSlot, 'consumable'>
@@ -514,7 +515,7 @@ export const CONSUMABLES: Record<string, Item> = {
   },
 }
 
-export const ALL_ITEMS: Record<string, Item> = { ...generated, ...CONSUMABLES, ...RAID_EXCLUSIVE_ITEMS }
+export const ALL_ITEMS: Record<string, Item> = { ...generated, ...CONSUMABLES, ...RAID_EXCLUSIVE_ITEMS, ...MAXIMIT_ITEMS }
 
 export function getItemTemplate(id: string): Item | undefined {
   return ALL_ITEMS[id]

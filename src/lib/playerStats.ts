@@ -10,6 +10,8 @@ import { getMaxCritChanceForClass, getMaxDodgeChanceForClass } from '@/lib/class
 import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
 import { getRacialStatPassives } from '@/lib/racialAbilities'
 import { getEquipmentStatMultiplier } from '@/lib/professionBonuses'
+import { getNurseryStageStats } from '@/data/nursery'
+import { getElementalBuffStats } from '@/data/elementalForge'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -174,6 +176,24 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     totals.crit += Math.floor((s.crit ?? 0) * profMult.crit)
     totals.speed += Math.floor((s.speed ?? 0) * profMult.speed)
     totals.stealth += Math.floor((s.stealth ?? 0) * profMult.stealth)
+    if (slot === 'pet' && player.nurseryState) {
+      const nursery = getNurseryStageStats(player.nurseryState.stage)
+      totals.atk += nursery.atk ?? 0
+      totals.def += nursery.def ?? 0
+      totals.hp += nursery.hp ?? 0
+      totals.crit += nursery.crit ?? 0
+      totals.speed += nursery.speed ?? 0
+    }
+    if (slot === 'weapon' && item.elementalBuffs?.length) {
+      for (const buff of item.elementalBuffs) {
+        const eb = getElementalBuffStats(buff.id, buff.level)
+        totals.atk += eb.atk ?? 0
+        totals.def += eb.def ?? 0
+        totals.hp += eb.hp ?? 0
+        totals.crit += eb.crit ?? 0
+        totals.speed += eb.speed ?? 0
+      }
+    }
     for (const gemId of item.socketedGems ?? []) {
       const level = player.socketGemLevels?.[gemId] ?? 1
       const val = getGemStatValue(gemId, level)

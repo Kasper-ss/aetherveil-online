@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2 } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -26,6 +26,7 @@ import { isWorldBossUnlocked, getWorldBossCooldown, WORLD_BOSS_UNLOCK_FLOOR } fr
 import { maybeNotifyWorldBoss } from '@/lib/worldBossNotifications'
 import { isRealEstateUnlocked } from '@/data/realEstate'
 import { isCityUnlocked } from '@/data/cityBuildings'
+import { PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -117,6 +118,8 @@ export function HomePage() {
     }
   }
 
+  const productionUnlocked = player.highestFloor >= PRODUCTION_UNLOCK_FLOOR
+
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
     {
@@ -127,6 +130,10 @@ export function HomePage() {
       primary: worldBossReady,
     },
     { icon: Pickaxe, label: 'Шахта', path: '/mine', variant: 'gold' as const },
+    { icon: Heart, label: 'Питомник', path: '/nursery', variant: 'purple' as const },
+    ...(productionUnlocked
+      ? [{ icon: Factory, label: 'Производство', path: '/production', variant: 'gold' as const }]
+      : [{ icon: Factory, label: `Производство 🔒 ${PRODUCTION_UNLOCK_FLOOR} эт.`, path: '/production', variant: 'secondary' as const }]),
     { icon: Leaf, label: 'Поле трав', path: '/field', variant: 'secondary' as const },
     { icon: Shield, label: 'Рейды', path: '/raids', variant: 'purple' as const, primary: false },
     ...(cityUnlocked

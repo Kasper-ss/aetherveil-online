@@ -6,6 +6,7 @@ import {
   getWorldBossSchedule,
 } from '@/lib/worldBossSchedule'
 import { jewelResourceId, rollRandomJewelResource } from '@/lib/jewelResources'
+import { rollElementParticles } from '@/lib/elementDrops'
 import type { ResourceId } from '@/types/game'
 
 export const WORLD_BOSS_UNLOCK_FLOOR = 25
@@ -76,6 +77,7 @@ export function getWorldBossRewardResources(): Partial<Record<ResourceId, number
   }
   const diamond = jewelResourceId('diamond')
   rewards[diamond] = (rewards[diamond] ?? 0) + 1
+  Object.assign(rewards, rollElementParticles(true, 2))
   return rewards
 }
 
