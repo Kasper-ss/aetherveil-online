@@ -173,16 +173,36 @@ export function parseUserFromInitData(initData: string): TelegramUser | null {
   }
 }
 
+function getInitDataRaw(): string {
+  const webApp = getWebApp()
+  if (webApp?.initData && webApp.initData.length > 0) return webApp.initData
+  try {
+    const url = new URL(window.location.href)
+    const fromQuery = url.searchParams.get('tgWebAppData')
+    if (fromQuery) return fromQuery
+    const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+    if (!hash) return ''
+    return new URLSearchParams(hash).get('tgWebAppData') ?? ''
+  } catch {
+    return ''
+  }
+}
+
 function resolveTelegramUserFromWebApp(webApp: TelegramWebApp): TelegramUser | null {
   if (webApp.initDataUnsafe?.user?.id) return webApp.initDataUnsafe.user
-  return parseUserFromInitData(webApp.initData)
+  const fromInit = parseUserFromInitData(webApp.initData)
+  if (fromInit) return fromInit
+  return parseUserFromInitData(getInitDataRaw())
 }
 
 /** Resolve real Telegram user, or null if unavailable. Never returns dev mock. */
 export function resolveTelegramUser(): TelegramUser | null {
   const webApp = getWebApp()
-  if (!webApp) return null
-  return resolveTelegramUserFromWebApp(webApp)
+  if (webApp) {
+    const fromWebApp = resolveTelegramUserFromWebApp(webApp)
+    if (fromWebApp) return fromWebApp
+  }
+  return parseUserFromInitData(getInitDataRaw())
 }
 
 export function getTelegramUser(): TelegramUser {
@@ -193,24 +213,35 @@ export function getTelegramUser(): TelegramUser {
 }
 
 /** Wait until Telegram user is available (some clients populate initData with delay). */
-export async function waitForTelegramUser(timeoutMs = 5000): Promise<TelegramUser | null> {
+export async function waitForTelegramUser(timeoutMs = 12000): Promise<TelegramUser | null> {
+  const webApp = getWebApp()
+  try {
+    webApp?.ready()
+  } catch {
+    // ignore
+  }
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const user = resolveTelegramUser()
     if (user?.id) return user
-    await delay(150)
+    await delay(200)
   }
   return resolveTelegramUser()
 }
 
 export function isTelegramEnvironment(): boolean {
   const webApp = getWebApp()
-  if (!webApp) return false
-  return !!(
-    webApp.initDataUnsafe?.user
-    || parseUserFromInitData(webApp.initData)
-    || (webApp.initData && webApp.initData.length > 10)
-  )
+  if (webApp) {
+    if (
+      webApp.initDataUnsafe?.user
+      || parseUserFromInitData(webApp.initData)
+      || (webApp.initData && webApp.initData.length > 10)
+    ) {
+      return true
+    }
+  }
+  const raw = getInitDataRaw()
+  return !!(parseUserFromInitData(raw) || (raw && raw.length > 10))
 }
 
 export function canUseDevMockUser(): boolean {

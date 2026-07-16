@@ -40,6 +40,7 @@ export function HomePage() {
   const [showInvite, setShowInvite] = useState(false)
   const player = usePlayerStore((s) => s.player)
   const playerLoading = usePlayerStore((s) => s.isLoading)
+  const authError = useUIStore((s) => s.telegramAuthError)
   const stats = usePlayerStats()
   const pet = player?.equipped.pet ?? null
   const [, petTick] = useState(0)
@@ -56,6 +57,8 @@ export function HomePage() {
       maybeNotifyGameEvent()
     }
   }, [player?.telegramId])
+
+  if (authError) return null
 
   if (playerLoading || !player) {
     return (

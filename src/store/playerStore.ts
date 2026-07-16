@@ -467,7 +467,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       player = migratePlayer(player)
       if (preVersion < SAVE_VERSION) {
         storageSet(SAVE_KEY, player)
-        await savePlayerToSupabase(player)
+        void savePlayerToSupabase(player)
       }
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })
@@ -493,7 +493,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       player = migratePlayer(player)
       storageSet(SAVE_KEY, player)
       if (preVersion < SAVE_VERSION) {
-        await savePlayerToSupabase(player)
+        void savePlayerToSupabase(player)
       }
       const idle = calculateIdle(player)
       set({ player, isLoading: false, isAuthenticated: true, idleReward: idle, petReward: null })

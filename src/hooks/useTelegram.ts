@@ -10,6 +10,8 @@ const TELEGRAM_AUTH_ERROR = [
   'Игра не может подключить сохранение без этого.',
 ].join(' ')
 
+const LOAD_PLAYER_TIMEOUT_MS = 25_000
+
 export function useTelegramInit() {
   const initStarted = useRef(false)
 
@@ -29,7 +31,17 @@ export function useTelegramInit() {
         preloadBotUsername()
         setLoading(true, 'Синхронизация нейроинтерфейса...')
 
-        const loaded = await loadPlayer()
+        const loaded = await Promise.race([
+          loadPlayer(),
+          new Promise<boolean>((resolve) => {
+            window.setTimeout(() => {
+              console.error('[Aetherveil] loadPlayer timed out')
+              usePlayerStore.setState({ isLoading: false })
+              resolve(false)
+            }, LOAD_PLAYER_TIMEOUT_MS)
+          }),
+        ])
+
         if (!loaded) {
           setTelegramAuthError(TELEGRAM_AUTH_ERROR)
           return

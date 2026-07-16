@@ -45,14 +45,23 @@ export async function loadPlayerFromSupabase(telegramId: number): Promise<Player
 export async function savePlayerToSupabase(player: Player): Promise<void> {
   if (!supabase) return
 
-  await supabase.from('players').upsert(
-    {
-      telegram_id: player.telegramId,
-      data: player,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'telegram_id' }
-  )
+  try {
+    await Promise.race([
+      supabase.from('players').upsert(
+        {
+          telegram_id: player.telegramId,
+          data: player,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'telegram_id' },
+      ),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase save timeout')), 5000),
+      ),
+    ])
+  } catch (error) {
+    console.warn('[supabase] savePlayer failed', error)
+  }
 }
 
 /**

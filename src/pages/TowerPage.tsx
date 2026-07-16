@@ -49,14 +49,29 @@ export function TowerPage() {
   const [eventResult, setEventResult] = useState<string | null>(null)
   const [pendingCombat, setPendingCombat] = useState<{ enemy: FloorEnemy; floor: number } | null>(null)
 
+  const farmFloor = player?.farmFloor ?? 1
+  const secretEventActive = isEventActive('secret_floor')
+  const onSecretFloor = player ? isSecretFloor(farmFloor) : false
+
+  useEffect(() => {
+    if (!player) return
+    const state = location.state as { enterSecretFloor?: boolean } | null
+    if (state?.enterSecretFloor && secretEventActive) {
+      setFarmFloor(SECRET_FLOOR_NUM)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [player, location.state, secretEventActive, setFarmFloor, navigate, location.pathname])
+
+  useEffect(() => {
+    if (!player || !onSecretFloor || secretEventActive) return
+    setFarmFloor(player.highestFloor)
+  }, [player, onSecretFloor, secretEventActive, setFarmFloor])
+
   useTelegramBackButton(() => navigate('/'), true)
 
   if (!player) return null
   if (!player.raceSelected || !player.classSelected) { navigate('/'); return null }
 
-  const farmFloor = player.farmFloor
-  const secretEventActive = isEventActive('secret_floor')
-  const onSecretFloor = isSecretFloor(farmFloor)
   const floor = resolveTowerFloor(farmFloor, player.highestFloor)
   const mobsRequired = getMobsRequiredForFloor(onSecretFloor ? player.highestFloor : farmFloor)
   const mobsKilled = player.floorMobKills[farmFloor] ?? 0
@@ -65,20 +80,6 @@ export function TowerPage() {
   const miniBossLeft = MAX_MINI_BOSSES_PER_FLOOR - miniBossKills
   const canBoss = mobsKilled >= mobsRequired
   const activeEffects = getActiveEffects(player)
-
-  useEffect(() => {
-    const state = location.state as { enterSecretFloor?: boolean } | null
-    if (state?.enterSecretFloor && secretEventActive) {
-      setFarmFloor(SECRET_FLOOR_NUM)
-      navigate(location.pathname, { replace: true, state: null })
-    }
-  }, [location.state, secretEventActive, setFarmFloor, navigate, location.pathname])
-
-  useEffect(() => {
-    if (onSecretFloor && !secretEventActive) {
-      setFarmFloor(player.highestFloor)
-    }
-  }, [onSecretFloor, secretEventActive, player.highestFloor, setFarmFloor])
 
   function beginCombat(enemy: FloorEnemy, floorNum: number, isBoss = false) {
     startCombat(enemy, floorNum, isBoss)
