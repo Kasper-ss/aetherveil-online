@@ -538,10 +538,25 @@ export function getUpgradeLevelStepPercent(level: number): number {
   return 15
 }
 
+/** Per-star quality leap — each star compounds (significant stat tier jump). */
+const STAR_TIER_STEP_MULT = [1.82, 1.55, 1.45, 1.38, 1.32, 1.28, 1.24, 1.22, 1.20, 1.18]
+
+export function getStarStepTierMult(star: number): number {
+  if (star <= 0) return 1
+  return STAR_TIER_STEP_MULT[Math.min(star, STAR_TIER_STEP_MULT.length) - 1]
+}
+
+export function getStarTierMult(stars: number): number {
+  let mult = 1
+  for (let i = 0; i < Math.min(stars, STAR_TIER_STEP_MULT.length); i++) {
+    mult *= STAR_TIER_STEP_MULT[i]
+  }
+  return mult
+}
+
+/** @deprecated Use getStarStepTierMult — kept for UI percent labels. */
 export function getStarStepPercent(star: number): number {
-  if (star <= 4) return 8
-  if (star <= 7) return 10
-  return 13
+  return Math.round((getStarStepTierMult(star) - 1) * 100)
 }
 
 export function getUpgradeLevelStatBonus(level: number): number {
@@ -552,15 +567,13 @@ export function getUpgradeLevelStatBonus(level: number): number {
 }
 
 export function getStarStatBonus(stars: number): number {
-  let bonus = 0
-  for (let i = 1; i <= stars; i++) bonus += getStarStepPercent(i) / 100
-  return bonus
+  return getStarTierMult(stars) - 1
 }
 
 export function getItemStatMultiplier(item: Item): number {
   const lvl = item.upgradeLevel ?? 1
   const stars = item.starLevel ?? 0
-  return 1 + getUpgradeLevelStatBonus(lvl) + getStarStatBonus(stars)
+  return (1 + getUpgradeLevelStatBonus(lvl)) * getStarTierMult(stars)
 }
 
 export function getItemStatDeltaPreview(item: Item, kind: 'level' | 'star'): Partial<Stats> {

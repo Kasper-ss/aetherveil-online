@@ -3,7 +3,6 @@ import { EPIC_SET_CRAFT_RECIPES, LEGENDARY_SET_CRAFT_RECIPES, MYTHIC_SET_CRAFT_R
 import { LUCKY_SET_CRAFT_RECIPES } from '@/data/luckySets'
 import { getUnlockedScrollRecipeIds } from '@/data/setScrolls'
 import { applyClassCraftModifier } from '@/lib/classCraft'
-import { RARITY_LEVEL_GATE } from '@/lib/rarityUpgrade'
 
 import { SOCKET_GEMS } from '@/data/socketGems'
 
@@ -388,22 +387,6 @@ export function getForgeCraftRecipes(player: Player | null): CraftRecipe[] {
 
 export function findCraftRecipe(recipeId: string, player: Player | null): CraftRecipe | undefined {
   return getForgeCraftRecipes(player).find((r) => r.id === recipeId)
-}
-
-function isEpicPlusCraftRecipe(recipe: CraftRecipe): boolean {
-  if (recipe.isMythicCraft) return true
-  return recipe.setCraftRarity === 'epic'
-    || recipe.setCraftRarity === 'legendary'
-    || recipe.setCraftRarity === 'mythic'
-    || recipe.setCraftRarity === 'lucky'
-}
-
-export function getCraftBlockReason(recipe: CraftRecipe, player: Player | null): string | null {
-  if (!player) return null
-  if (isEpicPlusCraftRecipe(recipe) && player.level < RARITY_LEVEL_GATE) {
-    return `Эпический и выше крафт доступен с ${RARITY_LEVEL_GATE} уровня`
-  }
-  return null
 }
 
 function mythicSkill(

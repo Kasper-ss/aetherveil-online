@@ -8,17 +8,17 @@ import { Badge } from '@/components/ui/badge'
 import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
 import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
-import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes, getCraftBlockReason } from '@/data/classes'
+import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
   canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
   getRarityUpgradeBlockReason,
-  RARITY_ITEMS_TOTAL_REQUIRED, RARITY_LEVEL_GATE,
+  RARITY_ITEMS_TOTAL_REQUIRED,
 } from '@/lib/rarityUpgrade'
 import {
   ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, sortGearItems,
   getItemStatDeltaPreview, formatStatDelta,
-  getUpgradeLevelStepPercent, getStarStepPercent, getItemStatMultiplier,
+  getUpgradeLevelStepPercent, getStarStepTierMult, getItemStatMultiplier,
   type GearSortMode,
 } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
@@ -248,7 +248,6 @@ export function ForgePage() {
           <div className="space-y-2">
             {craftRecipes.map((recipe) => {
               const result = ALL_ITEMS[recipe.resultItemId]
-              const craftBlock = getCraftBlockReason(recipe, player)
               return (
                 <Card
                   key={recipe.id}
@@ -296,11 +295,8 @@ export function ForgePage() {
                             {recipe.setCraftRarity === 'epic' ? 'Эпический сет' : recipe.setCraftRarity === 'lucky' ? 'Lucky · легендарный' : 'Легендарный сет'}
                           </Badge>
                         )}
-                        {craftBlock && (
-                          <p className="text-[10px] text-amber-400 mt-1">🔒 {craftBlock}</p>
-                        )}
                       </div>
-                      <Button size="sm" disabled={!!craftBlock} onClick={() => handleCraft(recipe.id)}>{t('forge.craftBtn')}</Button>
+                      <Button size="sm" onClick={() => handleCraft(recipe.id)}>{t('forge.craftBtn')}</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -390,7 +386,7 @@ export function ForgePage() {
                   <div className="bg-aether-bg rounded-lg p-3">
                     <p className="text-xs font-medium text-white mb-1">Звёздность → {(selectedItem.starLevel ?? 0) + 1}★</p>
                     <p className="text-[10px] text-aether-gold mb-1">
-                      +{getStarStepPercent((selectedItem.starLevel ?? 0) + 1)}% к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'star'))}
+                      Качественный скачок ×{getStarStepTierMult((selectedItem.starLevel ?? 0) + 1).toFixed(2)} к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'star'))}
                     </p>
                     <p className="text-[10px] text-amber-400 mb-1">
                       ⚠️ Уровень предмета сбросится до 1
@@ -542,13 +538,8 @@ export function ForgePage() {
         <TabsContent value="rarity" className="mt-2">
           <p className="text-xs text-slate-400 mb-2">
             Объедините {RARITY_ITEMS_TOTAL_REQUIRED} одинаковых предмета одной редкости → 1 предмет следующей редкости + ресурсы.
-            Улучшение редкости доступно только до {RARITY_LEVEL_GATE} уровня — после этого крафтите эпические предметы во вкладке «Рецепты».
+            Через кузницу можно повысить только «Обычный» → «Редкий». Эпик и выше — крафт по свиткам и рецептам.
           </p>
-          {player.level > RARITY_LEVEL_GATE && (
-            <p className="text-xs text-amber-400 mb-2">
-              🔒 Вы достигли {RARITY_LEVEL_GATE} уровня — повышение редкости больше недоступно.
-            </p>
-          )}
           <div className="flex gap-2 mb-2">
             <Button
               type="button"

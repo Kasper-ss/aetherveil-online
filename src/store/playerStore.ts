@@ -22,7 +22,7 @@ import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
 import {
   getClassData, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
-  findCraftRecipe, getCraftBlockReason,
+  findCraftRecipe,
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
@@ -1894,7 +1894,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const recipe = findCraftRecipe(recipeId, player)
     if (!recipe) return false
-    if (getCraftBlockReason(recipe, player)) return false
     if (recipe.requiredProfession) {
       const rank = getProfessionRank(getProfessionExp(player, recipe.requiredProfession))
       if (rank < (recipe.requiredProfessionLevel ?? 0)) return false

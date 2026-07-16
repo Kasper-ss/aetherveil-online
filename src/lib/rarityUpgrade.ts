@@ -1,9 +1,9 @@
 import type { Item, ItemRarity, Player, ResourceId, Stats } from '@/types/game'
-import { getProfessionExp, getProfessionRank } from '@/lib/professionProgress'
 
 const RARITY_CHAIN: ItemRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
 
 export const RARITY_LEVEL_GATE = 60
+export const RARITY_UPGRADE_MAX: ItemRarity = 'rare'
 export const RARITY_BLACKSMITH_RANK_LEGENDARY = 10
 export const RARITY_BLACKSMITH_RANK_MYTHIC = 20
 
@@ -44,18 +44,11 @@ export function canUpgradeRarity(item: Item): boolean {
   return item.slot !== 'consumable' && getNextRarity(item.rarity) !== null
 }
 
-export function getRarityUpgradeBlockReason(item: Item, player: Player): string | null {
+export function getRarityUpgradeBlockReason(item: Item, _player: Player): string | null {
   const next = getNextRarity(item.rarity)
   if (!next) return null
-  if (player.level > RARITY_LEVEL_GATE) {
-    return `Улучшение редкости доступно только до ${RARITY_LEVEL_GATE} уровня`
-  }
-  if (next === 'legendary' || next === 'mythic') {
-    const rank = getProfessionRank(getProfessionExp(player, 'blacksmith'))
-    const need = next === 'legendary' ? RARITY_BLACKSMITH_RANK_LEGENDARY : RARITY_BLACKSMITH_RANK_MYTHIC
-    if (rank < need) {
-      return `Нужен ранг кузнеца ${need}+ (сейчас ${rank})`
-    }
+  if (item.rarity !== 'common' || next !== RARITY_UPGRADE_MAX) {
+    return `Повышение редкости: только «Обычный» → «Редкий». Эпик и выше — через крафт.`
   }
   return null
 }
