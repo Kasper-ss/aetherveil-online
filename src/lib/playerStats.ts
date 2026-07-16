@@ -9,6 +9,7 @@ import { getSetCombatEffects } from '@/lib/setCombatEffects'
 import { getMaxCritChanceForClass, getMaxDodgeChanceForClass } from '@/lib/classCompat'
 import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
 import { getRacialStatPassives } from '@/lib/racialAbilities'
+import { getEquipmentStatMultiplier } from '@/lib/professionBonuses'
 
 export function hasDeathDebuff(player: Player): boolean {
   if (!player.deathDebuffUntil) return false
@@ -74,6 +75,14 @@ export const ALLOC_STAT_LABELS: Record<AllocStatKey, string> = {
 export const EMPTY_ALLOCATED: AllocatedStats = {
   atk: 0, hp: 0, def: 0, stealth: 0, endurance: 0,
 }
+
+/** Stat gain per allocated point (shown on hub and in stat distribution UI). */
+export const ALLOC_STAT_PER_POINT = {
+  atk: 2.5,
+  hp: 18,
+  def: 2.5,
+  stealth: 1,
+} as const
 
 const EQUIP_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet'] as const
 
@@ -158,12 +167,13 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     const item = player.equipped[slot]
     if (!item) continue
     const s = getEffectiveItemStats(item)
-    totals.atk += s.atk ?? 0
-    totals.def += s.def ?? 0
-    totals.hp += s.hp ?? 0
-    totals.crit += s.crit ?? 0
-    totals.speed += s.speed ?? 0
-    totals.stealth += s.stealth ?? 0
+    const profMult = getEquipmentStatMultiplier(player, slot)
+    totals.atk += Math.floor((s.atk ?? 0) * profMult.atk)
+    totals.def += Math.floor((s.def ?? 0) * profMult.def)
+    totals.hp += Math.floor((s.hp ?? 0) * profMult.hp)
+    totals.crit += Math.floor((s.crit ?? 0) * profMult.crit)
+    totals.speed += Math.floor((s.speed ?? 0) * profMult.speed)
+    totals.stealth += Math.floor((s.stealth ?? 0) * profMult.stealth)
     for (const gemId of item.socketedGems ?? []) {
       const level = player.socketGemLevels?.[gemId] ?? 1
       const val = getGemStatValue(gemId, level)
@@ -184,9 +194,9 @@ export function getEffectiveStats(player: Player): EffectiveStats {
   const cityDef = getCityMultipliers(player).def
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * 2.5) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult * cityAtk),
-    def: Math.floor((base.def + totals.def + alloc.def * 2.5) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def * cityDef),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * 18) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * ALLOC_STAT_PER_POINT.atk) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult * cityAtk),
+    def: Math.floor((base.def + totals.def + alloc.def * ALLOC_STAT_PER_POINT.def) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def * cityDef),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * ALLOC_STAT_PER_POINT.hp) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
     crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
     speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),
     stealth: alloc.stealth + totals.stealth,

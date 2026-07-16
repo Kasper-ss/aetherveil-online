@@ -1,6 +1,5 @@
 import type { Player, Stats, GuildMember, GuildChatMessage, QuestEvent } from '@/types/game'
 import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
-import { applySetBonuses } from '@/lib/setBonuses'
 import { storageGet, storageSet } from '@/lib/utils'
 import { GUILD_QUESTS } from '@/data/quests'
 import { weekKey } from '@/lib/quests'
@@ -67,7 +66,7 @@ function pruneOnline(registry: OnlineRegistry): OnlineRegistry {
 }
 
 export function registerOnlinePlayer(player: Player) {
-  const stats = applySetBonuses(player, getEffectiveStats(player))
+  const stats = getEffectiveStats(player)
   const snapshot: OnlinePlayerSnapshot = {
     telegramId: player.telegramId,
     displayName: player.displayName,

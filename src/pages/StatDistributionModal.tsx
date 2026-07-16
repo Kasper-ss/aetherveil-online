@@ -3,14 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { useUIStore } from '@/store/uiStore'
 import { usePlayerStore } from '@/store/playerStore'
-import { ALLOC_STAT_LABELS } from '@/lib/playerStats'
+import { ALLOC_STAT_LABELS, ALLOC_STAT_PER_POINT } from '@/lib/playerStats'
 import { hapticSuccess, hapticError, hapticImpact } from '@/lib/telegram'
 import type { AllocStatKey } from '@/types/game'
 
 const STAT_HINTS: Record<AllocStatKey, string> = {
-  atk: '+2 АТК за очко',
-  hp: '+15 HP за очко',
-  def: '+2 ЗАЩ за очко',
+  atk: `+${ALLOC_STAT_PER_POINT.atk} АТК за очко`,
+  hp: `+${ALLOC_STAT_PER_POINT.hp} HP за очко`,
+  def: `+${ALLOC_STAT_PER_POINT.def} ЗАЩ за очко`,
   stealth: '+1 СКР и +0.5% КРИТ за очко',
   endurance: '+3 макс. энергии, быстрее восстановление',
 }
