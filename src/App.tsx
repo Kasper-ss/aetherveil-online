@@ -39,6 +39,7 @@ import { WorldBossPage } from '@/pages/WorldBossPage'
 import { NurseryPage } from '@/pages/NurseryPage'
 import { ProductionPage } from '@/pages/ProductionPage'
 import { ElementalForgePage } from '@/pages/ElementalForgePage'
+import { EventsPage } from '@/pages/EventsPage'
 import { SessionGuard } from '@/components/SessionGuard'
 import { TelegramAuthScreen } from '@/components/TelegramAuthScreen'
 import { useTelegramInit, useOnlineHeartbeat, useEnergyRegen } from '@/hooks/useTelegram'
@@ -98,6 +99,7 @@ function AppRoutes() {
           <Route path="/jeweler" element={<JewelerPage />} />
           <Route path="/nursery" element={<NurseryPage />} />
           <Route path="/production" element={<ProductionPage />} />
+          <Route path="/events" element={<EventsPage />} />
           <Route path="/elemental-forge" element={<ElementalForgePage />} />
         </Routes>
       </div>

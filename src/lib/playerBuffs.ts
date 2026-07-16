@@ -6,6 +6,8 @@ import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getVipMultipliers } from '@/lib/vipBonuses'
 import { FATE_EXP_MULTIPLIER, FATE_GOLD_MULTIPLIER } from '@/lib/fateCards'
 
+import { getActiveEventGoldMult, getActiveEventLootMult } from '@shared/eventsSchedule'
+
 export function isBuffActive(until?: string): boolean {
   if (!until) return false
   return new Date(until).getTime() > Date.now()
@@ -41,14 +43,14 @@ export function getGoldMultiplier(player: Player): number {
   const prop = getPropertyMultipliers(player)
   const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return buff * fate * promo * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * city.mobGold * city.allRewards * vip.gold
+  return buff * fate * promo * getLuckyMultipliers(player).gold * ach * prop.mobGold * prop.allRewards * city.mobGold * city.allRewards * vip.gold * getActiveEventGoldMult()
 }
 
-export function getLootMultiplier(player: Player): number {
+export function getLootMultiplier(player: Player, isBoss = false): number {
   const prop = getPropertyMultipliers(player)
   const city = getCityMultipliers(player)
   const vip = getVipMultipliers(player)
-  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards * city.rareLoot * city.allRewards * vip.loot
+  return getLuckyMultipliers(player).loot * getAchievementMultipliers(player).loot * prop.rareLoot * prop.allRewards * city.rareLoot * city.allRewards * vip.loot * getActiveEventLootMult(isBoss)
 }
 
 export function getGatherResourceMultiplier(player: Player): number {

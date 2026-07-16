@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -24,6 +24,8 @@ import { CLASSES } from '@/data/classes'
 import { getPetRewardTimeRemaining, formatPetRewardCountdown } from '@/lib/petRewards'
 import { isWorldBossUnlocked, getWorldBossCooldown, WORLD_BOSS_UNLOCK_FLOOR } from '@/data/worldBoss'
 import { maybeNotifyWorldBoss } from '@/lib/worldBossNotifications'
+import { maybeNotifyGameEvent } from '@/lib/eventsNotifications'
+import { getActiveEvents } from '@shared/eventsSchedule'
 import { isRealEstateUnlocked } from '@/data/realEstate'
 import { isCityUnlocked } from '@/data/cityBuildings'
 import { PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
@@ -49,7 +51,10 @@ export function HomePage() {
   }, [pet])
 
   useEffect(() => {
-    if (player) maybeNotifyWorldBoss()
+    if (player) {
+      maybeNotifyWorldBoss()
+      maybeNotifyGameEvent()
+    }
   }, [player?.telegramId])
 
   if (playerLoading || !player) {
@@ -119,9 +124,12 @@ export function HomePage() {
   }
 
   const productionUnlocked = player.highestFloor >= PRODUCTION_UNLOCK_FLOOR
+  const activeEvents = getActiveEvents()
+  const eventsMenuLabel = activeEvents.length > 0 ? `События ⚡ ${activeEvents.length}` : 'События'
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
+    { icon: Calendar, label: eventsMenuLabel, path: '/events', variant: 'purple' as const, primary: activeEvents.length > 0 },
     {
       icon: Skull,
       label: worldBossMenuLabel,

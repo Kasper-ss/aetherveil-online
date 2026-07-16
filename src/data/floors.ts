@@ -131,6 +131,28 @@ export function makeEpicEnemy(base: FloorEnemy): FloorEnemy {
   }
 }
 
+/** Legendary hunt mob — event-only, very strong with boosted rewards */
+export function makeLegendaryHuntEnemy(base: FloorEnemy): FloorEnemy {
+  return {
+    ...makeEpicEnemy(base),
+    id: `${base.id}_legendary_hunt`,
+    name: `🐉 ${base.name}`,
+    isEpic: true,
+    stats: {
+      hp: Math.floor(base.stats.hp * 2.6),
+      atk: Math.floor(base.stats.atk * 1.85),
+      def: Math.floor(base.stats.def * 1.55),
+      crit: Math.min(35, base.stats.crit + 8),
+      speed: Math.min(28, base.stats.speed + 5),
+    },
+    expReward: Math.floor(base.expReward * 2),
+    goldReward: [
+      Math.floor(base.goldReward[0] * 2.2),
+      Math.floor(base.goldReward[1] * 2.2),
+    ],
+  }
+}
+
 export const MAX_MINI_BOSSES_PER_FLOOR = 3
 export const MINI_BOSS_SPAWN_CHANCE = 0.09
 

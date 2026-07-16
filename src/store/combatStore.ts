@@ -856,7 +856,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           : { exp: rawExp, gold: rawGold }
         exp = eased.exp
         gold = eased.gold
-        const lootMult = pvePlayer ? getLootMultiplier(pvePlayer) : 1
+        const lootMult = pvePlayer ? getLootMultiplier(pvePlayer, isBoss) : 1
         loot.push(...generateRaidLoot(combat.floor, isBoss, lootMult))
         resources = generateRaidResources(combat.floor, isBoss, lootMult)
       } else {
@@ -872,7 +872,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           const treasure = rollDwarfTreasureFind('dwarf')
           if (treasure) gold += treasure.gold
         }
-        const lootMultBase = pvePlayer ? getLootMultiplier(pvePlayer) : 1
+        const lootMultBase = pvePlayer ? getLootMultiplier(pvePlayer, combat.isBoss) : 1
         const isEpic = !!combat.enemy.isEpic
         const isMiniBoss = !!combat.enemy.isMiniBoss
         const portalMult = combat.isPortal

@@ -145,10 +145,13 @@ export function pickFloorEvent(floor: number): FloorEvent | null {
 
 export const FLOOR_EVENT_CHANCE = 0.22
 export const EPIC_MOB_CHANCE = 0.12
+export const LEGENDARY_HUNT_MOB_CHANCE = 0.08
 
-export function rollExploreType(): 'event' | 'epic' | 'normal' {
+export function rollExploreType(legendaryHuntBonus = 0): 'event' | 'epic' | 'legendary' | 'normal' {
   const roll = Math.random()
   if (roll < FLOOR_EVENT_CHANCE) return 'event'
-  if (roll < FLOOR_EVENT_CHANCE + EPIC_MOB_CHANCE) return 'epic'
+  const legendaryChance = LEGENDARY_HUNT_MOB_CHANCE + legendaryHuntBonus
+  if (roll < FLOOR_EVENT_CHANCE + legendaryChance) return 'legendary'
+  if (roll < FLOOR_EVENT_CHANCE + legendaryChance + EPIC_MOB_CHANCE) return 'epic'
   return 'normal'
 }

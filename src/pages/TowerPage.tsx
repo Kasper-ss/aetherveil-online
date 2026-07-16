@@ -10,8 +10,9 @@ import { FloorEventModal, getEventExpAmount, getEventGoldAmount } from '@/compon
 import { usePlayerStore, getMobsRequiredForFloor } from '@/store/playerStore'
 import { useCombatStore } from '@/store/combatStore'
 import { getFloorData } from '@/data/gameData'
-import { makeEpicEnemy, makeMiniBoss, MAX_MINI_BOSSES_PER_FLOOR, MINI_BOSS_SPAWN_CHANCE } from '@/data/floors'
+import { makeEpicEnemy, makeLegendaryHuntEnemy, makeMiniBoss, MAX_MINI_BOSSES_PER_FLOOR, MINI_BOSS_SPAWN_CHANCE } from '@/data/floors'
 import { pickFloorEvent, rollExploreType, type FloorEventChoice } from '@/data/floorEvents'
+import { getLegendaryHuntExploreBonus } from '@shared/eventsSchedule'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { getPlayerCurrentHp } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
@@ -71,7 +72,7 @@ export function TowerPage() {
       return
     }
 
-    const exploreType = rollExploreType()
+    const exploreType = rollExploreType(getLegendaryHuntExploreBonus())
 
     if (exploreType === 'event') {
       const ev = pickFloorEvent(farmFloor)
@@ -81,7 +82,12 @@ export function TowerPage() {
       }
     }
 
-    const enemy = exploreType === 'epic' ? makeEpicEnemy(baseEnemy) : baseEnemy
+    const enemy =
+      exploreType === 'legendary'
+        ? makeLegendaryHuntEnemy(baseEnemy)
+        : exploreType === 'epic'
+          ? makeEpicEnemy(baseEnemy)
+          : baseEnemy
     beginCombat(enemy, farmFloor)
   }
 
