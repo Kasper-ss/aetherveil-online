@@ -103,8 +103,10 @@ export function LeaderboardPage() {
   }, [])
 
   useEffect(() => {
-    void loadBoards()
-    void usePlayerStore.getState().syncPlayerState()
+    void (async () => {
+      await usePlayerStore.getState().syncPlayerState()
+      await loadBoards()
+    })()
     const interval = setInterval(() => void loadBoards(true), 30_000)
     return () => clearInterval(interval)
   }, [loadBoards])

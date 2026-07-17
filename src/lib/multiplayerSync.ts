@@ -139,27 +139,15 @@ export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardRespo
 }
 
 export async function fetchServerLeaderboard(self: Player): Promise<LeaderboardEntry[]> {
+  const includeIds = [...new Set([self.telegramId, ...(self.friendIds ?? [])])]
+  const includeQs = includeIds.length ? `?include=${includeIds.join(',')}` : ''
+
   try {
-    const res = await fetch('/api/multiplayer/leaderboard')
+    const res = await fetch(`/api/multiplayer/leaderboard${includeQs}`)
     const data = await res.json() as { entries?: LeaderboardEntry[] }
     if (!res.ok || !data.entries) return buildSelfOnly(self)
 
-    const hasSelf = data.entries.some((e) => e.telegramId === self.telegramId)
-    const entries = hasSelf
-      ? data.entries
-      : [
-          ...data.entries,
-          {
-            rank: 0,
-            telegramId: self.telegramId,
-            username: self.username,
-            displayName: self.displayName,
-            floor: self.highestFloor,
-            level: self.level,
-          },
-        ]
-
-    return entries
+    return data.entries
       .sort((a, b) => b.floor - a.floor || b.level - a.level || a.displayName.localeCompare(b.displayName, 'ru'))
       .map((entry, index) => ({ ...entry, rank: index + 1 }))
   } catch {

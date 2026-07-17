@@ -155,8 +155,13 @@ export function starsApiPlugin(): Plugin {
             return
           }
 
-          if (req.method === 'GET' && req.url === '/api/multiplayer/leaderboard') {
-            const players = await getLeaderboardRecords()
+          if (req.method === 'GET' && req.url?.startsWith('/api/multiplayer/leaderboard')) {
+            const url = new URL(req.url, 'http://local')
+            const includeRaw = url.searchParams.get('include') ?? ''
+            const includeIds = [...new Set(
+              includeRaw.split(',').map((part) => Number(part.trim())).filter((id) => id > 0),
+            )]
+            const players = await getLeaderboardRecords(includeIds)
             const entries = players.map((p, index) => ({
               rank: index + 1,
               telegramId: p.telegram_id,
