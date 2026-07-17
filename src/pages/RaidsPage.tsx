@@ -29,6 +29,10 @@ export function RaidsPage() {
   const [selectedFloor, setSelectedFloor] = useState(player?.highestFloor ?? 1)
   const [, tick] = useState(0)
 
+  useEffect(() => {
+    if (player?.highestFloor != null) setSelectedFloor(player.highestFloor)
+  }, [player?.highestFloor])
+
   useTelegramBackButton(() => navigate('/'), true)
 
   useEffect(() => {

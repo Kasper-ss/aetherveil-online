@@ -112,15 +112,15 @@ async function fulfillWithRetry(
   initData: string,
   payload: string,
   productId: StarProductId,
-): Promise<void> {
+): Promise<{ alreadyFulfilled: boolean }> {
   for (let attempt = 0; attempt < 12; attempt++) {
-    const { ok, data } = await fetchStarsApi<{ error?: string }>('/api/stars/fulfill', {
+    const { ok, data } = await fetchStarsApi<{ error?: string; alreadyFulfilled?: boolean }>('/api/stars/fulfill', {
       initData,
       payload,
       productId,
     })
 
-    if (ok) return
+    if (ok) return { alreadyFulfilled: !!data.alreadyFulfilled }
 
     if (data.error === 'not_paid_yet' && attempt < 11) {
       await delay(1000)
@@ -135,15 +135,22 @@ async function fulfillWithRetry(
 
     throw new StarsPaymentError(data.error ?? 'Не удалось подтвердить оплату на сервере')
   }
+  return { alreadyFulfilled: false }
+}
+
+export interface StarsPaymentResult {
+  paid: boolean
+  alreadyFulfilled?: boolean
 }
 
 export async function requestStarsPayment(
   productId: StarProductId,
   opts?: { vipLevel?: number },
-): Promise<boolean> {
+): Promise<StarsPaymentResult> {
   if (!isTelegramEnvironment()) {
     if (import.meta.env.DEV && import.meta.env.VITE_STARS_DEV_MOCK === 'true') {
-      return window.confirm(`[DEV] Симулировать оплату «${productId}»?`)
+      const ok = window.confirm(`[DEV] Симулировать оплату «${productId}»?`)
+      return { paid: ok }
     }
     throw new StarsPaymentError('Покупки за Stars доступны только внутри Telegram')
   }
@@ -164,12 +171,12 @@ export async function requestStarsPayment(
   }
 
   const status = await openStarsInvoice(createData.invoiceLink)
-  if (status === 'cancelled') return false
+  if (status === 'cancelled') return { paid: false }
   if (status !== 'paid') {
     throw new StarsPaymentError('Оплата не завершена')
   }
 
-  await fulfillWithRetry(initData, createData.payload, productId)
+  const fulfill = await fulfillWithRetry(initData, createData.payload, productId)
   hapticSuccess()
-  return true
+  return { paid: true, alreadyFulfilled: fulfill.alreadyFulfilled }
 }

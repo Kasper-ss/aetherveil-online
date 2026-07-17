@@ -180,7 +180,7 @@ export function getActiveEventLootMult(isBoss: boolean, now = Date.now()): numbe
   for (const ev of getActiveEvents(now)) {
     mult *= isBoss ? ev.bossLootMult : ev.lootMult
   }
-  return mult
+  return Math.min(mult, 4)
 }
 
 export function getActiveEventGoldMult(now = Date.now()): number {
@@ -188,7 +188,7 @@ export function getActiveEventGoldMult(now = Date.now()): number {
   for (const ev of getActiveEvents(now)) {
     mult *= ev.goldMult
   }
-  return mult
+  return Math.min(mult, 4)
 }
 
 export function getLegendaryHuntExploreBonus(now = Date.now()): number {

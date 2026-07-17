@@ -1,5 +1,5 @@
 import type { Item, ItemRarity, ItemSlot, Stats, EquippedItems } from '@/types/game'
-import { ensureItemDurability, getDurabilityStatMult, resolveMaxDurability } from '@/lib/equipmentDurability'
+import { ensureItemDurability, getDurabilityStatMult } from '@/lib/equipmentDurability'
 import { LUCKY_SETS } from '@/data/luckySets'
 import { CLASS_COMMON_SETS, SET_CLASS_MAP } from '@/data/classSets'
 import { MAXIMIT_ITEMS } from '@/data/maximitSet'
@@ -602,14 +602,9 @@ export function formatStatDelta(delta: Partial<Stats>): string {
 export function getEffectiveItemStats(item: Item): Partial<Stats> {
   const mult = getItemStatMultiplier(item)
   const duraMult = getDurabilityStatMult(item)
-  const maxDura = resolveMaxDurability(item)
-  const currentDura = item.durability ?? maxDura
-  const broken = maxDura > 0 && currentDura <= 0
   const result: Partial<Stats> = {}
   for (const [k, v] of Object.entries(item.stats ?? {})) {
-    // HP bonus only drops when gear is fully broken — not from normal post-fight wear
-    const effectiveDura = k === 'hp' && !broken ? 1 : duraMult
-    result[k as keyof Stats] = Math.floor((v as number) * mult * effectiveDura)
+    result[k as keyof Stats] = Math.floor((v as number) * mult * duraMult)
   }
   return result
 }

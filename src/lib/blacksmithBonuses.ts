@@ -1,5 +1,5 @@
 import type { CraftRecipe, Item, ItemRarity, Player, ResourceId } from '@/types/game'
-import { ensureItemDurability } from '@/lib/equipmentDurability'
+import { ensureItemDurability, resolveMaxDurability } from '@/lib/equipmentDurability'
 import { getCraftSuccessMultiplier } from '@/lib/playerBuffs'
 
 function bsLevel(player: Player, skillIndex: number): number {
@@ -90,7 +90,7 @@ export function applyBlacksmithCraftBonuses(player: Player, item: Item): Item {
   }
   result = { ...result, stats }
 
-  const max = Math.floor((result.maxDurability ?? 100) * durabilityBonus)
+  const max = Math.floor(resolveMaxDurability(result) * durabilityBonus)
   result = ensureItemDurability({
     ...result,
     maxDurability: max,

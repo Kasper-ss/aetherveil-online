@@ -321,15 +321,15 @@ export async function buyMarketListing(
   const supabase = getSupabase()
 
   if (supabase) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('market_listings')
-      .select('*')
+      .delete()
       .eq('id', listingId)
+      .neq('seller_id', buyerId)
+      .select('*')
       .maybeSingle()
-    if (!data) return null
+    if (error || !data) return null
     const listing = data.listing as MarketListingPayload
-    if (listing.sellerId === buyerId) return null
-    await supabase.from('market_listings').delete().eq('id', listingId)
     listings().delete(listingId)
     await recordMarketSale({
       listingId,

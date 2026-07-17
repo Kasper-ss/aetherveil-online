@@ -59,11 +59,14 @@ export function getDurabilityRatio(item: Item): number {
   return Math.min(1, current / max)
 }
 
-/** Stat multiplier from durability: 30% at broken → 100% at full */
+/** Stat multiplier from durability — only fully broken gear reduces stats. */
 export function getDurabilityStatMult(item: Item): number {
   if (item.slot === 'consumable') return 1
-  const ratio = getDurabilityRatio(item)
-  return 0.3 + 0.7 * ratio
+  const max = resolveMaxDurability(item)
+  if (max <= 0) return 1
+  const current = item.durability ?? max
+  if (current <= 0) return 0.3
+  return 1
 }
 
 export function getRepairCost(item: Item): number {

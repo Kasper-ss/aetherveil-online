@@ -69,8 +69,13 @@ export function TowerPage() {
 
   useTelegramBackButton(() => navigate('/'), true)
 
+  useEffect(() => {
+    if (!player) return
+    if (!player.raceSelected || !player.classSelected) navigate('/')
+  }, [player, navigate])
+
   if (!player) return null
-  if (!player.raceSelected || !player.classSelected) { navigate('/'); return null }
+  if (!player.raceSelected || !player.classSelected) return null
 
   const floor = resolveTowerFloor(farmFloor, player.highestFloor)
   const mobsRequired = getMobsRequiredForFloor(onSecretFloor ? player.highestFloor : farmFloor)

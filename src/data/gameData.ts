@@ -170,29 +170,33 @@ function sanitizeEquipped(
 
 function migrateBossTrophies(player: import('@/types/game').Player): string[] {
   const earned = new Set(player.bossTrophies ?? [])
-  const highest = player.highestFloor ?? 1
-  for (let f = 1; f < highest; f++) {
-    earned.add(`trophy_floor_${f}`)
-  }
   if ((player.worldBossKills ?? 0) > 0 || player.worldBossLastKillAt) {
     earned.add('trophy_world_boss')
   }
   return [...earned]
 }
 
+function hasSocketGemsToMigrate(socketGems?: Partial<Record<SocketGemId, number>>): boolean {
+  if (!socketGems) return false
+  return Object.values(socketGems).some((count) => (count ?? 0) > 0)
+}
+
 function migrateResources(
   resources: Partial<Record<import('@/types/game').ResourceId, number>> | undefined,
   socketGems?: Partial<Record<SocketGemId, number>>,
+  migrateLegacySocketGems = false,
 ): Partial<Record<import('@/types/game').ResourceId, number>> {
   const merged: Record<string, number> = {
     iron_ore: 5, herb: 3, hide: 2, meat: 3, upgrade_core: 1,
     ...resources,
   }
   delete merged.bone
-  for (const [gemId, count] of Object.entries(socketGems ?? {})) {
-    if (!count || count <= 0) continue
-    const rid = jewelResourceId(gemId as SocketGemId)
-    merged[rid] = (merged[rid] ?? 0) + count
+  if (migrateLegacySocketGems) {
+    for (const [gemId, count] of Object.entries(socketGems ?? {})) {
+      if (!count || count <= 0) continue
+      const rid = jewelResourceId(gemId as SocketGemId)
+      merged[rid] = (merged[rid] ?? 0) + count
+    }
   }
   return merged as Partial<Record<import('@/types/game').ResourceId, number>>
 }
@@ -201,8 +205,16 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
   let base = player
   const prevVersion = base.saveVersion ?? 0
   if (prevVersion < 7) {
-    base = wipePlayerToFresh(base)
+    const hasProgress =
+      (base.level ?? 1) > 1
+      || (base.highestFloor ?? 1) > 1
+      || (base.gold ?? 0) > 200
+      || (base.inventory?.length ?? 0) > 0
+    if (!hasProgress) {
+      base = wipePlayerToFresh(base)
+    }
   }
+  const migrateLegacySocketGems = prevVersion < 16 && hasSocketGemsToMigrate(base.socketGems)
   const applyClassBinding = prevVersion < 13
   const normalizedClassId = normalizeClassId(base.classId as string | undefined)
   const synced = syncPlayerSkills(
@@ -234,7 +246,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     hpLastRegenAt: base.hpLastRegenAt ?? new Date().toISOString(),
     currentHp: base.currentHp,
     maxEnergy: getMaxEnergy({ ...base, allocatedStats: { ...EMPTY_ALLOCATED, ...base.allocatedStats } }),
-    resources: migrateResources(base.resources, base.socketGems),
+    resources: migrateResources(base.resources, base.socketGems, migrateLegacySocketGems),
     marketListings: (base.marketListings ?? []).filter((l) => (l.resourceId as string | undefined) !== 'bone'),
     expEasterEggClaimed: base.expEasterEggClaimed ?? false,
     underwearEasterEggClaimed: base.underwearEasterEggClaimed ?? false,
@@ -303,7 +315,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     achievementBonuses: base.achievementBonuses ?? { expPct: 0, goldPct: 0, lootPct: 0, allStatsPct: 0 },
     notificationSettings: base.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS,
     vipLevel: base.vipLevel ?? 0,
-    socketGems: base.socketGems ?? {},
+    socketGems: migrateLegacySocketGems ? {} : (base.socketGems ?? {}),
     socketGemLevels: base.socketGemLevels ?? {},
     activeBrews: base.activeBrews ?? [],
     pendingSecretCave: base.pendingSecretCave ?? null,

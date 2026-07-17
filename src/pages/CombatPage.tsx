@@ -69,11 +69,13 @@ export function CombatPage() {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [combat?.combatLog.length])
 
-  if (!combat) {
+  useEffect(() => {
+    if (combat) return
     const state = useCombatStore.getState()
     navigate(state.result?.isRaid || state.raidStepComplete ? '/raids' : '/')
-    return null
-  }
+  }, [combat, navigate])
+
+  if (!combat) return null
 
   const isRaidCombat = combat.isRaid
   const isPortalCombat = combat.isPortal

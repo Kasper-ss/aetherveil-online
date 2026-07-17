@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import type { Player, IdleReward, CombatResult, Item, PlayerClass, ProfessionId, ResourceId, MarketListing, AllocStatKey, QuestEvent, ItemRarity } from '@/types/game'
-import { SECRET_FLOOR_NUM, isSecretFloor } from '@/data/floors'
+import { SECRET_FLOOR_NUM, isSecretFloor, resolveTowerFloor } from '@/data/floors'
 import { isEventActive } from '@shared/eventsSchedule'
-import { createDefaultPlayer, migratePlayer, getFloorData, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
+import { createDefaultPlayer, migratePlayer, DAILY_REWARDS, MAX_FLOOR } from '@/data/gameData'
 import { parseReferralStartParam, REFERRAL_MILESTONE_GOLD } from '@/data/referrals'
 import { getTelegramStartParam, showTelegramAlert } from '@/lib/telegram'
 import { pickNewerPlayer, SAVE_VERSION } from '@/lib/playerMigration'
@@ -18,10 +18,11 @@ import {
   CREATE_GUILD_MIN_FLOOR,
 } from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
-import { getInitData, getTelegramUser } from '@/lib/telegram'
+import { getInitData, getTelegramUser, resolveLoginUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
-import { storageGet, storageSet, xpForLevel } from '@/lib/utils'
+import { xpForLevel } from '@/lib/utils'
+import { enqueuePlayerSave, loadLocalPlayer, persistPlayerLocal } from '@/lib/playerSave'
 import {
   getClassData, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
   findCraftRecipe,
@@ -352,7 +353,9 @@ interface PlayerState {
   tickGemStudies: () => void
 }
 
-const SAVE_KEY = 'player'
+function persistPlayerSnapshot(player: Player): void {
+  persistPlayerLocal(player)
+}
 
 function grantJewelerProfessionExp(get: () => PlayerState, amount: number): void {
   const { player } = get()
@@ -436,17 +439,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadPlayer: async () => {
     set({ isLoading: true })
-    const user = getTelegramUser()
+    let user = await resolveLoginUser()
+    if (!user?.id) user = getTelegramUser()
     try {
       const remote = await loadPlayerFromSupabase(user.id)
-      let local = storageGet<Player | null>(SAVE_KEY, null)
-      if (local && local.telegramId !== user.id) {
-        console.warn('[Aetherveil] Ignoring local save for different account', {
-          savedId: local.telegramId,
-          currentId: user.id,
-        })
-        local = null
-      }
+      let local = loadLocalPlayer(user.id)
       let player = pickNewerPlayer(remote, local)
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
@@ -465,7 +462,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       }
       player = migratePlayer(player)
       if (preVersion < SAVE_VERSION) {
-        storageSet(SAVE_KEY, player)
+        persistPlayerSnapshot(player)
         void savePlayerToSupabase(player)
       }
       const idle = calculateIdle(player)
@@ -477,8 +474,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       registerOnlinePlayer(get().player ?? player)
     } catch (error) {
       console.error('[Aetherveil] loadPlayer failed, using local fallback', error)
-      let local = storageGet<Player | null>(SAVE_KEY, null)
-      if (local && local.telegramId !== user.id) local = null
+      let local = loadLocalPlayer(user.id)
       let player = local
       if (!player) {
         player = createDefaultPlayer(user.id, user.first_name, user.username ?? `user_${user.id}`)
@@ -489,7 +485,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         player = { ...player, referredBy: refCode }
       }
       player = migratePlayer(player)
-      storageSet(SAVE_KEY, player)
+      persistPlayerSnapshot(player)
       if (preVersion < SAVE_VERSION) {
         void savePlayerToSupabase(player)
       }
@@ -506,9 +502,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   savePlayer: async () => {
     const { player } = get()
     if (!player) return
-    player.lastOnlineAt = new Date().toISOString()
-    storageSet(SAVE_KEY, player)
-    await savePlayerToSupabase(player)
+    const snapshot = { ...player, lastOnlineAt: new Date().toISOString() }
+    set({ player: snapshot })
+    persistPlayerSnapshot(snapshot)
+    await savePlayerToSupabase(snapshot)
   },
 
   updatePlayer: (partial) => {
@@ -528,7 +525,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     set({ player: merged })
     registerOnlinePlayer(merged)
-    get().savePlayer()
+    enqueuePlayerSave(() => get().player)
   },
 
   addExp: (amount) => {
@@ -706,6 +703,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   applyWorldBossVictory: () => {
     const { player } = get()
     if (!player) return
+    const schedule = getWorldBossSchedule()
+    if ((player.worldBossLastSpawnIndex ?? -1) >= schedule.spawnIndex) return
+
     const trophies = player.bossTrophies ?? []
     const trophyId = 'trophy_world_boss'
     const newTrophies = trophies.includes(trophyId) ? trophies : [...trophies, trophyId]
@@ -713,7 +713,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newTitles = titles.includes('world_boss_slayer')
       ? titles
       : [...titles, 'world_boss_slayer']
-    const schedule = getWorldBossSchedule()
     get().updatePlayer({
       bossTrophies: newTrophies,
       worldBossLastKillAt: new Date().toISOString(),
@@ -2370,8 +2369,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         : player.marketListings,
     }
     set({ player: updated })
-    updated.lastOnlineAt = new Date().toISOString()
-    storageSet(SAVE_KEY, updated)
+    persistPlayerSnapshot({ ...updated, lastOnlineAt: new Date().toISOString() })
     await savePlayerToSupabase(updated)
     registerOnlinePlayer(updated)
   },
@@ -2414,8 +2412,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         : player.marketListings,
     }
     set({ player: updated })
-    updated.lastOnlineAt = new Date().toISOString()
-    storageSet(SAVE_KEY, updated)
+    persistPlayerSnapshot({ ...updated, lastOnlineAt: new Date().toISOString() })
     await savePlayerToSupabase(updated)
     registerOnlinePlayer(updated)
     return true
@@ -2475,10 +2472,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { player } = get()
     if (!player || listing.sellerId === player.telegramId) return false
     if (player.gold < listing.goldPrice) return false
+    if (!get().spendGold(listing.goldPrice)) return false
 
     const bought = await buyServerMarketListing(listing.id)
-    if (!bought) return false
-    if (!get().spendGold(listing.goldPrice)) return false
+    if (!bought) {
+      get().addGold(listing.goldPrice)
+      return false
+    }
 
     if (bought.item) get().addItem(bought.item)
     if (bought.resourceId && bought.resourceAmount) {
@@ -2600,8 +2600,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   purchaseStarProduct: async (productId) => {
     const { player } = get()
     const vipLevel = productId === 'vip_upgrade' ? (player?.vipLevel ?? 0) : undefined
-    const paid = await requestStarsPayment(productId, { vipLevel })
-    if (!paid) return false
+    const payment = await requestStarsPayment(productId, { vipLevel })
+    if (!payment.paid) return false
+    if (payment.alreadyFulfilled) return true
     return get().applyStarProductReward(productId)
   },
 
@@ -3429,7 +3430,7 @@ function calculateIdle(player: Player): IdleReward | null {
   const minutes = Math.floor((Date.now() - new Date(player.lastOnlineAt).getTime()) / 60_000)
   if (minutes < 5) return null
   const capped = Math.min(minutes, 480)
-  const floor = getFloorData(player.farmFloor)
+  const floor = resolveTowerFloor(player.farmFloor, player.highestFloor)
   const gold = Math.floor((floor.idleGoldPerHour / 60) * capped)
   const exp = Math.floor((floor.idleExpPerHour / 60) * capped)
   if (gold <= 0 && exp <= 0) return null

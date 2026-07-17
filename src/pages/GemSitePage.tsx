@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePlayerStore } from '@/store/playerStore'
 import { ProfessionGrindPage } from '@/components/ui/ProfessionGrindPage'
 import { GEM_SITE_LEVELS } from '@/data/gemSiteLevels'
@@ -10,6 +10,10 @@ export function GemSitePage() {
   const player = usePlayerStore((s) => s.player)
   const performGemDig = usePlayerStore((s) => s.performGemDig)
   const [selectedLevel, setSelectedLevel] = useState(player?.gemSiteLevel ?? 1)
+
+  useEffect(() => {
+    if (player?.gemSiteLevel != null) setSelectedLevel(player.gemSiteLevel)
+  }, [player?.gemSiteLevel])
 
   if (!player) return null
 

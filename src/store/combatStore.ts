@@ -84,6 +84,10 @@ function logEntry(text: string, type: CombatLogEntry['type']): CombatLogEntry {
   return { text, type }
 }
 
+function clearCombatTimer(tickInterval: ReturnType<typeof setInterval> | null) {
+  if (tickInterval) clearInterval(tickInterval)
+}
+
 function applyDamageToEnemy(
   combat: CombatState,
   rawDmg: number,
@@ -163,6 +167,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   tickInterval: null,
 
   startCombat: (enemy, floor, isBoss = false) => {
+    const prev = get()
+    clearCombatTimer(prev.tickInterval)
+
     const player = usePlayerStore.getState().player
     if (!player) return
 
@@ -213,6 +220,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   startPortalCombat: () => {
+    clearCombatTimer(get().tickInterval)
+
     const playerStore = usePlayerStore.getState()
     const player = playerStore.player
     if (!player?.portalRun) return false
@@ -263,10 +272,15 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   startRaidCombat: (def) => {
+    clearCombatTimer(get().tickInterval)
+
     const playerStore = usePlayerStore.getState()
     const player = playerStore.player
     if (!player) return false
     if (getPlayerCurrentHp(player) < 1) return false
+
+    const preview = getRaidProgress(player, def.id)
+    if (preview && getRaidFightType(preview) === 'done') return false
 
     if (!playerStore.beginRaid(def)) return false
 
@@ -338,6 +352,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   startWorldBossCombat: () => {
+    clearCombatTimer(get().tickInterval)
+
     const player = usePlayerStore.getState().player
     if (!player) return false
     if (!isWorldBossUnlocked(player)) return false
@@ -380,6 +396,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   startPvpCombat: (opponent) => {
     if (!FEATURES.pvpArena) return
+    clearCombatTimer(get().tickInterval)
+
     const player = usePlayerStore.getState().player
     if (!player) return
 
@@ -927,8 +945,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     if (!victory && !combat.isPvp && !combat.isRaid && !combat.isPortal) {
       usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
-    } else if (!victory && !combat.isPvp && combat.isRaid) {
-      usePlayerStore.getState().applyDeathPenalty(combat.enemy.name)
+    }
+
+    if (victory && combat.isWorldBoss) {
+      usePlayerStore.getState().applyWorldBossVictory()
     }
 
     if (victory && !combat.isPvp && !combat.isBoss && !combat.isRaid) {
@@ -1015,10 +1035,6 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (combat?.isBoss && !combat.isWorldBoss && combat.floor) {
       playerStore.advanceFloor(combat.floor)
       playerStore.awardBossTrophy(combat.floor)
-    }
-
-    if (combat?.isWorldBoss) {
-      playerStore.applyWorldBossVictory()
     }
 
     set({ result: { ...result, lootClaimed: true }, showLootScreen: false })
