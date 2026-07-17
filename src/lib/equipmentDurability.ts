@@ -1,7 +1,4 @@
-import type { Item, ItemRarity } from '@/types/game'
-import type { Player } from '@/types/game'
-import { getProfessionDurabilityMult } from '@/lib/professionBonuses'
-import type { EquipSlot } from '@/data/items'
+import type { Item, ItemRarity, Player } from '@/types/game'
 
 const RARITY_DURABILITY: Record<ItemRarity, number> = {
   common: 100,
@@ -10,6 +7,12 @@ const RARITY_DURABILITY: Record<ItemRarity, number> = {
   legendary: 320,
   mythic: 500,
   divine: 750,
+}
+
+/** Blacksmith bs_2 (Закалка): +1% weapon max durability per level — inlined to avoid circular imports. */
+function weaponTemperDurabilityMult(player: Player): number {
+  const lvl = player.professionLevels?.blacksmith?.[1] ?? 0
+  return 1 + lvl * 0.01
 }
 
 export function getMaxDurability(item: Item): number {
@@ -25,8 +28,8 @@ export function resolveMaxDurability(item: Item, player?: Player | null): number
   if (item.slot === 'consumable') return 0
   const calcMax = getMaxDurability(item)
   let max = Math.max(calcMax, item.maxDurability ?? calcMax)
-  if (player && item.slot !== 'pet') {
-    const tempered = Math.floor(calcMax * getProfessionDurabilityMult(player, item.slot as EquipSlot))
+  if (player && item.slot === 'weapon') {
+    const tempered = Math.floor(calcMax * weaponTemperDurabilityMult(player))
     max = Math.max(max, tempered)
   }
   return max

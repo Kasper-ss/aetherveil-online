@@ -54,7 +54,8 @@ const LEGACY_SCROLL_EXPANSION: Record<string, string[]> = {
 function recipeToScroll(recipe: CraftRecipe): SetScrollProduct | null {
   const rarity = recipe.setCraftRarity
   if (rarity !== 'epic' && rarity !== 'legendary' && rarity !== 'mythic') return null
-  const item = ALL_ITEMS[recipe.resultItemId]
+  const item = ALL_ITEMS?.[recipe.resultItemId]
+  if (!item) return null
   const classId = item?.requiredClass ?? (item?.setId ? SET_CLASS_MAP[item.setId] : undefined)
   const classLabel = classId ? CLASS_NAME_RU[classId] : null
   const classNote = classLabel ? ` Предмет для класса «${classLabel}».` : ''

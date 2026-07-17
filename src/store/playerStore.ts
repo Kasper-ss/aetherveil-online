@@ -29,7 +29,7 @@ import {
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
-import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
+import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, getItemTemplate, refreshItemMeta, stampItemClassBinding } from '@/data/items'
 import { ensureItemDurability, getRepairCost, needsRepair, preserveDurabilityRatio, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
@@ -2150,7 +2150,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return false
     }
 
-    const craftTemplate = ALL_ITEMS[recipe.resultItemId]
+    const craftTemplate = getItemTemplate(recipe.resultItemId)
     if (craftTemplate?.raidExclusive) return false
     let inst = createItemInstance(recipe.resultItemId)
     if (inst && craftTemplate?.requiredClass) {

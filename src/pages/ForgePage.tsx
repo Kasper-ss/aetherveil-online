@@ -253,7 +253,7 @@ export function ForgePage() {
         <TabsContent value="craft" className="mt-2">
           <div className="space-y-2">
             {craftRecipes.map((recipe) => {
-              const result = ALL_ITEMS[recipe.resultItemId]
+              const result = ALL_ITEMS?.[recipe.resultItemId]
               return (
                 <Card
                   key={recipe.id}
