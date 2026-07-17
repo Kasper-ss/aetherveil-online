@@ -19,6 +19,7 @@ import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { formatFoodBuffDescription } from '@/lib/foodBuffs'
 import { hasDeathDebuff } from '@/lib/playerStats'
 import { CombatEffectsPanel } from '@/components/ui/CombatEffectsPanel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { canUseRacialAbility } from '@/lib/racialAbilities'
 import { canUseWeakSpot } from '@/lib/professionBonuses'
@@ -115,6 +116,11 @@ export function CombatPage() {
       )
     : []
 
+  const consumableCount =
+    sortedHpPotions.reduce((n, s) => n + s.count, 0)
+    + energyStacks.reduce((n, s) => n + s.count, 0)
+    + foodStacks.reduce((n, [, s]) => n + s.count, 0)
+
   const raceData = player?.raceId ? getRaceData(player.raceId) : null
   const racialReady = player ? canUseRacialAbility(player) : false
   const weakSpotReady = player && canUseWeakSpot(player) && !combat.weakSpotUsed && !combat.isPvp
@@ -153,28 +159,25 @@ export function CombatPage() {
 
   return (
     <div className="h-full flex flex-col bg-aether-bg">
-      {/* Header */}
-      <div className="px-4 py-2 border-b border-aether-border bg-aether-surface/90 shrink-0">
-        <div className="flex justify-between items-center mb-2">
-          <div>
-            <h2 className="text-sm font-bold text-red-400">{combat.enemy.name}</h2>
-            <p className="text-[10px] text-slate-500">
-              {combat.isRaid
-                ? `🏰 Рейд · ${combat.isBoss ? 'Босс' : 'Моб'}`
-                : combat.isPortal
-                ? `${combat.portalType === 'blue' ? '🌀' : '🔥'} Портал · ${combat.isBoss ? 'Босс' : 'Моб'}`
-                : combat.isWorldBoss
-                ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
-                : combat.isBoss
-                  ? `👑 ${t('combat.boss')}${combat.bossPhase === 2 ? ' · фаза 2' : combat.bossPhase === 1 && combat.floor >= 5 ? ' · фаза 1' : ''}`
-                  : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
-              {combat.combo > 1 && <span className="text-aether-gold ml-2">{combat.combo}x комбо</span>}
-            </p>
-          </div>
+      {/* Header — компактная шапка */}
+      <div className="px-3 py-2 border-b border-aether-border bg-aether-surface/90 shrink-0">
+        <div className="mb-1.5">
+          <h2 className="text-sm font-bold text-red-400 truncate">{combat.enemy.name}</h2>
+          <p className="text-[10px] text-slate-500 truncate">
+            {combat.isRaid
+              ? `🏰 Рейд · ${combat.isBoss ? 'Босс' : 'Моб'}`
+              : combat.isPortal
+              ? `${combat.portalType === 'blue' ? '🌀' : '🔥'} Портал · ${combat.isBoss ? 'Босс' : 'Моб'}`
+              : combat.isWorldBoss
+              ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
+              : combat.isBoss
+                ? `👑 ${t('combat.boss')}${combat.bossPhase === 2 ? ' · фаза 2' : combat.bossPhase === 1 && combat.floor >= 5 ? ' · фаза 1' : ''}`
+                : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
+            {combat.combo > 1 && <span className="text-aether-gold ml-1">{combat.combo}x комбо</span>}
+          </p>
         </div>
 
-        {/* HP bars */}
-        <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
           <div>
             <div className="flex justify-between text-[10px] mb-0.5">
               <span className="text-aether-cyan">Ваше HP</span>
@@ -188,162 +191,203 @@ export function CombatPage() {
               <span>{combat.enemyHp}/{combat.enemyMaxHp}</span>
             </div>
             <Progress value={enemyHpPct} indicatorClassName="bg-gradient-to-r from-purple-700 to-red-500" />
-            {(combat.enemyCombat?.playerDebuffs?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {combat.enemyCombat!.playerDebuffs!.map((d, i) => (
-                  <span
-                    key={`${d.type}-${i}`}
-                    className="text-[9px] px-1.5 py-0.5 rounded border border-red-500/40 bg-red-500/10 text-red-300"
-                  >
-                    {d.icon} {d.nameRu} {d.remainingSec}с
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
           <div>
             <div className="flex justify-between text-[10px] mb-0.5">
-              <span className="text-yellow-400">Энергия</span>
+              <span className="text-yellow-400">⚡ Энергия</span>
               <span>{player?.energy ?? 0}/{player?.maxEnergy ?? 100}</span>
             </div>
             <Progress value={energyPct} indicatorClassName="bg-gradient-to-r from-yellow-600 to-yellow-400" />
           </div>
-          {manaMax > 0 && (
+          {manaMax > 0 ? (
             <div>
               <div className="flex justify-between text-[10px] mb-0.5">
-                <span className="text-purple-400">Мана</span>
+                <span className="text-purple-400">🔮 Мана</span>
                 <span>{manaCurrent}/{manaMax}</span>
               </div>
               <Progress value={manaPct} indicatorClassName="bg-gradient-to-r from-purple-700 to-purple-400" />
             </div>
+          ) : (
+            <div />
           )}
         </div>
+        {(combat.enemyCombat?.playerDebuffs?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {combat.enemyCombat!.playerDebuffs!.map((d, i) => (
+              <span
+                key={`${d.type}-${i}`}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-red-500/40 bg-red-500/10 text-red-300"
+              >
+                {d.icon} {d.nameRu} {d.remainingSec}с
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {player && <CombatEffectsPanel player={player} />}
 
-      {/* Combat log */}
-      <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1 min-h-0">
-        {combat.combatLog.map((entry, i) => (
-          <p key={i} className={`text-xs leading-relaxed ${LOG_COLORS[entry.type]}`}>
-            {entry.text}
-          </p>
-        ))}
+      {/* Лог боя — всегда видимая центральная зона */}
+      <div className="flex-1 flex flex-col min-h-0 mx-2 my-1.5 rounded-lg border border-aether-border/80 bg-black/25 overflow-hidden">
+        <div className="px-2.5 py-1 border-b border-aether-border/50 shrink-0 flex items-center justify-between">
+          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">📜 Лог боя</span>
+          <span className="text-[9px] text-slate-600">{combat.combatLog.length} записей</span>
+        </div>
+        <div ref={logRef} className="flex-1 overflow-y-auto px-2.5 py-2 space-y-0.5 min-h-[100px]">
+          {combat.combatLog.length === 0 ? (
+            <p className="text-xs text-slate-600 italic">Действия боя появятся здесь…</p>
+          ) : (
+            combat.combatLog.map((entry, i) => (
+              <p key={i} className={`text-[11px] leading-snug ${LOG_COLORS[entry.type]}`}>
+                {entry.text}
+              </p>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Actions */}
+      {/* Панель действий */}
       {useCombatStore.getState().isActive && (
-        <div className="p-3 border-t border-aether-border space-y-2 shrink-0 bg-aether-surface/90">
-          <div className="flex gap-2">
-            <Button className="flex-1 h-12 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
-              ⚔️ Атаковать
-            </Button>
-            {raceData && (
-              <Button
-                variant="gold"
-                className="h-12 px-3"
-                disabled={!racialReady}
-                onClick={() => { hapticImpact('medium'); useRacialAbilityInCombat() }}
-                title={raceData.abilityNameRu}
-              >
-                {raceData.icon}
+        <div className="shrink-0 border-t border-aether-border bg-aether-surface/95 pb-safe">
+          <div className="px-3 pt-2 pb-1 space-y-1.5">
+            <div className="flex gap-2">
+              <Button className="flex-1 h-11 text-base" onClick={() => { hapticImpact('light'); playerAttack() }}>
+                ⚔️ Атаковать
               </Button>
-            )}
-            {!combat.isBoss && (
-              <Button variant="outline" className="h-12 px-3" onClick={handleFlee}>
-                🏃
-              </Button>
-            )}
-          </div>
-          {weakSpotReady && (
-            <Button
-              variant="gold"
-              className="w-full h-10"
-              onClick={() => { hapticImpact('heavy'); playerWeakSpot() }}
-            >
-              🎯 Слабое место
-            </Button>
-          )}
-          {sortedHpPotions.length > 0 && sortedHpPotions.map((stack) => {
-            const pct = Math.round((CONSUMABLE_EFFECTS[stack.itemId]?.healPercent ?? 0.5) * 100)
-            return (
-              <Button
-                key={stack.itemId}
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                disabled={combat.playerHp >= combat.playerMaxHp}
-                onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
-              >
-                {stack.icon} {stack.name} ×{stack.count} (+{pct}% HP)
-              </Button>
-            )
-          })}
-          {energyStacks.length > 0 && (
-            <div className="grid grid-cols-2 gap-1.5">
-              {energyStacks.map((stack) => {
-                const energy = CONSUMABLE_EFFECTS[stack.itemId]?.energy ?? 0
-                const atMax = (player?.energy ?? 0) >= (player?.maxEnergy ?? 100)
-                return (
-                  <Button
-                    key={stack.itemId}
-                    variant="secondary"
-                    size="sm"
-                    className="text-xs"
-                    disabled={atMax}
-                    onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
-                  >
-                    {stack.icon} ×{stack.count} (+{energy}⚡)
-                  </Button>
-                )
-              })}
-            </div>
-          )}
-          {foodStacks.length > 0 && (
-            <div className="grid grid-cols-2 gap-1.5">
-              {foodStacks.map(([itemId, stack]) => (
+              {raceData && (
                 <Button
-                  key={itemId}
-                  variant="outline"
-                  size="sm"
-                  className="h-auto min-h-0 py-2 px-1.5 whitespace-normal flex flex-col items-center justify-center gap-0.5"
-                  onClick={() => { hapticImpact('light'); eatFoodInCombat(itemId) }}
+                  variant="gold"
+                  className="h-11 px-3 shrink-0"
+                  disabled={!racialReady}
+                  onClick={() => { hapticImpact('medium'); useRacialAbilityInCombat() }}
+                  title={raceData.abilityNameRu}
                 >
-                  <span className="text-[11px] font-medium leading-tight text-center w-full truncate">
-                    {stack.icon} {stack.name}
-                    <span className="text-slate-400 font-normal"> ×{stack.count}</span>
-                  </span>
-                  <span className="text-[9px] text-slate-500 font-normal leading-tight text-center w-full line-clamp-2">
-                    {formatFoodBuffDescription(itemId)}
-                  </span>
+                  {raceData.icon}
                 </Button>
-              ))}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            {skills.map((sid) => {
-              const skill = SKILLS[sid]
-              const skillLevel = player?.skillLevels[sid] ?? 1
-              const scaled = getScaledSkill(skill, skillLevel)
-              const cd = combat.skillCooldowns[sid as SkillId] ?? 0
-              const manaCost = scaled.energyCost
-              const lacksResource = player && usesMana(player)
-                ? manaCurrent < manaCost
-                : (player?.energy ?? 0) < manaCost
-              return (
+              )}
+              {weakSpotReady && (
                 <Button
-                  key={sid}
-                  variant="secondary"
-                  size="sm"
-                  disabled={cd > 0 || lacksResource}
-                  onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
+                  variant="gold"
+                  className="h-11 px-3 shrink-0"
+                  onClick={() => { hapticImpact('heavy'); playerWeakSpot() }}
+                  title="Слабое место"
                 >
-                  {skill.icon} {skill.nameRu}
-                  {player?.classId === 'mage' ? ` (${manaCost}🔮)` : ''}
-                  {cd > 0 ? ` (${cd})` : ''}
+                  🎯
                 </Button>
-              )
-            })}
+              )}
+              {!combat.isBoss && (
+                <Button variant="outline" className="h-11 px-3 shrink-0" onClick={handleFlee} title="Сбежать">
+                  🏃
+                </Button>
+              )}
+            </div>
+
+            <Tabs defaultValue="items" className="w-full">
+              <TabsList className="h-9">
+                <TabsTrigger value="items" className="text-xs">
+                  🧪 Расходники{consumableCount > 0 ? ` (${consumableCount})` : ''}
+                </TabsTrigger>
+                <TabsTrigger value="skills" className="text-xs">
+                  ✨ Навыки ({skills.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="items" className="mt-2 mb-1 max-h-[32vh] overflow-y-auto">
+                {sortedHpPotions.length === 0 && energyStacks.length === 0 && foodStacks.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-3">Нет расходников в инвентаре</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {sortedHpPotions.map((stack) => {
+                      const pct = Math.round((CONSUMABLE_EFFECTS[stack.itemId]?.healPercent ?? 0.5) * 100)
+                      const fullHp = combat.playerHp >= combat.playerMaxHp
+                      return (
+                        <Button
+                          key={stack.itemId}
+                          variant="secondary"
+                          size="sm"
+                          className="h-auto min-h-[52px] py-1.5 px-1 flex flex-col gap-0.5 whitespace-normal"
+                          disabled={fullHp}
+                          title={`${stack.name} · +${pct}% HP`}
+                          onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
+                        >
+                          <span className="text-base leading-none">{stack.icon}</span>
+                          <span className="text-[10px] font-medium leading-tight line-clamp-2">{stack.name}</span>
+                          <span className="text-[9px] text-green-400">×{stack.count} · +{pct}%</span>
+                        </Button>
+                      )
+                    })}
+                    {energyStacks.map((stack) => {
+                      const energy = CONSUMABLE_EFFECTS[stack.itemId]?.energy ?? 0
+                      const atMax = (player?.energy ?? 0) >= (player?.maxEnergy ?? 100)
+                      return (
+                        <Button
+                          key={stack.itemId}
+                          variant="secondary"
+                          size="sm"
+                          className="h-auto min-h-[52px] py-1.5 px-1 flex flex-col gap-0.5 whitespace-normal"
+                          disabled={atMax}
+                          title={`${stack.name} · +${energy} энергии`}
+                          onClick={() => { hapticImpact('light'); useConsumableInCombat(stack.itemId) }}
+                        >
+                          <span className="text-base leading-none">{stack.icon}</span>
+                          <span className="text-[10px] font-medium leading-tight line-clamp-2">{stack.name}</span>
+                          <span className="text-[9px] text-yellow-400">×{stack.count} · +{energy}⚡</span>
+                        </Button>
+                      )
+                    })}
+                    {foodStacks.map(([itemId, stack]) => (
+                      <Button
+                        key={itemId}
+                        variant="outline"
+                        size="sm"
+                        className="h-auto min-h-[52px] py-1.5 px-1 flex flex-col gap-0.5 whitespace-normal"
+                        title={formatFoodBuffDescription(itemId)}
+                        onClick={() => { hapticImpact('light'); eatFoodInCombat(itemId) }}
+                      >
+                        <span className="text-base leading-none">{stack.icon}</span>
+                        <span className="text-[10px] font-medium leading-tight line-clamp-2">{stack.name}</span>
+                        <span className="text-[9px] text-slate-400">×{stack.count}</span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="skills" className="mt-2 mb-1 max-h-[32vh] overflow-y-auto">
+                {skills.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-3">Нет изученных навыков</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {skills.map((sid) => {
+                      const skill = SKILLS[sid]
+                      const skillLevel = player?.skillLevels[sid] ?? 1
+                      const scaled = getScaledSkill(skill, skillLevel)
+                      const cd = combat.skillCooldowns[sid as SkillId] ?? 0
+                      const manaCost = scaled.energyCost
+                      const lacksResource = player && usesMana(player)
+                        ? manaCurrent < manaCost
+                        : (player?.energy ?? 0) < manaCost
+                      return (
+                        <Button
+                          key={sid}
+                          variant="secondary"
+                          size="sm"
+                          className="h-auto min-h-[44px] py-2 whitespace-normal"
+                          disabled={cd > 0 || lacksResource}
+                          onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
+                        >
+                          <span className="text-[11px] leading-tight">
+                            {skill.icon} {skill.nameRu}
+                            {player?.classId === 'mage' ? ` (${manaCost}🔮)` : ''}
+                            {cd > 0 ? ` (${cd})` : ''}
+                          </span>
+                        </Button>
+                      )
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       )}
