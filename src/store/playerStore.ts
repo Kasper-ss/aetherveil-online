@@ -55,6 +55,14 @@ import {
   applyBlacksmithCraftBonuses, applyBlacksmithCraftCost,
   getBlacksmithDoubleCraftChance,
 } from '@/lib/blacksmithBonuses'
+import { applyJewelerCraftBonuses, rollJewelerBonusGem } from '@/lib/jewelerBonuses'
+import {
+  applyAlchemyRecipeCost,
+  getAlchemyBatchCount,
+  getAlchemyBrewTimeMult,
+  rollAlchemyDoublePotion,
+} from '@/lib/alchemistBonuses'
+import { getGemDigProfessionBonus, getHerbGatherProfessionBonus } from '@/lib/professionBonuses'
 import { type StarProductId } from '@/data/starShop'
 import { CONSUMABLE_EFFECTS, findConsumableInstance, type ConsumableId } from '@/lib/consumables'
 import { AVATAR_OPTIONS, FRAME_OPTIONS, getCosmeticStarProductId } from '@/data/cosmetics'
@@ -1528,6 +1536,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!hasInfiniteEnergy(player) && !get().spendEnergy(site.energyCost)) return { ok: false }
 
     const { resources, isDouble, isSpecial } = rollGemSiteRewards(site)
+    const gemBonus = getGemDigProfessionBonus(player)
+    if (Object.keys(gemBonus).length) get().addResources(gemBonus)
     get().addResources(resources)
     const xpGain = getGrindProfessionXp(level)
     const newXp = (player.gemSiteXp ?? 0) + xpGain
@@ -1583,6 +1593,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const primary = field.primaryHerb
       resources[primary] = (resources[primary] ?? 0) + bonus
     }
+    const profHerb = getHerbGatherProfessionBonus(player)
+    if (profHerb > 0) {
+      resources[field.primaryHerb] = (resources[field.primaryHerb] ?? 0) + profHerb
+    }
     get().addResources(resources)
     const xpGain = getMineHerbXpGain(level)
     const newXp = (player.fieldGatherXp ?? 0) + xpGain
@@ -1602,14 +1616,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player) return false
     const recipe = findAlchemyRecipe(recipeId)
     if (!recipe || !canBrewAlchemyRecipe(player, recipe)) return false
-    if (!get().spendGold(recipe.goldCost)) return false
-    if (!get().spendResources(recipe.resources)) {
-      grantGoldRaw(get, recipe.goldCost)
+    const scaled = applyAlchemyRecipeCost(player, recipe)
+    if (!get().spendGold(scaled.goldCost)) return false
+    if (!get().spendResources(scaled.resources)) {
+      grantGoldRaw(get, scaled.goldCost)
       return false
     }
     if (needsBrewTimer(recipe)) {
       const craftMult = getCraftSuccessMultiplier(player)
-      const brewMs = Math.max(30_000, Math.floor((recipe.brewTimeMs ?? 0) / craftMult))
+      const brewMs = Math.max(
+        30_000,
+        Math.floor(((recipe.brewTimeMs ?? 0) * getAlchemyBrewTimeMult(player)) / craftMult),
+      )
       const brews = [
         ...(player.activeBrews ?? []),
         { recipeId, readyAt: new Date(Date.now() + brewMs).toISOString() },
@@ -1617,15 +1635,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().updatePlayer({ activeBrews: brews })
       return true
     }
-    const inst = createItemInstance(recipe.resultItemId)
-    if (inst) {
-      get().addItem(inst)
-      if (rollCraftBonusExtra(player)) {
-        const extra = createItemInstance(recipe.resultItemId)
-        if (extra) get().addItem(extra)
+    const batch = getAlchemyBatchCount(player)
+    let added = 0
+    for (let i = 0; i < batch; i++) {
+      const inst = createItemInstance(recipe.resultItemId)
+      if (inst) {
+        get().addItem(inst)
+        added++
       }
     }
-    return !!inst
+    if (rollAlchemyDoublePotion(player)) {
+      const extra = createItemInstance(recipe.resultItemId)
+      if (extra) {
+        get().addItem(extra)
+        added++
+      }
+    }
+    if (added === 0) return false
+    if (rollCraftBonusExtra(player)) {
+      const extra = createItemInstance(recipe.resultItemId)
+      if (extra) get().addItem(extra)
+    }
+    return true
   },
 
   collectReadyBrews: () => {
@@ -2126,13 +2157,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       inst = stampItemClassBinding(inst)
     }
     if (inst) {
-      inst = applyBlacksmithCraftBonuses(player, inst)
+      const isAccessory = inst.slot === 'necklace' || inst.slot === 'ring'
+      if (recipe.requiredProfession === 'jeweler' || isAccessory) {
+        inst = applyJewelerCraftBonuses(player, inst)
+        if (rollJewelerBonusGem(player)) get().addResources({ gem_shard: 1 })
+      } else {
+        inst = applyBlacksmithCraftBonuses(player, inst)
+      }
       get().addItem(inst)
       if (Math.random() < getBlacksmithDoubleCraftChance(player)) {
         let duplicate = createItemInstance(recipe.resultItemId)
         if (duplicate && craftTemplate?.requiredClass) duplicate = stampItemClassBinding(duplicate)
         if (duplicate) {
-          duplicate = applyBlacksmithCraftBonuses(player, duplicate)
+          if (recipe.requiredProfession === 'jeweler' || duplicate.slot === 'necklace' || duplicate.slot === 'ring') {
+            duplicate = applyJewelerCraftBonuses(player, duplicate)
+          } else {
+            duplicate = applyBlacksmithCraftBonuses(player, duplicate)
+          }
           get().addItem(duplicate)
         }
       }

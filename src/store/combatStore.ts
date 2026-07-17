@@ -3,7 +3,6 @@ import type { CombatState, CombatResult, FloorEnemy, SkillId, CombatLogEntry } f
 import type { OnlinePlayerSnapshot } from '@/lib/multiplayer'
 import { getLootMultiplier } from '@/lib/playerBuffs'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
-import { getScaledSkill } from '@/data/playerSkills'
 import { usePlayerStore } from './playerStore'
 import { getEffectiveStats, getCombatMaxHp, getPlayerCurrentHp, rollCrit, rollDodge } from '@/lib/playerStats'
 import { getPlayerCurrentMana, usesMana } from '@/lib/mana'
@@ -38,13 +37,37 @@ import {
   type RaidDefinition,
 } from '@/data/raids'
 import { getRaidFightType, getRaidProgress, parseRaidId } from '@/lib/raidProgress'
-import { getWeakSpotDamageMultiplier, canUseWeakSpot } from '@/lib/professionBonuses'
+import {
+  getWeakSpotDamageMultiplier,
+  canUseWeakSpot,
+  getProfessionScaledSkill,
+  getProfessionCombatDamageMult,
+  getProfessionCritDamageMult,
+  getDebuffDamageMult,
+  getCombatHideBonus,
+  getCombatAetherDustBonus,
+  hasLegendaryHuntBossLoot,
+  getPotionHealMult,
+} from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
-import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs } from '@/lib/skillDebuffs'
+import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs, SKILL_DEBUFF_MAP } from '@/lib/skillDebuffs'
 import { getRaceData } from '@/data/races'
 
 /** Global boost to player outgoing damage in combat. */
 const PLAYER_DAMAGE_MULT = 1.12
+
+function combatDamageMult(player: import('@/types/game').Player, combat: CombatState): number {
+  const isBeast = !combat.isBoss && !combat.isPvp && !combat.isRaid && !combat.isWorldBoss
+  return getProfessionCombatDamageMult(player, {
+    isBoss: !!combat.isBoss || !!combat.isWorldBoss,
+    isBeast,
+    combo: combat.combo,
+  })
+}
+
+function critDamageMult(isCrit: boolean, player: import('@/types/game').Player): number {
+  return isCrit ? getProfessionCritDamageMult(player) : 1
+}
 
 interface CombatStore {
   combat: CombatState | null
@@ -449,11 +472,12 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const stats = getEffectiveStats(player)
     const setEffects = getSetCombatEffects(player)
     const comboBonus = 1 + combat.combo * 0.04
+    const profDmg = combatDamageMult(player, combat)
     const isCrit = rollCrit(Math.floor(stats.crit * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
-    const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT
+    const baseDmg = stats.atk * comboBonus * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * profDmg
     const rawDmg = calcMitigatedDamage(
-      baseDmg * (isCrit ? 2.2 : 1),
+      baseDmg * (isCrit ? 2.2 * critDamageMult(true, player) : 1),
       combat.enemy.stats.def,
       ENEMY_DEF_MITIGATION,
     )
@@ -520,8 +544,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const stats = getEffectiveStats(player)
     const setEffects = getSetCombatEffects(player)
     const mult = getWeakSpotDamageMultiplier(player)
+    const profDmg = combatDamageMult(player, combat)
     const rawDmg = calcMitigatedDamage(
-      stats.atk * mult * 1.8 * getPlayerCombatEase(player, combat.floor).playerDamageMult * PLAYER_DAMAGE_MULT,
+      stats.atk * mult * 1.8 * getPlayerCombatEase(player, combat.floor).playerDamageMult * PLAYER_DAMAGE_MULT * profDmg,
       combat.enemy.stats.def * 0.65,
       ENEMY_DEF_MITIGATION,
     )
@@ -569,12 +594,12 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const skill = SKILLS[skillId]
     if (!skill) return
     const player = usePlayerStore.getState().player
-    const skillLevel = player?.skillLevels[skillId] ?? 1
-    const scaled = getScaledSkill(skill, skillLevel)
+    if (!player) return
+    const skillLevel = player.skillLevels[skillId] ?? 1
+    const scaled = getProfessionScaledSkill(player, skill, skillLevel)
     if ((combat.skillCooldowns[skillId] ?? 0) > 0) return
 
     const manaCost = scaled.energyCost
-    if (!player) return
     if (usesMana(player)) {
       if (getPlayerCurrentMana(player) < manaCost) return
     } else if (player.energy < manaCost) {
@@ -592,12 +617,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (scaled.healPercent > 0 && skill.damageMultiplier === 0) {
       const heal = Math.floor(combat.playerMaxHp * scaled.healPercent)
       const stats = getEffectiveStats(player)
+      const debuffType = SKILL_DEBUFF_MAP[skillId]
       const debuff = applyPlayerSkillDebuff(
         combat.enemyCombat,
         skillId,
         skillLevel,
         stats.atk,
         Math.max(scaled.healPercent, 0.5),
+        debuffType ? getDebuffDamageMult(player, debuffType) : 1,
       )
       logs.push(logEntry(`💚 ${skill.nameRu}: +${heal} HP`, 'heal'))
       logs.push(logEntry(`✨ ${debuff.log}`, 'skill'))
@@ -634,8 +661,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const setEffects = getSetCombatEffects(player)
     const isCrit = rollCrit(Math.floor((stats.crit + 10) * setEffects.critChanceMult), player.classId)
     const levelEase = getPlayerCombatEase(player, combat.floor)
+    const profDmg = combatDamageMult(player, combat)
     let damage = calcMitigatedDamage(
-      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * (isCrit ? 2 : 1),
+      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * profDmg * (isCrit ? 2 * critDamageMult(true, player) : 1),
       combat.enemy.stats.def,
       ENEMY_DEF_MITIGATION,
     )
@@ -656,12 +684,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       isCrit ? 'crit' : 'skill'
     ))
 
+    const debuffType = SKILL_DEBUFF_MAP[skillId]
     const debuff = applyPlayerSkillDebuff(
       hit.enemyCombat,
       skillId,
       skillLevel,
       stats.atk,
       scaled.damageMultiplier,
+      debuffType ? getDebuffDamageMult(player, debuffType) : 1,
     )
     logs.push(logEntry(debuff.log, 'skill'))
 
@@ -730,7 +760,10 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         combatMaxHp: combat.playerMaxHp,
       })
       if (!consumed?.healHp) return false
-      const heal = Math.min(consumed.healHp, combat.playerMaxHp - combat.playerHp)
+      const heal = Math.min(
+        Math.floor(consumed.healHp * getPotionHealMult(player)),
+        combat.playerMaxHp - combat.playerHp,
+      )
       const pct = Math.round((CONSUMABLE_EFFECTS[itemId as ConsumableId]?.healPercent ?? 0.5) * 100)
       const logs = [...combat.combatLog, logEntry(`🧪 Зелье HP (+${pct}%): +${heal} HP`, 'heal')]
       set({
@@ -900,6 +933,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         const treatAsEpic = isEpic || (combat.isPortal && combat.portalType === 'red' && !combat.isBoss)
         loot.push(...generateVictoryLoot(combat.floor, combat.isBoss, lootMult, treatAsEpic, isMiniBoss))
         resources = generateCombatResources(combat.floor, combat.isBoss, treatAsEpic, isMiniBoss, lootMult)
+        if (pvePlayer) {
+          const hideBonus = getCombatHideBonus(pvePlayer)
+          if (hideBonus > 0 && resources.hide) resources.hide += hideBonus
+          const dustBonus = getCombatAetherDustBonus(pvePlayer)
+          if (dustBonus > 0) resources.aether_dust = (resources.aether_dust ?? 0) + dustBonus
+          if (combat.isBoss && hasLegendaryHuntBossLoot(pvePlayer) && loot.length === 0) {
+            const rare = generateVictoryLoot(combat.floor, true, lootMult * 1.5, true, false)
+            if (rare.length) loot.push(rare[0])
+          }
+        }
       }
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player

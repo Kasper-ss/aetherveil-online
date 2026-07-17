@@ -143,10 +143,11 @@ export function applyPlayerSkillDebuff(
   skillLevel: number,
   playerAtk: number,
   powerMult: number,
+  tickMult = 1,
 ): { state: EnemyCombatState; log: string } {
   const def = getSkillDebuffDef(skillId)
   const base = state ?? createEnemyCombatState()
-  const tickDamage = getSkillDebuffTickDamage(skillLevel, playerAtk, powerMult)
+  const tickDamage = Math.max(1, Math.floor(getSkillDebuffTickDamage(skillLevel, playerAtk, powerMult) * tickMult))
   const entry: PlayerAppliedDebuff = {
     type: def.type,
     nameRu: def.nameRu,

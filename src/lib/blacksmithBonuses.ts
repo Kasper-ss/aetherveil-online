@@ -1,6 +1,7 @@
 import type { CraftRecipe, Item, ItemRarity, Player, ResourceId } from '@/types/game'
 import { ensureItemDurability, resolveMaxDurability } from '@/lib/equipmentDurability'
 import { getCraftSuccessMultiplier } from '@/lib/playerBuffs'
+import { getProfessionMythicSkillLevel } from '@/lib/professionBonuses'
 
 function bsLevel(player: Player, skillIndex: number): number {
   return player.professionLevels.blacksmith?.[skillIndex] ?? 0
@@ -14,8 +15,8 @@ export function getBlacksmithCraftResourceDiscount(player: Player): number {
   return Math.min(0.35, bsLevel(player, 8) * 0.03)
 }
 
-export function getBlacksmithDoubleCraftChance(_player: Player): number {
-  return 0
+export function getBlacksmithDoubleCraftChance(player: Player): number {
+  return Math.min(0.35, getProfessionMythicSkillLevel(player, 'blacksmith', 'bs_m5') * 0.04)
 }
 
 export function getBlacksmithRarityUpgradeChance(player: Player): number {
@@ -75,7 +76,8 @@ export function applyBlacksmithCraftBonuses(player: Player, item: Item): Item {
   const weaponAtkBonus = bsLevel(player, 0) * 0.02
   const armorDefBonus = bsLevel(player, 3) * 0.02
   const flatAtk = bsLevel(player, 6)
-  const durabilityBonus = 1 + bsLevel(player, 1) * 0.01 + bsLevel(player, 4) * 0.02
+  const weaponCritBonus = bsLevel(player, 2) * 3
+  const durabilityBonus = 1 + bsLevel(player, 1) * 0.01
 
   const stats = { ...result.stats }
   for (const [k, v] of Object.entries(stats)) {
@@ -87,6 +89,9 @@ export function applyBlacksmithCraftBonuses(player: Player, item: Item): Item {
   }
   if (result.slot === 'weapon' && flatAtk > 0) {
     stats.atk = (stats.atk ?? 0) + flatAtk
+  }
+  if (result.slot === 'weapon' && weaponCritBonus > 0) {
+    stats.crit = (stats.crit ?? 0) + weaponCritBonus
   }
   result = { ...result, stats }
 

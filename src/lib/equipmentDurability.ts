@@ -1,4 +1,7 @@
 import type { Item, ItemRarity } from '@/types/game'
+import type { Player } from '@/types/game'
+import { getProfessionDurabilityMult } from '@/lib/professionBonuses'
+import type { EquipSlot } from '@/data/items'
 
 const RARITY_DURABILITY: Record<ItemRarity, number> = {
   common: 100,
@@ -18,10 +21,15 @@ export function getMaxDurability(item: Item): number {
 }
 
 /** Never shrink stored max below formula or blacksmith bonus — avoids stat loss after fights/repair. */
-export function resolveMaxDurability(item: Item): number {
+export function resolveMaxDurability(item: Item, player?: Player | null): number {
   if (item.slot === 'consumable') return 0
   const calcMax = getMaxDurability(item)
-  return Math.max(calcMax, item.maxDurability ?? calcMax)
+  let max = Math.max(calcMax, item.maxDurability ?? calcMax)
+  if (player && item.slot !== 'pet') {
+    const tempered = Math.floor(calcMax * getProfessionDurabilityMult(player, item.slot as EquipSlot))
+    max = Math.max(max, tempered)
+  }
+  return max
 }
 
 export function ensureItemDurability(item: Item): Item {

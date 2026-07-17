@@ -9,7 +9,7 @@ import { getSetCombatEffects } from '@/lib/setCombatEffects'
 import { getMaxCritChanceForClass, getMaxDodgeChanceForClass } from '@/lib/classCompat'
 import { getGemStatValue, getSocketGemDef } from '@/data/socketGems'
 import { getRacialStatPassives } from '@/lib/racialAbilities'
-import { getEquipmentStatMultiplier } from '@/lib/professionBonuses'
+import { getEquipmentProfModifiers, getGlobalProfessionStatBonuses } from '@/lib/professionBonuses'
 import { getNurseryStageStats } from '@/data/nursery'
 import { getElementalBuffStats } from '@/data/elementalForge'
 
@@ -169,13 +169,13 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     const item = player.equipped[slot]
     if (!item) continue
     const s = getEffectiveItemStats(item)
-    const profMult = getEquipmentStatMultiplier(player, slot)
-    totals.atk += Math.floor((s.atk ?? 0) * profMult.atk)
-    totals.def += Math.floor((s.def ?? 0) * profMult.def)
-    totals.hp += Math.floor((s.hp ?? 0) * profMult.hp)
-    totals.crit += Math.floor((s.crit ?? 0) * profMult.crit)
-    totals.speed += Math.floor((s.speed ?? 0) * profMult.speed)
-    totals.stealth += Math.floor((s.stealth ?? 0) * profMult.stealth)
+    const prof = getEquipmentProfModifiers(player, slot)
+    totals.atk += Math.floor((s.atk ?? 0) * prof.mult.atk) + prof.flat.atk
+    totals.def += Math.floor((s.def ?? 0) * prof.mult.def) + prof.flat.def
+    totals.hp += Math.floor((s.hp ?? 0) * prof.mult.hp) + prof.flat.hp
+    totals.crit += Math.floor((s.crit ?? 0) * prof.mult.crit) + prof.flat.crit
+    totals.speed += Math.floor((s.speed ?? 0) * prof.mult.speed) + prof.flat.speed
+    totals.stealth += Math.floor((s.stealth ?? 0) * prof.mult.stealth) + prof.flat.stealth
     if (slot === 'pet' && player.nurseryState) {
       const nursery = getNurseryStageStats(player.nurseryState.stage)
       totals.atk += nursery.atk ?? 0
@@ -204,6 +204,10 @@ export function getEffectiveStats(player: Player): EffectiveStats {
       else if (stat === 'crit') totals.crit += val
     }
   }
+
+  const globalProf = getGlobalProfessionStatBonuses(player)
+  totals.crit += globalProf.crit
+  totals.atk += globalProf.atk
 
   const effectMult = (stat: import('@/types/game').EffectStat) =>
     getEffectMultForStat(player, stat) * getEffectMultForStat(player, 'all')
