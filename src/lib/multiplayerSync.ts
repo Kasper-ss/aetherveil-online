@@ -127,9 +127,12 @@ export async function propertyActionOnServer(
   }
 }
 
-export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardResponse | null> {
+export async function fetchMonthlyLeaderboard(self: Player): Promise<MonthlyLeaderboardResponse | null> {
   try {
-    const res = await fetch('/api/multiplayer/leaderboard?scope=monthly')
+    const includeQs = `include=${self.telegramId}`
+    const res = await fetch(`/api/multiplayer/leaderboard?scope=monthly&${includeQs}&_=${Date.now()}`, {
+      cache: 'no-store',
+    })
     const data = await res.json() as MonthlyLeaderboardResponse & { ok?: boolean }
     if (!res.ok || !data.categories) return null
     return { monthKey: data.monthKey, categories: data.categories }
@@ -140,10 +143,14 @@ export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardRespo
 
 export async function fetchServerLeaderboard(self: Player): Promise<LeaderboardEntry[]> {
   const includeIds = [...new Set([self.telegramId, ...(self.friendIds ?? [])])]
-  const includeQs = includeIds.length ? `?include=${includeIds.join(',')}` : ''
+  const params = new URLSearchParams()
+  if (includeIds.length) params.set('include', includeIds.join(','))
+  params.set('_', String(Date.now()))
 
   try {
-    const res = await fetch(`/api/multiplayer/leaderboard${includeQs}`)
+    const res = await fetch(`/api/multiplayer/leaderboard?${params.toString()}`, {
+      cache: 'no-store',
+    })
     const data = await res.json() as { entries?: LeaderboardEntry[] }
     if (!res.ok || !data.entries) return buildSelfOnly(self)
 

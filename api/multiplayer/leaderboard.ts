@@ -6,18 +6,26 @@ function parseIncludeIds(raw: unknown): number[] {
   return [...new Set(raw.split(',').map((part) => Number(part.trim())).filter((id) => id > 0))]
 }
 
+function setNoCacheHeaders(res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  setNoCacheHeaders(res)
+
   try {
+    const includeIds = parseIncludeIds(req.query.include)
+
     if (req.query.scope === 'monthly') {
-      const board = await getMonthlyLeaderboardRecords()
+      const board = await getMonthlyLeaderboardRecords(includeIds)
       return res.status(200).json({ ok: true, ...board })
     }
 
-    const includeIds = parseIncludeIds(req.query.include)
     const players = await getLeaderboardRecords(includeIds)
     const entries = players.map((p, index) => ({
       rank: index + 1,

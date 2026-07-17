@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -77,20 +77,21 @@ export function LeaderboardPage() {
   useTelegramBackButton(() => navigate('/'), true)
 
   const loadBoards = useCallback(async (silent = false) => {
-    const currentPlayer = usePlayerStore.getState().player
-    if (!currentPlayer) return
-
     if (!silent && !hasLoadedRef.current) {
       setInitialLoading(true)
-    } else if (silent && hasLoadedRef.current) {
+    } else if (hasLoadedRef.current) {
       setRefreshing(true)
     }
 
     try {
+      await usePlayerStore.getState().syncPlayerState()
+      const currentPlayer = usePlayerStore.getState().player
+      if (!currentPlayer) return
+
       const [global, friends, monthly] = await Promise.all([
         getLeaderboardEntries(currentPlayer, false),
         getLeaderboardEntries(currentPlayer, true),
-        fetchMonthlyLeaderboard(),
+        fetchMonthlyLeaderboard(currentPlayer),
       ])
       setAllGlobal(global)
       setFriendsBoard(friends)
@@ -103,12 +104,17 @@ export function LeaderboardPage() {
   }, [])
 
   useEffect(() => {
-    void (async () => {
-      await usePlayerStore.getState().syncPlayerState()
-      await loadBoards()
-    })()
+    void loadBoards()
     const interval = setInterval(() => void loadBoards(true), 30_000)
     return () => clearInterval(interval)
+  }, [loadBoards])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadBoards(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadBoards])
 
   if (!player) return null
@@ -131,8 +137,18 @@ export function LeaderboardPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold">{t('leaderboard.title')}</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto shrink-0"
+          disabled={refreshing}
+          onClick={() => void loadBoards(true)}
+          title="Обновить рейтинг"
+        >
+          <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
         {refreshing && (
-          <span className="ml-auto text-[10px] text-slate-500 animate-pulse">обновление…</span>
+          <span className="text-[10px] text-slate-500">обновление…</span>
         )}
       </div>
 

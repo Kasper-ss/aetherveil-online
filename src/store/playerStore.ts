@@ -534,6 +534,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ player: merged })
     registerOnlinePlayer(merged)
     enqueuePlayerSave(() => get().player)
+    if ('highestFloor' in partial || 'level' in partial) {
+      void get().syncPlayerState()
+    }
   },
 
   addExp: (amount) => {

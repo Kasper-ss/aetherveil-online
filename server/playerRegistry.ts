@@ -219,7 +219,7 @@ export async function syncPublicPlayer(input: {
 
   const supabase = getSupabase()
   if (supabase) {
-    await supabase.from('public_players').upsert({
+    const { error: publicError } = await supabase.from('public_players').upsert({
       telegram_id: record.telegram_id,
       username: record.username,
       display_name: record.display_name,
@@ -229,6 +229,9 @@ export async function syncPublicPlayer(input: {
       monthly_stats: input.publicProfile?.monthlyStats ?? null,
       updated_at: now,
     })
+    if (publicError) {
+      console.error('[playerRegistry] public_players upsert failed', publicError.message)
+    }
     await supabase.from('market_listings').delete().eq('seller_id', input.telegramId)
     if (activeListings.length > 0) {
       await supabase.from('market_listings').insert(
@@ -317,6 +320,33 @@ async function fetchPublicRecordsFromPlayerSaves(ids: number[]): Promise<PublicP
   })
 }
 
+function mergePublicPlayerRecord(
+  base: PublicPlayerRecord,
+  incoming: PublicPlayerRecord,
+): PublicPlayerRecord {
+  return {
+    telegram_id: base.telegram_id,
+    username: incoming.username || base.username,
+    display_name: incoming.display_name || base.display_name,
+    level: Math.max(base.level, incoming.level),
+    highest_floor: Math.max(base.highest_floor, incoming.highest_floor),
+    guild_id: incoming.guild_id ?? base.guild_id,
+    updated_at: incoming.updated_at > base.updated_at ? incoming.updated_at : base.updated_at,
+    profile: base.profile,
+  }
+}
+
+async function refreshIncludedFromPlayerSaves(
+  byId: Map<number, PublicPlayerRecord>,
+  ids: number[],
+): Promise<void> {
+  if (ids.length === 0) return
+  for (const fresh of await fetchPublicRecordsFromPlayerSaves(ids)) {
+    const existing = byId.get(fresh.telegram_id)
+    byId.set(fresh.telegram_id, existing ? mergePublicPlayerRecord(existing, fresh) : fresh)
+  }
+}
+
 export async function getLeaderboardRecords(includeIds: number[] = []): Promise<PublicPlayerRecord[]> {
   const uniqueInclude = [...new Set(includeIds.filter((id) => Number.isFinite(id) && id > 0))]
   const supabase = getSupabase()
@@ -352,6 +382,8 @@ export async function getLeaderboardRecords(includeIds: number[] = []): Promise<
         }
       }
     }
+
+    await refreshIncludedFromPlayerSaves(byId, uniqueInclude)
 
     if (byId.size > 0) return sortPublicPlayerRecords([...byId.values()])
   }
@@ -464,17 +496,44 @@ export async function getPlayerProfileRecord(telegramId: number): Promise<Record
   }
 }
 
-export async function getMonthlyLeaderboardRecords() {
+async function fetchMonthlyProfilesFromPlayerSaves(ids: number[]): Promise<Array<{ id: number; profile: Record<string, unknown> }>> {
+  const supabase = getSupabase()
+  if (!supabase || ids.length === 0) return []
+
+  const { data } = await supabase
+    .from('players')
+    .select('telegram_id, data')
+    .in('telegram_id', ids)
+
+  return (data ?? []).map((row) => {
+    const saved = row.data as {
+      displayName?: string
+      username?: string
+      monthlyStats?: Record<string, unknown>
+    } | null
+    return {
+      id: row.telegram_id as number,
+      profile: {
+        displayName: saved?.displayName ?? '',
+        username: saved?.username ?? '',
+        monthlyStats: saved?.monthlyStats,
+      },
+    }
+  })
+}
+
+export async function getMonthlyLeaderboardRecords(includeIds: number[] = []) {
+  const uniqueInclude = [...new Set(includeIds.filter((id) => Number.isFinite(id) && id > 0))]
   const profileMap: ProfileMap = new Map(profiles())
+  const monthKey = currentMonthKey()
 
   const supabase = getSupabase()
   if (supabase) {
-    const since = new Date(Date.now() - PLAYER_TTL_MS).toISOString()
-    const monthKey = currentMonthKey()
     const { data } = await supabase
       .from('public_players')
       .select('telegram_id, username, display_name, monthly_stats')
-      .gte('updated_at', since)
+      .not('monthly_stats', 'is', null)
+      .limit(500)
 
     for (const row of data ?? []) {
       const stats = row.monthly_stats as Record<string, unknown> | null
@@ -485,6 +544,17 @@ export async function getMonthlyLeaderboardRecords() {
         ...existing,
         displayName: row.display_name,
         username: row.username,
+        monthlyStats: stats,
+      })
+    }
+
+    for (const { id, profile } of await fetchMonthlyProfilesFromPlayerSaves(uniqueInclude)) {
+      const stats = profile.monthlyStats as Record<string, unknown> | undefined
+      if (!stats || stats.monthKey !== monthKey) continue
+      const existing = profileMap.get(id) ?? {}
+      profileMap.set(id, {
+        ...existing,
+        ...profile,
         monthlyStats: stats,
       })
     }

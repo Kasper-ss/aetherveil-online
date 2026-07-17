@@ -3,7 +3,7 @@ import type { Plugin } from 'vite'
 import { loadEnv } from 'vite'
 import { createStarInvoice, fulfillStarPurchase, handleTelegramWebhook } from './server/starsPayment.js'
 import { setWebhook, getMiniAppUrl } from './server/telegram.js'
-import { syncPublicPlayer, getLeaderboardRecords, getMarketListingRecords, buyMarketListing } from './server/playerRegistry.js'
+import { syncPublicPlayer, getLeaderboardRecords, getMarketListingRecords, buyMarketListing, getMonthlyLeaderboardRecords } from './server/playerRegistry.js'
 import { validateInitData, getBotToken } from './server/telegram.js'
 import {
   listGuilds,
@@ -28,9 +28,13 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return raw ? JSON.parse(raw) : {}
 }
 
-function sendJson(res: ServerResponse, status: number, body: unknown) {
+function sendJson(res: ServerResponse, status: number, body: unknown, noCache = false) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
+  if (noCache) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+  }
   res.end(JSON.stringify(body))
 }
 
@@ -161,6 +165,11 @@ export function starsApiPlugin(): Plugin {
             const includeIds = [...new Set(
               includeRaw.split(',').map((part) => Number(part.trim())).filter((id) => id > 0),
             )]
+            if (url.searchParams.get('scope') === 'monthly') {
+              const board = await getMonthlyLeaderboardRecords(includeIds)
+              sendJson(res, 200, { ok: true, ...board }, true)
+              return
+            }
             const players = await getLeaderboardRecords(includeIds)
             const entries = players.map((p, index) => ({
               rank: index + 1,
@@ -171,7 +180,7 @@ export function starsApiPlugin(): Plugin {
               level: p.level,
               guildId: p.guild_id,
             }))
-            sendJson(res, 200, { ok: true, entries })
+            sendJson(res, 200, { ok: true, entries }, true)
             return
           }
 
