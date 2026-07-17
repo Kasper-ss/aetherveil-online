@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useCombatStore } from '@/store/combatStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { getRaidProgress } from '@/lib/raidProgress'
@@ -9,8 +8,9 @@ import { getRaidsForFloor } from '@/data/raids'
 import { RESOURCES } from '@/data/classes'
 import { formatNumber } from '@/lib/utils'
 import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
-import { formatItemStats } from '@/data/items'
 import { formatItemClassRestriction } from '@/lib/classGear'
+import { ItemSummary } from '@/components/ui/ItemSummary'
+import { getRaidItemCardClassName, getRaidItemNameClassName } from '@/lib/raidItemStyle'
 import { hapticSuccess } from '@/lib/telegram'
 import { playSfx } from '@/lib/audio'
 import type { EquipSlot, ResourceId } from '@/types/game'
@@ -76,17 +76,16 @@ export function RaidCompleteScreen() {
           <h2 className="text-sm font-semibold text-white mb-2">⚔️ Снаряжение</h2>
           <div className="space-y-2">
             {equipment.map((item) => (
-              <Card key={item.instanceId}>
+              <Card key={item.instanceId} className={getRaidItemCardClassName(item)}>
                 <CardContent className="p-3 flex items-center gap-3">
                   <span className="text-2xl">{item.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white truncate">{item.name}</div>
+                    <div className={`text-sm truncate font-medium ${getRaidItemNameClassName(item)}`}>{item.name}</div>
                     {formatItemClassRestriction(item) && (
                       <div className="text-[10px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
                     )}
-                    <div className="text-[10px] text-aether-cyan">{formatItemStats(item)}</div>
+                    <ItemSummary item={item} showUpgrade={false} />
                   </div>
-                  <Badge>{item.rarity}</Badge>
                 </CardContent>
               </Card>
             ))}

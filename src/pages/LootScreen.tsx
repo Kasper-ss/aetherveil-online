@@ -17,6 +17,8 @@ import { playSfx } from '@/lib/audio'
 import { getBoostedExp, getBoostedGold, hasRewardBoost } from '@/lib/playerBuffs'
 import { formatItemClassRestriction } from '@/lib/classGear'
 import { ItemSummary } from '@/components/ui/ItemSummary'
+import { getRaidItemCardClassName, getRaidItemNameClassName } from '@/lib/raidItemStyle'
+import { isRaidExclusiveItem } from '@/data/raidExclusiveGear'
 import type { EquipSlot, ResourceId } from '@/types/game'
 
 export function LootScreen() {
@@ -93,11 +95,11 @@ export function LootScreen() {
           </h2>
           <div className="space-y-2">
             {equipment.map((item, i) => (
-              <Card key={`eq_${i}`} className="glow-cyan">
+              <Card key={`eq_${i}`} className={getRaidItemCardClassName(item, isRaidExclusiveItem(item) ? '' : 'glow-cyan')}>
                 <CardContent className="p-3 flex items-center gap-3">
                   <span className="text-3xl">{item.icon}</span>
                   <div className="flex-1">
-                    <div className="text-sm font-bold text-white">{item.name}</div>
+                    <div className={`text-sm font-bold ${getRaidItemNameClassName(item)}`}>{item.name}</div>
                     {formatItemClassRestriction(item) && (
                       <div className="text-[10px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
                     )}

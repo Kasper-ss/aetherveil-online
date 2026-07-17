@@ -25,13 +25,15 @@ interface EquipmentSlotIconProps {
   slot: EquipSlot
   rarity?: ItemRarity
   size?: 'sm' | 'md'
+  raidExclusive?: boolean
 }
 
-export function EquipmentSlotIcon({ slot, rarity = 'common', size = 'md' }: EquipmentSlotIconProps) {
+export function EquipmentSlotIcon({ slot, rarity = 'common', size = 'md', raidExclusive = false }: EquipmentSlotIconProps) {
   const dim = size === 'sm' ? 'w-8 h-8 text-[10px]' : 'w-10 h-10 text-xs'
+  const raidRing = raidExclusive ? 'border-amber-400/80 ring-2 ring-amber-400/35 shadow-[0_0_10px_rgba(251,191,36,0.3)]' : 'border-aether-border'
   return (
     <div
-      className={`${dim} rounded-md border border-aether-border flex items-center justify-center font-bold shrink-0 ${RARITY_BG[rarity]}`}
+      className={`${dim} rounded-md border flex items-center justify-center font-bold shrink-0 ${raidRing} ${RARITY_BG[rarity]}`}
     >
       {SLOT_SHORT[slot]}
     </div>

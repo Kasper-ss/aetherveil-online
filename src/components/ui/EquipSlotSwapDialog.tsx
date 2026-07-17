@@ -7,6 +7,9 @@ import { formatItemStats, RARITY_LABELS_RU, SLOT_LABELS_RU } from '@/data/items'
 import { formatItemClassRestriction } from '@/lib/classGear'
 import { formatGemSocketSummary, getItemSockets } from '@/lib/gemSockets'
 import { SOCKET_GEMS } from '@/data/socketGems'
+import { RaidExclusiveBadge } from '@/components/ui/RaidExclusiveBadge'
+import { isRaidExclusiveItem } from '@/data/raidExclusiveGear'
+import { getRaidItemCardClassName, getRaidItemNameClassName } from '@/lib/raidItemStyle'
 import type { Item, EquipSlot } from '@/types/game'
 
 interface EquipSlotSwapDialogProps {
@@ -38,16 +41,19 @@ export function EquipSlotSwapDialog({
         </DialogHeader>
 
         {equipped && (
-          <Card className="border-aether-cyan/40">
+          <Card className={getRaidItemCardClassName(equipped, equipped && isRaidExclusiveItem(equipped) ? '' : 'border-aether-cyan/40')}>
             <CardContent className="p-3">
               <p className="text-[10px] text-slate-500 mb-1">Сейчас надето</p>
               <div className="flex items-start gap-2">
-                <EquipmentSlotIcon slot={slot} rarity={equipped.rarity} size="sm" />
+                <EquipmentSlotIcon slot={slot} rarity={equipped.rarity} size="sm" raidExclusive={isRaidExclusiveItem(equipped)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium">{equipped.name}</p>
-                  <Badge variant={equipped.rarity} className="text-[8px] mt-0.5">
-                    {RARITY_LABELS_RU[equipped.rarity]}
-                  </Badge>
+                  <p className={`text-sm font-medium ${getRaidItemNameClassName(equipped)}`}>{equipped.name}</p>
+                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    <Badge variant={equipped.rarity} className="text-[8px]">
+                      {RARITY_LABELS_RU[equipped.rarity]}
+                    </Badge>
+                    {isRaidExclusiveItem(equipped) && <RaidExclusiveBadge />}
+                  </div>
                   {formatItemClassRestriction(equipped) && (
                     <p className="text-[10px] text-amber-400/90 mt-1">{formatItemClassRestriction(equipped)}</p>
                   )}
@@ -77,16 +83,19 @@ export function EquipSlotSwapDialog({
           {alternatives.map((item) => (
             <Card
               key={item.instanceId}
-              className="cursor-pointer active:scale-[0.98] transition-transform"
+              className={`cursor-pointer active:scale-[0.98] transition-transform ${getRaidItemCardClassName(item)}`}
               onClick={() => onSelect(item)}
             >
               <CardContent className="p-3 flex items-start gap-2">
-                <EquipmentSlotIcon slot={slot} rarity={item.rarity} size="sm" />
+                <EquipmentSlotIcon slot={slot} rarity={item.rarity} size="sm" raidExclusive={isRaidExclusiveItem(item)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium">{item.name}</p>
-                  <Badge variant={item.rarity} className="text-[8px] mt-0.5">
-                    {RARITY_LABELS_RU[item.rarity]}
-                  </Badge>
+                  <p className={`text-sm font-medium ${getRaidItemNameClassName(item)}`}>{item.name}</p>
+                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    <Badge variant={item.rarity} className="text-[8px]">
+                      {RARITY_LABELS_RU[item.rarity]}
+                    </Badge>
+                    {isRaidExclusiveItem(item) && <RaidExclusiveBadge />}
+                  </div>
                   {formatItemClassRestriction(item) && (
                     <p className="text-[10px] text-amber-400/90 mt-1">{formatItemClassRestriction(item)}</p>
                   )}

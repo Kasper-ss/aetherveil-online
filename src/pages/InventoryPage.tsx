@@ -20,6 +20,9 @@ import { ResourceCatalog } from '@/components/ui/ResourceCatalog'
 import { calcProductionEnergyCap, calcTotalEnergyPerSec, PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
 import { getProductionState } from '@/lib/productionState'
 import { EquipSlotSwapDialog } from '@/components/ui/EquipSlotSwapDialog'
+import { RaidExclusiveBadge } from '@/components/ui/RaidExclusiveBadge'
+import { isRaidExclusiveItem } from '@/data/raidExclusiveGear'
+import { getRaidItemCardClassName, getRaidItemNameClassName } from '@/lib/raidItemStyle'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import { formatGemSocketSummary, getItemMaxGemSockets } from '@/lib/gemSockets'
 import { SOCKET_GEMS } from '@/data/socketGems'
@@ -129,16 +132,22 @@ export function InventoryPage() {
               return (
                 <Card
                   key={slot}
-                  className="cursor-pointer active:scale-[0.99] transition-transform"
+                  className={`cursor-pointer active:scale-[0.99] transition-transform ${getRaidItemCardClassName(item)}`}
                   onClick={() => setSwapSlot(slot)}
                 >
                   <CardContent className="p-2 flex items-center gap-2">
-                    <EquipmentSlotIcon slot={slot} rarity={item?.rarity} size="sm" />
+                    <EquipmentSlotIcon slot={slot} rarity={item?.rarity} size="sm" raidExclusive={item ? isRaidExclusiveItem(item) : false} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] text-slate-500">{SLOT_LABELS_RU[slot]}</div>
-                      <div className="text-xs font-medium text-white truncate">{item?.name ?? 'Пусто'}</div>
+                      <div className={`text-xs font-medium truncate ${item ? getRaidItemNameClassName(item) : 'text-white'}`}>
+                        {item?.name ?? 'Пусто'}
+                      </div>
                       {item && (
                         <>
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            <Badge variant={item.rarity} className="text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                            {isRaidExclusiveItem(item) && <RaidExclusiveBadge />}
+                          </div>
                           {formatItemClassRestriction(item) && (
                             <div className="text-[9px] text-amber-400/90">{formatItemClassRestriction(item)}</div>
                           )}
@@ -239,17 +248,25 @@ export function InventoryPage() {
             {gearItems.map((item) => (
               <Card
                 key={item.instanceId}
-                className="cursor-pointer active:scale-95 transition-transform"
+                className={`cursor-pointer active:scale-95 transition-transform ${getRaidItemCardClassName(item)}`}
                 onClick={() => handleEquip(item)}
               >
                 <CardContent className="p-2">
                   <div className="flex items-start gap-2">
                     {item.slot !== 'consumable' && (
-                      <EquipmentSlotIcon slot={item.slot as EquipSlot} rarity={item.rarity} size="sm" />
+                      <EquipmentSlotIcon
+                        slot={item.slot as EquipSlot}
+                        rarity={item.rarity}
+                        size="sm"
+                        raidExclusive={isRaidExclusiveItem(item)}
+                      />
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-white truncate">{item.name}</div>
-                      <Badge variant={item.rarity} className="mt-0.5 text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                      <div className={`text-xs font-medium truncate ${getRaidItemNameClassName(item)}`}>{item.name}</div>
+                      <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                        <Badge variant={item.rarity} className="text-[8px]">{RARITY_LABELS_RU[item.rarity]}</Badge>
+                        {isRaidExclusiveItem(item) && <RaidExclusiveBadge />}
+                      </div>
                       {formatItemClassRestriction(item) && (
                         <div className="text-[9px] text-amber-400/90 mt-0.5">{formatItemClassRestriction(item)}</div>
                       )}
