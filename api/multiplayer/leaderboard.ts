@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.query.scope === 'monthly') {
       const board = await getMonthlyLeaderboardRecords(includeIds)
-      return res.status(200).json({ ok: true, ...board })
+      return res.status(200).json({ ok: true, ...board, fetchedAt: new Date().toISOString() })
     }
 
     const players = await getLeaderboardRecords(includeIds)
@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       level: p.level,
       guildId: p.guild_id,
     }))
-    return res.status(200).json({ ok: true, entries })
+    return res.status(200).json({ ok: true, entries, fetchedAt: new Date().toISOString() })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Leaderboard error'
     return res.status(500).json({ error: message })

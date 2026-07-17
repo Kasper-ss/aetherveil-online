@@ -9,8 +9,8 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { getLeaderboardEntries } from '@/lib/leaderboard'
 import { buildGlobalLeaderboardView } from '@/lib/leaderboardDisplay'
-import { fetchMonthlyLeaderboard } from '@/lib/multiplayerSync'
-import { mergeMonthlyLeaderboardWithPlayer } from '@/lib/monthlyStats'
+import { fetchMonthlyLeaderboard, applyLiveSelfToMonthlyBoard } from '@/lib/multiplayerSync'
+import { flushPlayerSave } from '@/lib/playerSave'
 import { MonthlyLeaderboardPanel } from '@/components/ui/MonthlyLeaderboardPanel'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { LeaderboardEntry, MonthlyLeaderboardResponse } from '@/types/game'
@@ -72,6 +72,7 @@ export function LeaderboardPage() {
   const [monthlyBoard, setMonthlyBoard] = useState<MonthlyLeaderboardResponse | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const hasLoadedRef = useRef(false)
 
   useTelegramBackButton(() => navigate('/'), true)
@@ -84,6 +85,7 @@ export function LeaderboardPage() {
     }
 
     try {
+      await flushPlayerSave()
       await usePlayerStore.getState().syncPlayerState()
       const currentPlayer = usePlayerStore.getState().player
       if (!currentPlayer) return
@@ -95,8 +97,10 @@ export function LeaderboardPage() {
       ])
       setAllGlobal(global)
       setFriendsBoard(friends)
-      setMonthlyBoard(monthly ? mergeMonthlyLeaderboardWithPlayer(monthly, currentPlayer) : null)
+      setMonthlyBoard(monthly ? applyLiveSelfToMonthlyBoard(monthly, currentPlayer) : null)
+      setLastUpdated(new Date())
       hasLoadedRef.current = true
+      if (silent) hapticSuccess()
     } finally {
       setInitialLoading(false)
       setRefreshing(false)
@@ -151,6 +155,12 @@ export function LeaderboardPage() {
           <span className="text-[10px] text-slate-500">обновление…</span>
         )}
       </div>
+
+      {lastUpdated && !showInitialPlaceholder && (
+        <p className="text-[10px] text-slate-600 text-center pb-1">
+          Обновлено: {lastUpdated.toLocaleTimeString('ru-RU')}
+        </p>
+      )}
 
       {showInitialPlaceholder ? (
         <p className="text-sm text-slate-500 text-center py-12">Загрузка рейтинга…</p>

@@ -27,6 +27,11 @@ export function persistPlayerLocal(player: Player): void {
 
 let saveChain: Promise<void> = Promise.resolve()
 
+/** Дождаться завершения всех отложенных сохранений (перед синком/рейтингом). */
+export function flushPlayerSave(): Promise<void> {
+  return saveChain
+}
+
 export function enqueuePlayerSave(getPlayer: () => Player | null): void {
   saveChain = saveChain
     .then(async () => {

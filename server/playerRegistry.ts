@@ -291,6 +291,47 @@ function sortPublicPlayerRecords(records: PublicPlayerRecord[]): PublicPlayerRec
   )
 }
 
+function mapPlayerSaveRow(row: { telegram_id: number; data: unknown; updated_at?: string }): PublicPlayerRecord | null {
+  const saved = row.data as {
+    username?: string
+    displayName?: string
+    level?: number
+    highestFloor?: number
+    guildId?: string
+  } | null
+  if (!saved) return null
+  return {
+    telegram_id: row.telegram_id,
+    username: saved.username ?? '',
+    display_name: saved.displayName ?? '',
+    level: saved.level ?? 1,
+    highest_floor: saved.highestFloor ?? 1,
+    guild_id: saved.guildId,
+    updated_at: row.updated_at ?? new Date().toISOString(),
+  }
+}
+
+async function fetchAllRecordsFromPlayerSaves(): Promise<PublicPlayerRecord[]> {
+  const supabase = getSupabase()
+  if (!supabase) return []
+
+  const { data, error } = await supabase
+    .from('players')
+    .select('telegram_id, data, updated_at')
+
+  if (error) {
+    console.error('[playerRegistry] players fetch failed', error.message)
+    return []
+  }
+
+  const records: PublicPlayerRecord[] = []
+  for (const row of data ?? []) {
+    const mapped = mapPlayerSaveRow(row as { telegram_id: number; data: unknown; updated_at?: string })
+    if (mapped) records.push(mapped)
+  }
+  return records
+}
+
 async function fetchPublicRecordsFromPlayerSaves(ids: number[]): Promise<PublicPlayerRecord[]> {
   const supabase = getSupabase()
   if (!supabase || ids.length === 0) return []
@@ -300,24 +341,12 @@ async function fetchPublicRecordsFromPlayerSaves(ids: number[]): Promise<PublicP
     .select('telegram_id, data, updated_at')
     .in('telegram_id', ids)
 
-  return (data ?? []).map((row) => {
-    const saved = row.data as {
-      username?: string
-      displayName?: string
-      level?: number
-      highestFloor?: number
-      guildId?: string
-    } | null
-    return {
-      telegram_id: row.telegram_id as number,
-      username: saved?.username ?? '',
-      display_name: saved?.displayName ?? '',
-      level: saved?.level ?? 1,
-      highest_floor: saved?.highestFloor ?? 1,
-      guild_id: saved?.guildId,
-      updated_at: (row.updated_at as string) ?? new Date().toISOString(),
-    }
-  })
+  const records: PublicPlayerRecord[] = []
+  for (const row of data ?? []) {
+    const mapped = mapPlayerSaveRow(row as { telegram_id: number; data: unknown; updated_at?: string })
+    if (mapped) records.push(mapped)
+  }
+  return records
 }
 
 function mergePublicPlayerRecord(
@@ -349,55 +378,47 @@ async function refreshIncludedFromPlayerSaves(
 
 export async function getLeaderboardRecords(includeIds: number[] = []): Promise<PublicPlayerRecord[]> {
   const uniqueInclude = [...new Set(includeIds.filter((id) => Number.isFinite(id) && id > 0))]
+  const byId = new Map<number, PublicPlayerRecord>()
+
+  for (const record of await fetchAllRecordsFromPlayerSaves()) {
+    byId.set(record.telegram_id, record)
+  }
+
   const supabase = getSupabase()
   if (supabase) {
-    const byId = new Map<number, PublicPlayerRecord>()
-
     const { data } = await supabase
       .from('public_players')
       .select('*')
-      .order('highest_floor', { ascending: false })
-      .order('level', { ascending: false })
-      .limit(200)
+      .limit(500)
 
     for (const row of data ?? []) {
-      byId.set(row.telegram_id as number, mapPublicPlayerRow(row))
+      const pub = mapPublicPlayerRow(row)
+      const existing = byId.get(pub.telegram_id)
+      byId.set(pub.telegram_id, existing ? mergePublicPlayerRecord(existing, pub) : pub)
     }
-
-    const missing = uniqueInclude.filter((id) => !byId.has(id))
-    if (missing.length > 0) {
-      const { data: extra } = await supabase
-        .from('public_players')
-        .select('*')
-        .in('telegram_id', missing)
-
-      for (const row of extra ?? []) {
-        byId.set(row.telegram_id as number, mapPublicPlayerRow(row))
-      }
-
-      const stillMissing = missing.filter((id) => !byId.has(id))
-      if (stillMissing.length > 0) {
-        for (const record of await fetchPublicRecordsFromPlayerSaves(stillMissing)) {
-          byId.set(record.telegram_id, record)
-        }
-      }
-    }
-
-    await refreshIncludedFromPlayerSaves(byId, uniqueInclude)
-
-    if (byId.size > 0) return sortPublicPlayerRecords([...byId.values()])
   }
 
-  const byId = new Map<number, PublicPlayerRecord>()
   for (const record of players().values()) {
-    byId.set(record.telegram_id, record)
+    const existing = byId.get(record.telegram_id)
+    byId.set(record.telegram_id, existing ? mergePublicPlayerRecord(existing, record) : record)
   }
+
   for (const id of uniqueInclude) {
     if (!byId.has(id)) {
-      const record = players().get(id)
-      if (record) byId.set(id, record)
+      for (const record of await fetchPublicRecordsFromPlayerSaves([id])) {
+        byId.set(record.telegram_id, record)
+      }
+      const mem = players().get(id)
+      if (mem) byId.set(id, mem)
+    } else {
+      await refreshIncludedFromPlayerSaves(byId, [id])
     }
   }
+
+  if (byId.size > 0) {
+    return sortPublicPlayerRecords([...byId.values()]).slice(0, 200)
+  }
+
   return sortPublicPlayerRecords([...byId.values()])
 }
 
@@ -500,32 +521,82 @@ async function fetchMonthlyProfilesFromPlayerSaves(ids: number[]): Promise<Array
   const supabase = getSupabase()
   if (!supabase || ids.length === 0) return []
 
-  const { data } = await supabase
-    .from('players')
-    .select('telegram_id, data')
-    .in('telegram_id', ids)
-
-  return (data ?? []).map((row) => {
+  const { data } = await supabase.from('players').select('telegram_id, data').in('telegram_id', ids)
+  const result: Array<{ id: number; profile: Record<string, unknown> }> = []
+  for (const row of data ?? []) {
     const saved = row.data as {
       displayName?: string
       username?: string
       monthlyStats?: Record<string, unknown>
     } | null
-    return {
+    result.push({
       id: row.telegram_id as number,
       profile: {
         displayName: saved?.displayName ?? '',
         username: saved?.username ?? '',
         monthlyStats: saved?.monthlyStats,
       },
-    }
-  })
+    })
+  }
+  return result
+}
+
+async function fetchMonthlyProfilesFromAllPlayerSaves(monthKey: string): Promise<ProfileMap> {
+  const profileMap: ProfileMap = new Map()
+  const supabase = getSupabase()
+  if (!supabase) return profileMap
+
+  const { data } = await supabase.from('players').select('telegram_id, data')
+  for (const row of data ?? []) {
+    const saved = row.data as {
+      displayName?: string
+      username?: string
+      monthlyStats?: Record<string, unknown>
+    } | null
+    const stats = saved?.monthlyStats
+    if (!stats || stats.monthKey !== monthKey) continue
+    profileMap.set(row.telegram_id as number, {
+      displayName: saved?.displayName ?? '',
+      username: saved?.username ?? '',
+      monthlyStats: stats,
+    })
+  }
+  return profileMap
+}
+
+function mergeMonthlyProfile(
+  base: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const baseStats = base.monthlyStats as Record<string, number> | undefined
+  const incomingStats = incoming.monthlyStats as Record<string, number> | undefined
+  if (!baseStats || !incomingStats) return { ...base, ...incoming }
+  return {
+    ...base,
+    ...incoming,
+    monthlyStats: {
+      ...baseStats,
+      ...incomingStats,
+      monthKey: baseStats.monthKey ?? incomingStats.monthKey,
+      goldEarned: Math.max(baseStats.goldEarned ?? 0, incomingStats.goldEarned ?? 0),
+      mobsKilled: Math.max(baseStats.mobsKilled ?? 0, incomingStats.mobsKilled ?? 0),
+      fishCaught: Math.max(baseStats.fishCaught ?? 0, incomingStats.fishCaught ?? 0),
+      highestFloor: Math.max(baseStats.highestFloor ?? 0, incomingStats.highestFloor ?? 0),
+    },
+  }
 }
 
 export async function getMonthlyLeaderboardRecords(includeIds: number[] = []) {
   const uniqueInclude = [...new Set(includeIds.filter((id) => Number.isFinite(id) && id > 0))]
-  const profileMap: ProfileMap = new Map(profiles())
   const monthKey = currentMonthKey()
+  const profileMap: ProfileMap = new Map(await fetchMonthlyProfilesFromAllPlayerSaves(monthKey))
+
+  for (const [id, profile] of profiles()) {
+    const stats = profile.monthlyStats as Record<string, unknown> | undefined
+    if (!stats || stats.monthKey !== monthKey) continue
+    const existing = profileMap.get(id)
+    profileMap.set(id, existing ? mergeMonthlyProfile(existing, profile) : profile)
+  }
 
   const supabase = getSupabase()
   if (supabase) {
@@ -539,24 +610,20 @@ export async function getMonthlyLeaderboardRecords(includeIds: number[] = []) {
       const stats = row.monthly_stats as Record<string, unknown> | null
       if (!stats || stats.monthKey !== monthKey) continue
       const id = row.telegram_id as number
-      const existing = profileMap.get(id) ?? {}
-      profileMap.set(id, {
-        ...existing,
+      const incoming = {
         displayName: row.display_name,
         username: row.username,
         monthlyStats: stats,
-      })
+      }
+      const existing = profileMap.get(id)
+      profileMap.set(id, existing ? mergeMonthlyProfile(existing, incoming) : incoming)
     }
 
     for (const { id, profile } of await fetchMonthlyProfilesFromPlayerSaves(uniqueInclude)) {
       const stats = profile.monthlyStats as Record<string, unknown> | undefined
       if (!stats || stats.monthKey !== monthKey) continue
-      const existing = profileMap.get(id) ?? {}
-      profileMap.set(id, {
-        ...existing,
-        ...profile,
-        monthlyStats: stats,
-      })
+      const existing = profileMap.get(id)
+      profileMap.set(id, existing ? mergeMonthlyProfile(existing, profile) : profile)
     }
   }
 

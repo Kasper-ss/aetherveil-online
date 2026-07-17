@@ -22,7 +22,7 @@ import { getInitData, getTelegramUser, resolveLoginUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { xpForLevel } from '@/lib/utils'
-import { enqueuePlayerSave, loadLocalPlayer, persistPlayerLocal } from '@/lib/playerSave'
+import { enqueuePlayerSave, flushPlayerSave, loadLocalPlayer, persistPlayerLocal } from '@/lib/playerSave'
 import {
   getClassData, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
   findCraftRecipe,
@@ -2355,6 +2355,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   syncPlayerState: async () => {
     const { player } = get()
     if (!player) return
+    await flushPlayerSave()
     const result = await syncPlayerToServer(player)
     if (!result) return
 

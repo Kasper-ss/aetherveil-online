@@ -4,6 +4,29 @@ import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
 import { loadPlayerFromSupabase } from '@/lib/supabase'
 import { buildVitalSyncPayload } from '@/lib/botNotifications'
+import { normalizeMonthlyStats } from '@/lib/monthlyStats'
+
+function sortLeaderboardEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  return [...entries]
+    .sort((a, b) => b.floor - a.floor || b.level - a.level || a.displayName.localeCompare(b.displayName, 'ru'))
+    .map((entry, index) => ({ ...entry, rank: index + 1 }))
+}
+
+/** Подставляет актуальный локальный прогресс игрока в список рейтинга. */
+export function applyLiveSelfToLeaderboard(entries: LeaderboardEntry[], self: Player): LeaderboardEntry[] {
+  const withoutSelf = entries.filter((e) => e.telegramId !== self.telegramId)
+  return sortLeaderboardEntries([
+    ...withoutSelf,
+    {
+      rank: 0,
+      telegramId: self.telegramId,
+      username: self.username,
+      displayName: self.displayName,
+      floor: self.highestFloor,
+      level: self.level,
+    },
+  ])
+}
 
 function mapListing(raw: MarketListing): MarketListing {
   return {
@@ -132,12 +155,54 @@ export async function fetchMonthlyLeaderboard(self: Player): Promise<MonthlyLead
     const includeQs = `include=${self.telegramId}`
     const res = await fetch(`/api/multiplayer/leaderboard?scope=monthly&${includeQs}&_=${Date.now()}`, {
       cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
     })
     const data = await res.json() as MonthlyLeaderboardResponse & { ok?: boolean }
     if (!res.ok || !data.categories) return null
     return { monthKey: data.monthKey, categories: data.categories }
   } catch {
     return null
+  }
+}
+
+export function applyLiveSelfToMonthlyBoard(
+  board: MonthlyLeaderboardResponse,
+  self: Player,
+): MonthlyLeaderboardResponse {
+  const stats = normalizeMonthlyStats(self)
+  if (stats.monthKey !== board.monthKey) return board
+
+  return {
+    ...board,
+    categories: board.categories.map((cat) => {
+      const selfValue = (() => {
+        switch (cat.categoryId) {
+          case 'gold_earned': return stats.goldEarned
+          case 'mobs_killed': return stats.mobsKilled
+          case 'fish_caught': return stats.fishCaught
+          case 'highest_floor': return stats.highestFloor
+          default: return 0
+        }
+      })()
+      if (selfValue <= 0) return cat
+
+      const withoutSelf = cat.entries.filter((e) => e.telegramId !== self.telegramId)
+      const rows = [
+        ...withoutSelf,
+        {
+          rank: 0,
+          telegramId: self.telegramId,
+          displayName: self.displayName,
+          username: self.username,
+          value: selfValue,
+        },
+      ]
+      rows.sort((a, b) => b.value - a.value || a.displayName.localeCompare(b.displayName, 'ru'))
+      return {
+        ...cat,
+        entries: rows.slice(0, 10).map((row, index) => ({ ...row, rank: index + 1 })),
+      }
+    }),
   }
 }
 
@@ -150,15 +215,16 @@ export async function fetchServerLeaderboard(self: Player): Promise<LeaderboardE
   try {
     const res = await fetch(`/api/multiplayer/leaderboard?${params.toString()}`, {
       cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
     })
     const data = await res.json() as { entries?: LeaderboardEntry[] }
-    if (!res.ok || !data.entries) return buildSelfOnly(self)
+    if (!res.ok || !data.entries?.length) {
+      return applyLiveSelfToLeaderboard(buildSelfOnly(self), self)
+    }
 
-    return data.entries
-      .sort((a, b) => b.floor - a.floor || b.level - a.level || a.displayName.localeCompare(b.displayName, 'ru'))
-      .map((entry, index) => ({ ...entry, rank: index + 1 }))
+    return applyLiveSelfToLeaderboard(data.entries, self)
   } catch {
-    return buildSelfOnly(self)
+    return applyLiveSelfToLeaderboard(buildSelfOnly(self), self)
   }
 }
 
