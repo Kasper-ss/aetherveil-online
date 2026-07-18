@@ -269,42 +269,15 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   ...LUCKY_SET_CRAFT_RECIPES,
 ]
 
-export function getStarLevelUpgradeCostMult(stars: number): number {
-  if (stars <= 0) return 1
-  return 1 + stars * 1.2 + stars * stars * 0.8
-}
-
-export function getUpgradeLevelCost(item: import('@/types/game').Item): { gold: number; resources: Partial<Record<ResourceId, number>> } {
-  const lvl = item.upgradeLevel ?? 1
-  if (lvl >= 10) return { gold: 0, resources: {} }
-  const mult = lvl * lvl
-  const rarityMult: Record<string, number> = { common: 1, rare: 2, epic: 4, legendary: 6, mythic: 10 }
-  const rm = rarityMult[item.rarity] ?? 1
-  const starMult = getStarLevelUpgradeCostMult(item.starLevel ?? 0)
-  const scale = (n: number) => Math.max(1, Math.ceil(n * starMult))
-  return {
-    gold: Math.floor(80 * mult * rm * starMult),
-    resources: {
-      upgrade_core: scale(Math.ceil(lvl / 2)),
-      iron_ore: scale(lvl * 2),
-      gem_shard: lvl >= 5 ? scale(Math.ceil(lvl / 3)) : 0,
-    },
-  }
-}
-
-export function getStarUpgradeCost(item: import('@/types/game').Item): { gold: number; resources: Partial<Record<ResourceId, number>> } {
-  const stars = item.starLevel ?? 0
-  if (stars >= 10) return { gold: 0, resources: {} }
-  const next = stars + 1
-  return {
-    gold: Math.floor(150 * next * next),
-    resources: {
-      star_shard: next,
-      gem_shard: Math.ceil(next / 2),
-      aether_dust: next >= 5 ? Math.ceil(next / 3) : 0,
-    },
-  }
-}
+export {
+  getStarLevelUpgradeCostMult,
+  getUpgradeLevelCost,
+  getStarUpgradeCost,
+  getEffectiveUpgradeLevelCost,
+  getEffectiveStarUpgradeCost,
+  isUpgradeableGear,
+  isAccessoryItem,
+} from '@/lib/gearUpgrade'
 
 export function getDismantleYield(item: import('@/types/game').Item): { gold: number; resources: Partial<Record<ResourceId, number>> } {
   const rarityMult: Record<string, number> = { common: 1, rare: 2, epic: 4, legendary: 6, mythic: 10 }

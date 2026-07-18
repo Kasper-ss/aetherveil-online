@@ -9,7 +9,8 @@ import { MissingResourcesModal } from '@/components/ui/MissingResourcesModal'
 import { DismantleRewardModal } from '@/components/ui/DismantleRewardModal'
 import { usePlayerStore, type DismantleSummary } from '@/store/playerStore'
 import { hasElementalForge } from '@/data/elementalForge'
-import { RESOURCES, getUpgradeLevelCost, getStarUpgradeCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
+import { RESOURCES, getEffectiveStarUpgradeCost, getEffectiveUpgradeLevelCost, getStarLevelUpgradeCostMult, getDismantleYield, getForgeCraftRecipes } from '@/data/classes'
+import { isAccessoryItem, isUpgradeableGear } from '@/lib/gearUpgrade'
 import { getRepairCost, needsRepair, ensureItemDurability } from '@/lib/equipmentDurability'
 import {
   canUpgradeRarity, canUpgradeRarityForPlayer, countDuplicateItems, getNextRarity, getRarityUpgradeCost,
@@ -79,9 +80,12 @@ export function ForgePage() {
 
   if (!player) return null
 
-  const equippableInventory = player.inventory.filter((i) => i.slot !== 'consumable')
-  const equippableEquipped = (Object.values(player.equipped).filter(Boolean) as Item[])
-  const equippable = upgradeSource === 'inventory' ? equippableInventory : equippableEquipped
+  const equippableInventory = player.inventory.filter(isUpgradeableGear)
+  const equippableEquipped = (Object.values(player.equipped).filter(Boolean) as Item[]).filter(isUpgradeableGear)
+  const equippable = sortGearItems(
+    upgradeSource === 'inventory' ? equippableInventory : equippableEquipped,
+    'type',
+  )
   const craftRecipes = getForgeCraftRecipes(player)
   const commonCount = equippable.filter((i) => i.rarity === 'common').length
   const allGear = [
@@ -318,7 +322,9 @@ export function ForgePage() {
               <TabsTrigger value="equipped" className="flex-1">Надетое</TabsTrigger>
             </TabsList>
           </Tabs>
-          <p className="text-xs text-slate-400 mb-2">Выберите предмет (улучшение до 10 ур. / 10 ★ / мифик / разборка)</p>
+          <p className="text-xs text-slate-400 mb-2">
+            Выберите предмет: броня, оружие, ожерелье или кольцо (улучшение до 10 ур. / 10 ★ / мифик / разборка)
+          </p>
           {commonCount > 0 && (
             <Button variant="secondary" size="sm" className="w-full mb-3" onClick={handleDismantleAllCommon}>
               Разобрать все обычные ({commonCount})
@@ -367,10 +373,15 @@ export function ForgePage() {
                     </p>
                     <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, upgradeLevel: (selectedItem.upgradeLevel ?? 1) + 1 })}</p>
                     {(() => {
-                      const c = getUpgradeLevelCost(selectedItem)
+                      const c = getEffectiveUpgradeLevelCost(player, selectedItem)
                       const starMult = getStarLevelUpgradeCostMult(selectedItem.starLevel ?? 0)
                       return (
                         <>
+                          {isAccessoryItem(selectedItem) && (
+                            <p className="text-[10px] text-aether-purple mb-1">
+                              Аксессуар: улучшение за кристаллы и осколки (не железная руда)
+                            </p>
+                          )}
                           {starMult > 1 && (
                             <p className="text-[10px] text-amber-400 mb-1">
                               Стоимость ×{starMult.toFixed(1)} из-за ★{selectedItem.starLevel}
@@ -405,11 +416,18 @@ export function ForgePage() {
                       })}
                     </p>
                     {(() => {
-                      const c = getStarUpgradeCost(selectedItem)
+                      const c = getEffectiveStarUpgradeCost(player, selectedItem)
                       return (
-                        <p className="text-[10px] text-slate-500 mb-2">
-                          🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
-                        </p>
+                        <>
+                          {isAccessoryItem(selectedItem) && (
+                            <p className="text-[10px] text-aether-purple mb-1">
+                              Аксессуар: звёздность усиливается кристаллами
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-500 mb-2">
+                            🪙{c.gold} {Object.entries(c.resources).map(([k, v]) => v ? `${RESOURCES[k as import('@/types/game').ResourceId].icon}${v}` : '').join(' ')}
+                          </p>
+                        </>
                       )
                     })()}
                     <Button className="w-full" size="sm" variant="gold" onClick={handleStarUpgrade}>

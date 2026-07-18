@@ -24,7 +24,12 @@ import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
 import { xpForLevel } from '@/lib/utils'
 import { enqueuePlayerSave, flushPlayerSave, loadLocalPlayer, persistPlayerLocal } from '@/lib/playerSave'
 import {
-  getClassData, PROFESSIONS, getUpgradeLevelCost, getStarUpgradeCost, getDismantleYield,
+  getEffectiveStarUpgradeCost,
+  getEffectiveUpgradeLevelCost,
+  isUpgradeableGear,
+} from '@/lib/gearUpgrade'
+import {
+  getClassData, PROFESSIONS, getDismantleYield,
   findCraftRecipe,
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
@@ -2197,9 +2202,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   upgradeItemLevel: (item) => {
+    const { player } = get()
+    if (!player || !isUpgradeableGear(item)) return null
     const lvl = item.upgradeLevel ?? 1
     if (lvl >= 10) return null
-    const cost = getUpgradeLevelCost(item)
+    const cost = getEffectiveUpgradeLevelCost(player, item)
     if (!get().spendGold(cost.gold)) return null
     if (!get().spendResources(cost.resources)) {
       grantGoldRaw(get, cost.gold)
@@ -2209,9 +2216,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   upgradeItemStars: (item) => {
+    const { player } = get()
+    if (!player || !isUpgradeableGear(item)) return null
     const stars = item.starLevel ?? 0
     if (stars >= 10) return null
-    const cost = getStarUpgradeCost(item)
+    const cost = getEffectiveStarUpgradeCost(player, item)
     if (!get().spendGold(cost.gold)) return null
     if (!get().spendResources(cost.resources)) {
       grantGoldRaw(get, cost.gold)
@@ -2284,14 +2293,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   getUpgradeLevelMissing: (item) => {
     const { player } = get()
-    if (!player || (item.upgradeLevel ?? 1) >= 10) return []
-    return getMissingCosts(player, getUpgradeLevelCost(item).gold, getUpgradeLevelCost(item).resources)
+    if (!player || !isUpgradeableGear(item) || (item.upgradeLevel ?? 1) >= 10) return []
+    const cost = getEffectiveUpgradeLevelCost(player, item)
+    return getMissingCosts(player, cost.gold, cost.resources)
   },
 
   getStarUpgradeMissing: (item) => {
     const { player } = get()
-    if (!player || (item.starLevel ?? 0) >= 10) return []
-    return getMissingCosts(player, getStarUpgradeCost(item).gold, getStarUpgradeCost(item).resources)
+    if (!player || !isUpgradeableGear(item) || (item.starLevel ?? 0) >= 10) return []
+    const cost = getEffectiveStarUpgradeCost(player, item)
+    return getMissingCosts(player, cost.gold, cost.resources)
   },
 
   getMythicUpgradeMissing: (item) => {
@@ -2312,7 +2323,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   craftMythicItem: (item) => {
     const { player } = get()
-    if (!player || item.rarity === 'mythic') return null
+    if (!player || !isUpgradeableGear(item) || item.rarity === 'mythic') return null
     if ((item.upgradeLevel ?? 1) < 10 || (item.starLevel ?? 0) < 10) return null
     if (!get().spendGold(MYTHIC_UPGRADE_COST.gold)) return null
     if (!get().spendResources(MYTHIC_UPGRADE_COST.resources)) {
