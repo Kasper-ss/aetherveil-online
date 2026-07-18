@@ -101,7 +101,17 @@ import {
 } from '@/data/fishingSpots'
 import { findAlchemyRecipe, canBrewAlchemyRecipe, needsBrewTimer, getReadyBrews } from '@/data/alchemyPotions'
 import { getNextVipLevel } from '@/data/vipTiers'
-import { getCombineCost, getUpgradeCost, MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import { MAX_SOCKET_GEM_LEVEL } from '@/data/socketGems'
+import {
+  getGemCombineCost,
+  getGemUpgradeCost,
+  getGemUpgradeSuccessChance,
+  getGemStudyCost,
+  getGemStudyDurationMs,
+  getCombineBlockReason,
+  getUpgradeBlockReason,
+  getJewelerRank,
+} from '@/lib/gemCrafting'
 import { jewelResourceId } from '@/lib/jewelResources'
 import { getWorldBossSchedule } from '@/lib/worldBossSchedule'
 import {
@@ -114,7 +124,6 @@ import {
 } from '@/data/raids'
 import { RAID_DEATH_COOLDOWN_MS } from '@/data/raids'
 import {
-  GEM_STUDY_DURATION_MS,
   canStartGemStudy,
   canWorkWithGem,
   getActiveGemStudies,
@@ -1691,10 +1700,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   combineSocketGem: (gemId) => {
     const { player } = get()
     if (!player || !canWorkWithGem(player, gemId)) return false
-    const level = player.socketGemLevels?.[gemId] ?? 1
-    const cost = getCombineCost(level)
+    if (getCombineBlockReason(player, gemId)) return false
+    const craftLevel = player.socketGemLevels?.[gemId] ?? 1
+    const cost = getGemCombineCost(gemId, craftLevel)
     if (!get().spendGold(cost.gold)) return false
-    if (!get().spendResources({ gem_shard: cost.gem_shard })) {
+    if (!get().spendResources(cost.resources)) {
       grantGoldRaw(get, cost.gold)
       return false
     }
@@ -1709,7 +1719,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     } else {
       get().updatePlayer({ resources: gems })
     }
-    grantJewelerProfessionExp(get, JEWELER_XP.combine(level))
+    grantJewelerProfessionExp(get, JEWELER_XP.combine(craftLevel))
     return true
   },
 
@@ -1718,14 +1728,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!player || !canWorkWithGem(player, gemId)) return false
     const level = player.socketGemLevels?.[gemId] ?? 0
     if (level <= 0 || level >= MAX_SOCKET_GEM_LEVEL) return false
-    const cost = getUpgradeCost(level)
+    if (getUpgradeBlockReason(player, gemId)) return false
+    const cost = getGemUpgradeCost(gemId, level)
     if (!get().spendGold(cost.gold)) return false
-    const res: Partial<Record<import('@/types/game').ResourceId, number>> = { gem_shard: cost.gem_shard }
-    if (cost.raw_diamond) res.raw_diamond = cost.raw_diamond
-    if (!get().spendResources(res)) {
+    if (!get().spendResources(cost.resources)) {
       grantGoldRaw(get, cost.gold)
       return false
     }
+    const rank = getJewelerRank(player)
+    const successChance = getGemUpgradeSuccessChance(gemId, level, rank)
+    if (Math.random() > successChance) return false
     get().updatePlayer({
       socketGemLevels: { ...(player.socketGemLevels ?? {}), [gemId]: level + 1 },
     })
@@ -3431,9 +3443,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   startGemStudy: (gemId) => {
     const { player } = get()
     if (!player || !canStartGemStudy(player, gemId)) return false
+    const cost = getGemStudyCost(gemId)
+    if (!get().spendGold(cost.gold)) return false
+    if (!get().spendResources(cost.resources)) {
+      grantGoldRaw(get, cost.gold)
+      return false
+    }
     const entry: GemStudyEntry = {
       gemId,
-      readyAt: new Date(Date.now() + GEM_STUDY_DURATION_MS).toISOString(),
+      readyAt: new Date(Date.now() + getGemStudyDurationMs(gemId)).toISOString(),
     }
     get().updatePlayer({
       activeGemStudies: [...getActiveGemStudies(player), entry],

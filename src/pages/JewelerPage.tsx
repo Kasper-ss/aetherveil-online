@@ -18,11 +18,11 @@ import { RESOURCES } from '@/data/classes'
 import {
   canStartGemStudy,
   formatGemStudyCountdown,
-  GEM_STUDY_DURATION_MS,
   getGemStudyRemainingMs,
   isGemStudied,
   isGemStudying,
 } from '@/lib/gemStudy'
+import { formatGemCraftCost, getGemStudyCost, getGemStudyDurationMs, getStudyBlockReason } from '@/lib/gemCrafting'
 import type { Item, ResourceId, SocketGemId } from '@/types/game'
 
 const JEWEL_SHOP_ITEMS = RESOURCE_SHOP_ITEMS.filter(
@@ -58,17 +58,25 @@ export function JewelerPage() {
 
   if (!player) return null
 
-  const profXp = getProfessionExp(player, 'jeweler')
+  const p = player
+  const profXp = getProfessionExp(p, 'jeweler')
   const profProgress = getProfessionRankProgress(profXp)
   const allGear = [
-    ...player.inventory.filter((i) => i.slot !== 'consumable' && i.slot !== 'pet'),
-    ...Object.values(player.equipped).filter((i): i is Item => !!i),
+    ...p.inventory.filter((i) => i.slot !== 'consumable' && i.slot !== 'pet'),
+    ...Object.values(p.equipped).filter((i): i is Item => !!i),
   ]
 
   function handleStudy(gemId: SocketGemId) {
+    const block = getStudyBlockReason(p, gemId)
+    if (block) {
+      hapticError()
+      setMsg(block)
+      return
+    }
     if (startGemStudy(gemId)) {
       hapticSuccess()
-      setMsg(`Изучение «${SOCKET_GEMS.find((g) => g.id === gemId)?.nameRu}» начато (1 ч)`)
+      const mins = Math.round(getGemStudyDurationMs(gemId) / 60_000)
+      setMsg(`Изучение «${SOCKET_GEMS.find((g) => g.id === gemId)?.nameRu}» начато (${mins} мин)`)
     } else {
       hapticError()
       setMsg('Нельзя начать изучение сейчас')
@@ -142,18 +150,21 @@ export function JewelerPage() {
         </TabsList>
 
         <TabsContent value="workshop" className="mt-3">
-          <GemWorkshopPanel selectedItem={gemItem} onSelectItem={setGemItem} gear={allGear} />
+          <GemWorkshopPanel selectedItem={gemItem} onSelectItem={setGemItem} gear={allGear} onNotice={setMsg} />
         </TabsContent>
 
         <TabsContent value="study" className="space-y-2 mt-3">
           <p className="text-[10px] text-slate-400 text-center">
-            Изучите камень (1 час), чтобы открыть комбинирование и улучшение. Одно изучение за раз.
+            Изучение стоит ресурсы и золото, длится дольше для редких камней. Одно изучение за раз.
           </p>
           {SOCKET_GEMS.map((gem) => {
-            const studied = isGemStudied(player, gem.id)
-            const studying = isGemStudying(player, gem.id)
-            const remaining = getGemStudyRemainingMs(player, gem.id)
-            const canStart = canStartGemStudy(player, gem.id)
+            const studied = isGemStudied(p, gem.id)
+            const studying = isGemStudying(p, gem.id)
+            const remaining = getGemStudyRemainingMs(p, gem.id)
+            const canStart = canStartGemStudy(p, gem.id)
+            const studyCost = getGemStudyCost(gem.id)
+            const studyMins = Math.round(getGemStudyDurationMs(gem.id) / 60_000)
+            const studyBlock = getStudyBlockReason(p, gem.id)
             return (
               <Card key={gem.id} className={studied ? 'border-aether-cyan/40' : ''}>
                 <CardContent className="p-3 flex items-center gap-3">
@@ -163,8 +174,13 @@ export function JewelerPage() {
                     <div className="text-[10px] text-slate-400">
                       {studied && <span className="text-aether-cyan">Изучен</span>}
                       {studying && <span className="text-amber-400">Изучается: {formatGemStudyCountdown(remaining)}</span>}
-                      {!studied && !studying && <span>Не изучен</span>}
+                      {!studied && !studying && (
+                        <span>{studyMins} мин · {formatGemCraftCost(studyCost)}</span>
+                      )}
                     </div>
+                    {!studied && !studying && studyBlock && (
+                      <div className="text-[9px] text-amber-400 mt-0.5">{studyBlock}</div>
+                    )}
                   </div>
                   {!studied && !studying && (
                     <Button size="sm" disabled={!canStart} onClick={() => handleStudy(gem.id)}>
@@ -179,7 +195,7 @@ export function JewelerPage() {
             )
           })}
           <p className="text-[9px] text-slate-500 text-center">
-            Длительность изучения: {Math.round(GEM_STUDY_DURATION_MS / 60_000)} мин · +12 XP при завершении
+            +12 XP при завершении изучения
           </p>
         </TabsContent>
 
@@ -208,7 +224,7 @@ export function JewelerPage() {
 
           <p className="text-xs font-medium text-white pt-2">Продажа камней</p>
           {JEWEL_RESOURCE_IDS.map((rid) => {
-            const count = player.resources[rid] ?? 0
+            const count = p.resources[rid] ?? 0
             const unitGold = getNpcSellGold(rid, 1)
             if (unitGold <= 0) return null
             return (

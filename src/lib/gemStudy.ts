@@ -1,8 +1,10 @@
 import type { Player, SocketGemId } from '@/types/game'
 import { getSocketGemDef, SOCKET_GEMS } from '@/data/socketGems'
 import { jewelResourceId } from '@/lib/jewelResources'
+import { getGemStudyDurationMs, getStudyBlockReason } from '@/lib/gemCrafting'
 
-export const GEM_STUDY_DURATION_MS = 60 * 60_000
+/** Базовая длительность изучения (редкий камень). Для конкретного камня см. getGemStudyDurationMs. */
+export const GEM_STUDY_DURATION_MS = getGemStudyDurationMs('ruby')
 
 export interface GemStudyEntry {
   gemId: SocketGemId
@@ -49,6 +51,7 @@ export function canStartGemStudy(player: Player, gemId: SocketGemId): boolean {
   if (isGemStudied(player, gemId)) return false
   if (isGemStudying(player, gemId)) return false
   if (hasActiveGemStudy(player)) return false
+  if (getStudyBlockReason(player, gemId)) return false
   return true
 }
 

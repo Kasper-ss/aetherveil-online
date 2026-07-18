@@ -47,15 +47,3 @@ export function getMaxSockets(slot: EquipSlot, rarity: ItemRarity): number {
   const slotBonus = (slot === 'weapon' || slot === 'chestplate') ? 1 : 0
   return Math.min(4, base[rarity] + (rarity !== 'common' ? slotBonus : 0))
 }
-
-export function getCombineCost(level: number): { gold: number; gem_shard: number } {
-  return { gold: 500 * level, gem_shard: 2 + level }
-}
-
-export function getUpgradeCost(level: number): { gold: number; gem_shard: number; raw_diamond: number } {
-  return {
-    gold: 800 * level,
-    gem_shard: 3 + level,
-    raw_diamond: level >= 5 ? 1 : 0,
-  }
-}
