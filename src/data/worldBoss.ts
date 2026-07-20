@@ -82,6 +82,6 @@ export function getWorldBossRewardResources(): Partial<Record<ResourceId, number
 }
 
 export const WORLD_BOSS_REWARDS = {
-  gold: 15000,
-  gems: 80,
+  gold: 200_000,
+  gems: 100,
 }
