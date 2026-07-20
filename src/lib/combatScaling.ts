@@ -33,9 +33,10 @@ export function getGearPowerScore(player: Player): number {
 }
 
 /** Combat power from effective stats and character level. */
-export function getStatPowerScore(player: Player): number {
-  const stats = getEffectiveStats(player)
-  const maxHp = getCombatMaxHp(player)
+export function getStatPowerScore(player: Player, skipRankBonus = false): number {
+  const opts = skipRankBonus ? { skipRankBonus: true as const } : undefined
+  const stats = getEffectiveStats(player, opts)
+  const maxHp = getCombatMaxHp(player, opts)
   return stats.atk * 1.35
     + stats.def * 1.1
     + maxHp * 0.06
@@ -56,8 +57,8 @@ export function getFloorBenchmarkPower(floor: number): number {
   return statScore * gear * 1.02
 }
 
-export function getPlayerCombatPower(player: Player): number {
-  return getStatPowerScore(player) * getGearPowerScore(player)
+export function getPlayerCombatPower(player: Player, skipRankBonus = false): number {
+  return getStatPowerScore(player, skipRankBonus) * getGearPowerScore(player)
 }
 
 export interface CombatEaseResult {

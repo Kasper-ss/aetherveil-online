@@ -98,7 +98,7 @@ export function getRankInputFromPlayer(player: Player): RankInput {
   return {
     level: player.level,
     highestFloor: player.highestFloor,
-    combatPower: getPlayerCombatPower(player),
+    combatPower: getPlayerCombatPower(player, true),
     achievementsClaimed: countClaimedAchievements(player),
     pvpWins: player.pvpWins ?? 0,
   }

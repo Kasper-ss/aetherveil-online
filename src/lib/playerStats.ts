@@ -118,8 +118,10 @@ export function getHpRegenIntervalMs(player: Player): number {
   return Math.max(2_000, Math.floor(baseInterval * (1 - enduranceBonus)))
 }
 
-export function getCombatMaxHp(player: Player): number {
-  const stats = getEffectiveStats(player)
+export type EffectiveStatsOptions = { skipRankBonus?: boolean }
+
+export function getCombatMaxHp(player: Player, opts?: EffectiveStatsOptions): number {
+  const stats = getEffectiveStats(player, opts)
   return stats.hp + player.level * 20
 }
 
@@ -154,7 +156,7 @@ export function formatDuration(ms: number): string {
   return m > 0 ? `${m}м ${s}с` : `${s}с`
 }
 
-export function getEffectiveStats(player: Player): EffectiveStats {
+export function getEffectiveStats(player: Player, opts?: EffectiveStatsOptions): EffectiveStats {
   const alloc = getAllocatedStats(player)
   const racial = getRacialStatPassives(player.raceId)
   const base = {
@@ -214,7 +216,7 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     getEffectMultForStat(player, stat) * getEffectMultForStat(player, 'all')
 
   const achMult = getAchievementMultipliers(player).allStats
-  const rankMult = getRankMultipliers(player).allStats
+  const rankMult = opts?.skipRankBonus ? 1 : getRankMultipliers(player).allStats
   const propMult = getPropertyMultipliers(player).allStats
   const cityAtk = getCityMultipliers(player).atk
   const cityDef = getCityMultipliers(player).def
