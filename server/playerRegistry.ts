@@ -479,6 +479,48 @@ export async function buyMarketListing(
   return payload
 }
 
+const VALID_RANKS = new Set(['E', 'D', 'C', 'B', 'A', 'S', 'S+'])
+
+function normalizePlayerRank(raw: unknown): string {
+  return typeof raw === 'string' && VALID_RANKS.has(raw) ? raw : 'E'
+}
+
+export async function getPlayerRanksForIds(ids: number[]): Promise<Map<number, string>> {
+  const unique = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))]
+  const result = new Map<number, string>()
+  const missing: number[] = []
+
+  for (const id of unique) {
+    const cached = profiles().get(id)
+    if (cached && cached.playerRank != null) {
+      result.set(id, normalizePlayerRank(cached.playerRank))
+    } else {
+      missing.push(id)
+    }
+  }
+
+  if (missing.length > 0) {
+    const supabase = getSupabase()
+    if (supabase) {
+      const { data } = await supabase
+        .from('player_profiles')
+        .select('telegram_id, profile')
+        .in('telegram_id', missing)
+      for (const row of data ?? []) {
+        const profile = row.profile as Record<string, unknown>
+        const telegramId = row.telegram_id as number
+        profiles().set(telegramId, profile)
+        result.set(telegramId, normalizePlayerRank(profile.playerRank))
+      }
+    }
+  }
+
+  for (const id of unique) {
+    if (!result.has(id)) result.set(id, 'E')
+  }
+  return result
+}
+
 export async function getPlayerProfileRecord(telegramId: number): Promise<Record<string, unknown> | null> {
   const cached = profiles().get(telegramId)
   if (cached) return cached
@@ -504,6 +546,7 @@ export async function getPlayerProfileRecord(telegramId: number): Promise<Record
     telegramId: player.telegram_id,
     displayName: player.display_name,
     username: player.username,
+    playerRank: 'E',
     level: player.level,
     highestFloor: player.highest_floor,
     guildId: player.guild_id,

@@ -650,6 +650,8 @@ export interface PartyMember {
   ready: boolean
 }
 
+export type PlayerRankId = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'S+'
+
 export interface LeaderboardEntry {
   rank: number
   telegramId: number
@@ -659,12 +661,14 @@ export interface LeaderboardEntry {
   level: number
   guildId?: string
   isFriend?: boolean
+  playerRank?: PlayerRankId
 }
 
 export interface PublicPlayerProfile {
   telegramId: number
   displayName: string
   username: string
+  playerRank?: PlayerRankId
   level: number
   highestFloor: number
   classId?: PlayerClass

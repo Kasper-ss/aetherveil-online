@@ -15,6 +15,7 @@ import { RARITY_LABELS_RU } from '@/data/items'
 import { SET_DATA } from '@/data/items'
 import { formatNumber } from '@/lib/utils'
 import type { PublicPlayerProfile } from '@/types/game'
+import { RankBadge } from '@/components/ui/RankBadge'
 
 function getSetLabel(setId?: string): string | null {
   if (!setId) return null
@@ -97,7 +98,10 @@ export function PlayerViewPage() {
             <div className={`w-16 h-16 mx-auto rounded-full bg-aether-card flex items-center justify-center text-3xl ${getFrameClass(profile.profileFrameId)}`}>
               {getAvatarPreview(profile.cosmeticAvatarId)}
             </div>
-            <h2 className="text-lg font-bold text-white mt-2">{profile.displayName}</h2>
+            <h2 className="text-lg font-bold text-white mt-2 flex items-center justify-center gap-2">
+              {profile.displayName}
+              <RankBadge rank={profile.playerRank ?? 'E'} size="md" />
+            </h2>
             {getTitleLabel(profile.profileTitleId) && (
               <p className={`text-xs font-medium ${getTitleColorClass(profile.profileTitleId)}`}>
                 {getTitleLabel(profile.profileTitleId)}

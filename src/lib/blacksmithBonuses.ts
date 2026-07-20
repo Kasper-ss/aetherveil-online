@@ -2,17 +2,18 @@ import type { CraftRecipe, Item, ItemRarity, Player, ResourceId } from '@/types/
 import { ensureItemDurability, resolveMaxDurability } from '@/lib/equipmentDurability'
 import { getCraftSuccessMultiplier } from '@/lib/playerBuffs'
 import { getProfessionMythicSkillLevel } from '@/lib/professionBonuses'
+import { getRankCraftDiscount } from '@/lib/playerRank'
 
 function bsLevel(player: Player, skillIndex: number): number {
   return player.professionLevels.blacksmith?.[skillIndex] ?? 0
 }
 
 export function getBlacksmithCraftGoldDiscount(player: Player): number {
-  return Math.min(0.5, bsLevel(player, 5) * 0.05)
+  return Math.min(0.5, bsLevel(player, 5) * 0.05 + getRankCraftDiscount(player))
 }
 
 export function getBlacksmithCraftResourceDiscount(player: Player): number {
-  return Math.min(0.35, bsLevel(player, 8) * 0.03)
+  return Math.min(0.35, bsLevel(player, 8) * 0.03 + getRankCraftDiscount(player))
 }
 
 export function getBlacksmithDoubleCraftChance(player: Player): number {

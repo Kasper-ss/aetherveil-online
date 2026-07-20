@@ -29,6 +29,9 @@ import { getActiveEvents } from '@shared/eventsSchedule'
 import { isRealEstateUnlocked } from '@/data/realEstate'
 import { isCityUnlocked } from '@/data/cityBuildings'
 import { PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
+import { RankBadge } from '@/components/ui/RankBadge'
+import { PlayerRankPanel } from '@/components/ui/PlayerRankPanel'
+import { getPlayerRankFromPlayer, getRankInputFromPlayer } from '@/lib/playerRank'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -129,6 +132,8 @@ export function HomePage() {
   const productionUnlocked = player.highestFloor >= PRODUCTION_UNLOCK_FLOOR
   const activeEvents = getActiveEvents()
   const eventsMenuLabel = activeEvents.length > 0 ? `События ⚡ ${activeEvents.length}` : 'События'
+  const playerRank = getPlayerRankFromPlayer(player)
+  const rankInput = getRankInputFromPlayer(player)
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
@@ -177,6 +182,7 @@ export function HomePage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-bold text-white truncate">{player.displayName}</h1>
+              <RankBadge rank={playerRank} size="md" />
               <span className="text-[11px] font-bold bg-aether-cyan/20 text-aether-cyan px-2 py-0.5 rounded-full shrink-0">
                 {t('hub.level')}{player.level}
               </span>
@@ -225,6 +231,12 @@ export function HomePage() {
         </div>
         <Progress value={xpPct} />
       </div>
+
+      <Card className="mx-4 mt-3">
+        <CardContent className="p-3 pt-3">
+          <PlayerRankPanel input={rankInput} compact />
+        </CardContent>
+      </Card>
 
       <Card className="mx-4 mt-3">
         <CardContent className="p-3 pt-3">

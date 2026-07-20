@@ -1,6 +1,7 @@
 import type { Item, Player, ResourceId } from '@/types/game'
 import type { EquipSlot } from '@/data/items'
 import { getProfessionMythicSkillLevel, getProfessionSkillLevel } from '@/lib/professionBonuses'
+import { getRankCraftDiscount } from '@/lib/playerRank'
 
 export const UPGRADEABLE_GEAR_SLOTS: EquipSlot[] = [
   'helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon',
@@ -94,7 +95,7 @@ export function applyUpgradeCostDiscounts(player: Player, item: Item, cost: Gear
   const jwDiscount = isAccessoryItem(item)
     ? getProfessionSkillLevel(player, 'jeweler', 'jw_5') * 0.003
     : 0
-  const discount = Math.min(0.25, bsDiscount + jwDiscount)
+  const discount = Math.min(0.35, bsDiscount + jwDiscount + getRankCraftDiscount(player))
   if (discount <= 0) return cost
 
   const resources: Partial<Record<ResourceId, number>> = {}

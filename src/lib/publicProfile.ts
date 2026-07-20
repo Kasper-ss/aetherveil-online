@@ -1,5 +1,6 @@
 import type { Player, PublicPlayerProfile, ItemRarity } from '@/types/game'
 import { getEffectiveStats } from '@/lib/playerStats'
+import { getPlayerRankFromPlayer } from '@/lib/playerRank'
 import { SLOT_LABELS_RU } from '@/data/items'
 import { normalizeMonthlyStats } from '@/lib/monthlyStats'
 import { getActiveSetBonuses } from '@/lib/setBonuses'
@@ -24,6 +25,7 @@ export function buildPublicProfile(player: Player): PublicPlayerProfile {
     telegramId: player.telegramId,
     displayName: player.displayName,
     username: player.username,
+    playerRank: getPlayerRankFromPlayer(player),
     level: player.level,
     highestFloor: player.highestFloor,
     classId: player.classId,

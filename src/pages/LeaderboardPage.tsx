@@ -14,6 +14,8 @@ import { flushPlayerSave } from '@/lib/playerSave'
 import { MonthlyLeaderboardPanel } from '@/components/ui/MonthlyLeaderboardPanel'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
 import type { LeaderboardEntry, MonthlyLeaderboardResponse } from '@/types/game'
+import { RankBadge } from '@/components/ui/RankBadge'
+import type { PlayerRankId } from '@/lib/playerRank'
 
 function rankStyle(rank: number): string {
   if (rank === 1) return 'bg-aether-gold text-aether-bg'
@@ -39,9 +41,10 @@ function LeaderboardRow({ entry, selfId, onOpen, valueLabel }: {
           {entry.rank}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white truncate">
-            {entry.displayName}
-            {isMe && <span className="text-aether-cyan ml-1">(Вы)</span>}
+          <div className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+            <span className="truncate">{entry.displayName}</span>
+            <RankBadge rank={(entry.playerRank ?? 'E') as PlayerRankId} size="sm" />
+            {isMe && <span className="text-aether-cyan shrink-0">(Вы)</span>}
           </div>
           <div className="text-[10px] text-slate-500 truncate">@{entry.username}</div>
         </div>

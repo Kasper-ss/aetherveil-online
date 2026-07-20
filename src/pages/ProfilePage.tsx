@@ -28,6 +28,9 @@ import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { PropertyBonusesPanel } from '@/components/ui/PropertyBonusesPanel'
 import { getActivePropertyInfo } from '@/lib/propertyBonuses'
 import { isRealEstateUnlocked } from '@/data/realEstate'
+import { PlayerRankPanel } from '@/components/ui/PlayerRankPanel'
+import { RankBadge } from '@/components/ui/RankBadge'
+import { getRankInputFromPlayer, getPlayerRankFromPlayer, getRankMultipliers } from '@/lib/playerRank'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -72,6 +75,10 @@ export function ProfilePage() {
   const propertyInfo = getActivePropertyInfo(player)
   const realEstateUnlocked = isRealEstateUnlocked(player)
   const trophyCount = (player.bossTrophies ?? []).length
+  const playerRank = getPlayerRankFromPlayer(player)
+  const rankInput = getRankInputFromPlayer(player)
+  const rankMult = getRankMultipliers(player)
+  const hasRankBonuses = rankMult.gold > 1 || rankMult.exp > 1 || rankMult.loot > 1 || rankMult.allStats > 1 || rankMult.craftDiscount > 0
 
   function handleExpClick() {
     if (player!.expEasterEggClaimed) return
@@ -189,7 +196,10 @@ export function ProfilePage() {
         <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-aether-cyan to-aether-purple flex items-center justify-center text-4xl ${frameClass} mb-3`}>
           {avatarEmoji}
         </div>
-        <h2 className="text-xl font-bold text-white">{player.displayName}</h2>
+        <h2 className="text-xl font-bold text-white flex items-center justify-center gap-2">
+          {player.displayName}
+          <RankBadge rank={playerRank} size="md" />
+        </h2>
         {titleLabel && (
           <p className={`text-xs font-medium mt-0.5 ${titleColor}`}>{titleLabel}</p>
         )}
@@ -267,6 +277,11 @@ export function ProfilePage() {
               Бонусы достижений: EXP +{Math.round((achBonuses.exp - 1) * 100)}% · Gold +{Math.round((achBonuses.gold - 1) * 100)}% · Лут +{Math.round((achBonuses.loot - 1) * 100)}% · Статы +{Math.round((achBonuses.allStats - 1) * 100)}%
             </p>
           )}
+          {hasRankBonuses && (
+            <p className="text-[10px] text-center text-aether-cyan">
+              Бонусы ранга {playerRank}: EXP +{Math.round((rankMult.exp - 1) * 100)}% · Gold +{Math.round((rankMult.gold - 1) * 100)}% · Лут +{Math.round((rankMult.loot - 1) * 100)}% · Крафт −{Math.round(rankMult.craftDiscount * 100)}% · Статы +{Math.round((rankMult.allStats - 1) * 100)}%
+            </p>
+          )}
           {propertyInfo && (
             <p className="text-[10px] text-center text-aether-gold">
               {propertyInfo.icon} {propertyInfo.nameRu}: {propertyInfo.bonusLabelRu}
@@ -274,6 +289,10 @@ export function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="mx-4 mt-3">
+        <PlayerRankPanel input={rankInput} />
+      </div>
 
       <Card className="mx-4 mt-3">
         <CardContent className="p-4 space-y-2 text-sm">

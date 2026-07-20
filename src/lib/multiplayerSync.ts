@@ -2,6 +2,7 @@ import type { LeaderboardEntry, MarketListing, Player, Item, PublicPlayerProfile
 import type { ReferralInviteSummary } from '@/types/game'
 import { getInitData } from '@/lib/telegram'
 import { buildPublicProfile } from '@/lib/publicProfile'
+import { getPlayerRankFromPlayer } from '@/lib/playerRank'
 import { loadPlayerFromSupabase } from '@/lib/supabase'
 import { buildVitalSyncPayload } from '@/lib/botNotifications'
 import { normalizeMonthlyStats } from '@/lib/monthlyStats'
@@ -24,6 +25,7 @@ export function applyLiveSelfToLeaderboard(entries: LeaderboardEntry[], self: Pl
       displayName: self.displayName,
       floor: self.highestFloor,
       level: self.level,
+      playerRank: getPlayerRankFromPlayer(self),
     },
   ])
 }
@@ -236,6 +238,7 @@ function buildSelfOnly(self: Player): LeaderboardEntry[] {
     displayName: self.displayName,
     floor: self.highestFloor,
     level: self.level,
+    playerRank: getPlayerRankFromPlayer(self),
   }]
 }
 

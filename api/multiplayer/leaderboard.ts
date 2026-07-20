@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getLeaderboardRecords, getMonthlyLeaderboardRecords } from '../../server/playerRegistry.js'
+import { getLeaderboardRecords, getMonthlyLeaderboardRecords, getPlayerRanksForIds } from '../../server/playerRegistry.js'
 
 function parseIncludeIds(raw: unknown): number[] {
   if (typeof raw !== 'string' || !raw.trim()) return []
@@ -27,6 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const players = await getLeaderboardRecords(includeIds)
+    const rankMap = await getPlayerRanksForIds(players.map((p) => p.telegram_id))
     const entries = players.map((p, index) => ({
       rank: index + 1,
       telegramId: p.telegram_id,
@@ -35,6 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       floor: p.highest_floor,
       level: p.level,
       guildId: p.guild_id,
+      playerRank: rankMap.get(p.telegram_id) ?? 'E',
     }))
     return res.status(200).json({ ok: true, entries, fetchedAt: new Date().toISOString() })
   } catch (error) {

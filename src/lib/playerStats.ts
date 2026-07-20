@@ -3,6 +3,7 @@ import { getEffectiveItemStats } from '@/data/items'
 import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
+import { getRankMultipliers } from '@/lib/playerRank'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
@@ -213,16 +214,17 @@ export function getEffectiveStats(player: Player): EffectiveStats {
     getEffectMultForStat(player, stat) * getEffectMultForStat(player, 'all')
 
   const achMult = getAchievementMultipliers(player).allStats
+  const rankMult = getRankMultipliers(player).allStats
   const propMult = getPropertyMultipliers(player).allStats
   const cityAtk = getCityMultipliers(player).atk
   const cityDef = getCityMultipliers(player).def
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * ALLOC_STAT_PER_POINT.atk) * getDeathDebuffMult(player) * effectMult('atk') * achMult * propMult * cityAtk),
-    def: Math.floor((base.def + totals.def + alloc.def * ALLOC_STAT_PER_POINT.def) * getDeathDebuffMult(player) * effectMult('def') * achMult * propMult * getPropertyMultipliers(player).def * cityDef),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * ALLOC_STAT_PER_POINT.hp) * getDeathDebuffMult(player) * effectMult('hp') * achMult * propMult),
-    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * propMult),
-    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * propMult),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * ALLOC_STAT_PER_POINT.atk) * getDeathDebuffMult(player) * effectMult('atk') * achMult * rankMult * propMult * cityAtk),
+    def: Math.floor((base.def + totals.def + alloc.def * ALLOC_STAT_PER_POINT.def) * getDeathDebuffMult(player) * effectMult('def') * achMult * rankMult * propMult * getPropertyMultipliers(player).def * cityDef),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * ALLOC_STAT_PER_POINT.hp) * getDeathDebuffMult(player) * effectMult('hp') * achMult * rankMult * propMult),
+    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * rankMult * propMult),
+    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * rankMult * propMult),
     stealth: alloc.stealth + totals.stealth,
     endurance: alloc.endurance,
   })
