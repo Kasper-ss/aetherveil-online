@@ -1,8 +1,8 @@
 import type { Player } from '@/types/game'
 import { createDefaultPlayer } from '@/data/gameData'
 
-/** Bump when migration logic changes. v16 = one-time socketGems migrate, trophy fix. */
-export const SAVE_VERSION = 16
+/** Bump when migration logic changes. v17 = bake upgrade/star mult into item.stats. */
+export const SAVE_VERSION = 17
 
 export function wipePlayerToFresh(player: Player): Player {
   const fresh = createDefaultPlayer(player.telegramId, player.displayName, player.username)

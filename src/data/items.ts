@@ -577,12 +577,57 @@ export function getItemStatMultiplier(item: Item): number {
   return (1 + getUpgradeLevelStatBonus(lvl)) * getStarTierMult(stars)
 }
 
+/** Sum of item stats vs shop/craft template — reflects real upgrade progress. */
+export function getItemPowerMultVsTemplate(item: Item): number {
+  const template = ALL_ITEMS[item.id]
+  if (!template?.stats) return 1
+  let templateTotal = 0
+  let currentTotal = 0
+  for (const key of ['atk', 'def', 'hp', 'crit', 'speed', 'stealth'] as const) {
+    templateTotal += template.stats[key] ?? 0
+    currentTotal += item.stats[key] ?? 0
+  }
+  if (templateTotal <= 0) return 1
+  return currentTotal / templateTotal
+}
+
+export function scaleItemStats(
+  stats: Partial<Stats>,
+  factor: number,
+  minGain = 1,
+): Partial<Stats> {
+  const out: Partial<Stats> = { ...stats }
+  for (const key of Object.keys(out) as (keyof Stats)[]) {
+    const v = out[key]
+    if (typeof v !== 'number' || v <= 0) continue
+    const scaled = Math.round(v * factor)
+    out[key] = minGain > 0 ? Math.max(v + minGain, scaled) : Math.max(1, scaled)
+  }
+  return out
+}
+
+export function applyLevelUpgradeStats(stats: Partial<Stats>): Partial<Stats> {
+  return scaleItemStats(stats, 1 + UPGRADE_LEVEL_STEP_PERCENT / 100, 1)
+}
+
+export function applyStarUpgradeStats(stats: Partial<Stats>, newStarLevel: number): Partial<Stats> {
+  return scaleItemStats(stats, getStarStepTierMult(newStarLevel), 1)
+}
+
+/** One-time migration: fold legacy upgrade/star multiplier into stored stats. */
+export function migrateItemStatsFromUpgradeMult(item: Item): Item {
+  if (item.slot === 'consumable') return item
+  const mult = getItemStatMultiplier(item)
+  if (mult <= 1.0001) return item
+  return { ...item, stats: scaleItemStats(item.stats ?? {}, mult, 0) }
+}
+
 export function getItemStatDeltaPreview(item: Item, kind: 'level' | 'star'): Partial<Stats> {
   const current = getEffectiveItemStats(item)
-  const nextItem = kind === 'level'
-    ? { ...item, upgradeLevel: Math.min(10, (item.upgradeLevel ?? 1) + 1) }
-    : { ...item, starLevel: Math.min(10, (item.starLevel ?? 0) + 1) }
-  const next = getEffectiveItemStats(nextItem)
+  const nextStats = kind === 'level'
+    ? applyLevelUpgradeStats(item.stats ?? {})
+    : applyStarUpgradeStats(item.stats ?? {}, (item.starLevel ?? 0) + 1)
+  const next = getEffectiveItemStats({ ...item, stats: nextStats })
   const delta: Partial<Stats> = {}
   for (const key of Object.keys(next) as (keyof Stats)[]) {
     const diff = (next[key] ?? 0) - (current[key] ?? 0)
@@ -600,11 +645,10 @@ export function formatStatDelta(delta: Partial<Stats>): string {
 }
 
 export function getEffectiveItemStats(item: Item): Partial<Stats> {
-  const mult = getItemStatMultiplier(item)
   const duraMult = getDurabilityStatMult(item)
   const result: Partial<Stats> = {}
   for (const [k, v] of Object.entries(item.stats ?? {})) {
-    result[k as keyof Stats] = Math.floor((v as number) * mult * duraMult)
+    result[k as keyof Stats] = Math.max(0, Math.round((v as number) * duraMult))
   }
   return result
 }

@@ -1,6 +1,6 @@
 import type { FloorEnemy, Item, ItemRarity, Player } from '@/types/game'
 import { getEffectiveStats, getCombatMaxHp } from '@/lib/playerStats'
-import { getUpgradeLevelStatBonus, getStarTierMult } from '@/data/items'
+import { getItemPowerMultVsTemplate } from '@/data/items'
 
 const RARITY_POWER: Record<ItemRarity, number> = {
   common: 1,
@@ -15,9 +15,7 @@ const GEAR_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ri
 
 function gearItemPower(item: Item): number {
   const rarityMult = RARITY_POWER[item.rarity] ?? 1
-  const upgradeMult = 1 + getUpgradeLevelStatBonus(item.upgradeLevel ?? 1)
-  const starMult = getStarTierMult(item.starLevel ?? 0)
-  return rarityMult * upgradeMult * starMult
+  return rarityMult * getItemPowerMultVsTemplate(item)
 }
 
 /** Average gear quality from rarity, upgrade level and stars. */

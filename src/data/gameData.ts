@@ -1,5 +1,5 @@
 import type { ShopItem, DailyReward, ResourceId, Item } from '@/types/game'
-import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta, stampItemClassBinding } from '@/data/items'
+import { EMPTY_EQUIPPED, rollEquipmentDrop, ALL_ITEMS, refreshItemMeta, stampItemClassBinding, migrateItemStatsFromUpgradeMult } from '@/data/items'
 import { EMPTY_ALLOCATED, getMaxEnergy } from '@/lib/playerStats'
 import { ensureItemDurability } from '@/lib/equipmentDurability'
 import { getMaxMana, usesMana } from '@/lib/mana'
@@ -144,13 +144,18 @@ export function generateVictoryLoot(
 function sanitizeItem(
   i: import('@/types/game').Item,
   applyClassBinding = false,
+  bakeUpgradeStats = false,
 ): import('@/types/game').Item {
+  let baseItem = i
+  if (bakeUpgradeStats) {
+    baseItem = migrateItemStatsFromUpgradeMult(i)
+  }
   let base: import('@/types/game').Item = {
-    ...i,
-    stats: i.stats ?? {},
-    rarity: (i.rarity as string) === 'uncommon' ? 'rare' : i.rarity,
-    upgradeLevel: i.upgradeLevel ?? 1,
-    starLevel: i.starLevel ?? 0,
+    ...baseItem,
+    stats: baseItem.stats ?? {},
+    rarity: (baseItem.rarity as string) === 'uncommon' ? 'rare' : baseItem.rarity,
+    upgradeLevel: baseItem.upgradeLevel ?? 1,
+    starLevel: baseItem.starLevel ?? 0,
   }
   if (applyClassBinding) base = stampItemClassBinding(base)
   return refreshItemMeta(ensureItemDurability(base))
@@ -159,11 +164,12 @@ function sanitizeItem(
 function sanitizeEquipped(
   equipped: Partial<import('@/types/game').EquippedItems>,
   applyClassBinding = false,
+  bakeUpgradeStats = false,
 ): import('@/types/game').EquippedItems {
   const result = { ...EMPTY_EQUIPPED }
   for (const slot of Object.keys(EMPTY_EQUIPPED) as (keyof import('@/types/game').EquippedItems)[]) {
     const item = equipped[slot]
-    result[slot] = item ? sanitizeItem(item, applyClassBinding) : null
+    result[slot] = item ? sanitizeItem(item, applyClassBinding, bakeUpgradeStats) : null
   }
   return result
 }
@@ -215,6 +221,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     }
   }
   const migrateLegacySocketGems = prevVersion < 16 && hasSocketGemsToMigrate(base.socketGems)
+  const bakeUpgradeStats = prevVersion < 17
   const applyClassBinding = prevVersion < 13
   const normalizedClassId = normalizeClassId(base.classId as string | undefined)
   const synced = syncPlayerSkills(
@@ -233,11 +240,11 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     farmFloor: base.farmFloor ?? base.currentFloor ?? 1,
     floorMobKills: base.floorMobKills ?? {},
     floorMiniBossKills: base.floorMiniBossKills ?? {},
-    equipped: sanitizeEquipped(base.equipped ?? {}, applyClassBinding),
+    equipped: sanitizeEquipped(base.equipped ?? {}, applyClassBinding, bakeUpgradeStats),
     inventory: (base.inventory ?? []).filter((i) => {
       const valid = ['helmet', 'chestplate', 'leggings', 'boots', 'necklace', 'ring', 'weapon', 'pet', 'consumable']
       return valid.includes(i.slot)
-    }).map((i) => sanitizeItem(i, applyClassBinding)),
+    }).map((i) => sanitizeItem(i, applyClassBinding, bakeUpgradeStats)),
     statPoints: base.statPoints ?? 0,
     allocatedStats: { ...EMPTY_ALLOCATED, ...base.allocatedStats },
     professionLevels: base.professionLevels ?? {},
@@ -323,7 +330,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     portalRun: base.portalRun
       ? {
           ...base.portalRun,
-          accumulatedLoot: (base.portalRun.accumulatedLoot ?? []).map((i) => sanitizeItem(i, applyClassBinding)),
+          accumulatedLoot: (base.portalRun.accumulatedLoot ?? []).map((i) => sanitizeItem(i, applyClassBinding, bakeUpgradeStats)),
         }
       : null,
     secondaryClassId: base.secondaryClassId,
@@ -333,7 +340,7 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
         raidId,
         {
           ...progress,
-          accumulatedLoot: (progress.accumulatedLoot ?? []).map((i) => sanitizeItem(i, applyClassBinding)),
+          accumulatedLoot: (progress.accumulatedLoot ?? []).map((i) => sanitizeItem(i, applyClassBinding, bakeUpgradeStats)),
         },
       ]),
     ),

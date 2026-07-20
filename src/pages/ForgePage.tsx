@@ -20,7 +20,8 @@ import {
 import {
   ALL_ITEMS, formatItemStats, RARITY_LABELS_RU, sortGearItems,
   getItemStatDeltaPreview, formatStatDelta,
-  getUpgradeLevelStepPercent, getStarStepTierMult, getItemStatMultiplier,
+  getUpgradeLevelStepPercent, getStarStepTierMult, getItemPowerMultVsTemplate,
+  applyLevelUpgradeStats, applyStarUpgradeStats,
   type GearSortMode,
 } from '@/data/items'
 import { ItemSummary } from '@/components/ui/ItemSummary'
@@ -361,7 +362,7 @@ export function ForgePage() {
                   <Badge variant={selectedItem.rarity}>{RARITY_LABELS_RU[selectedItem.rarity]}</Badge>
                   <p className="text-[10px] text-aether-cyan mt-1">{formatItemStats(selectedItem)}</p>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Ур.{selectedItem.upgradeLevel ?? 1} · ★{selectedItem.starLevel ?? 0} · ×{getItemStatMultiplier(selectedItem).toFixed(2)} к бонусам
+                    Ур.{selectedItem.upgradeLevel ?? 1} · ★{selectedItem.starLevel ?? 0} · ×{getItemPowerMultVsTemplate(selectedItem).toFixed(2)} к базе
                   </p>
                 </div>
 
@@ -371,7 +372,11 @@ export function ForgePage() {
                     <p className="text-[10px] text-aether-gold mb-1">
                       +{getUpgradeLevelStepPercent((selectedItem.upgradeLevel ?? 1) + 1)}% к статам · {formatStatDelta(getItemStatDeltaPreview(selectedItem, 'level'))}
                     </p>
-                    <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({ ...selectedItem, upgradeLevel: (selectedItem.upgradeLevel ?? 1) + 1 })}</p>
+                    <p className="text-[10px] text-slate-400 mb-2">После улучшения: {formatItemStats({
+                      ...selectedItem,
+                      upgradeLevel: (selectedItem.upgradeLevel ?? 1) + 1,
+                      stats: applyLevelUpgradeStats(selectedItem.stats ?? {}),
+                    })}</p>
                     {(() => {
                       const c = getEffectiveUpgradeLevelCost(player, selectedItem)
                       const starMult = getStarLevelUpgradeCostMult(selectedItem.starLevel ?? 0)
@@ -413,6 +418,7 @@ export function ForgePage() {
                         ...selectedItem,
                         starLevel: (selectedItem.starLevel ?? 0) + 1,
                         upgradeLevel: 1,
+                        stats: applyStarUpgradeStats(selectedItem.stats ?? {}, (selectedItem.starLevel ?? 0) + 1),
                       })}
                     </p>
                     {(() => {

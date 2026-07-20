@@ -34,7 +34,16 @@ import {
   MYTHIC_SKILLS, MYTHIC_UPGRADE_COST, isProfessionMaxed,
   getProfessionSkillUpgradeCost, getProfessionMythicSkillUpgradeCost,
 } from '@/data/classes'
-import { createItemInstance, EMPTY_EQUIPPED, ALL_ITEMS, getItemTemplate, refreshItemMeta, stampItemClassBinding } from '@/data/items'
+import {
+  createItemInstance,
+  EMPTY_EQUIPPED,
+  ALL_ITEMS,
+  getItemTemplate,
+  refreshItemMeta,
+  stampItemClassBinding,
+  applyLevelUpgradeStats,
+  applyStarUpgradeStats,
+} from '@/data/items'
 import { ensureItemDurability, getRepairCost, needsRepair, preserveDurabilityRatio, repairItemFull, wearItem } from '@/lib/equipmentDurability'
 import { getMaxMana, getManaRegenIntervalMs, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { usesPetClass, isManaClass } from '@/lib/classCompat'
@@ -2212,7 +2221,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return null
     }
-    return refreshItemMeta(preserveDurabilityRatio(item, { upgradeLevel: lvl + 1 }))
+    return refreshItemMeta(preserveDurabilityRatio(item, {
+      upgradeLevel: lvl + 1,
+      stats: applyLevelUpgradeStats(item.stats ?? {}),
+    }))
   },
 
   upgradeItemStars: (item) => {
@@ -2226,7 +2238,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       grantGoldRaw(get, cost.gold)
       return null
     }
-    return refreshItemMeta(preserveDurabilityRatio(item, { starLevel: stars + 1, upgradeLevel: 1 }))
+    return refreshItemMeta(preserveDurabilityRatio(item, {
+      starLevel: stars + 1,
+      upgradeLevel: 1,
+      stats: applyStarUpgradeStats(item.stats ?? {}, stars + 1),
+    }))
   },
 
   listOnMarket: (item, price) => {
