@@ -3,6 +3,31 @@ import { EMPTY_ALLOCATED } from '@/lib/playerStats'
 
 export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'legendary' | 'secret'
 
+export type AchievementDifficulty = 'easy' | 'medium' | 'hard' | 'hell'
+
+export const ACHIEVEMENT_DIFFICULTY_ORDER: AchievementDifficulty[] = ['easy', 'medium', 'hard', 'hell']
+
+export const DIFFICULTY_LABELS: Record<AchievementDifficulty, string> = {
+  easy: 'Лёгкие',
+  medium: 'Средние',
+  hard: 'Тяжёлые',
+  hell: 'Адские',
+}
+
+export const DIFFICULTY_COLORS: Record<AchievementDifficulty, string> = {
+  easy: 'text-green-400 border-green-500/40',
+  medium: 'text-blue-400 border-blue-500/40',
+  hard: 'text-orange-400 border-orange-500/40',
+  hell: 'text-red-400 border-red-500/40',
+}
+
+export const DIFFICULTY_HEADER_BG: Record<AchievementDifficulty, string> = {
+  easy: 'bg-green-900/20 border-green-500/30',
+  medium: 'bg-blue-900/20 border-blue-500/30',
+  hard: 'bg-orange-900/20 border-orange-500/30',
+  hell: 'bg-red-900/20 border-red-500/30',
+}
+
 export interface AchievementReward {
   gold?: number
   gems?: number
@@ -19,6 +44,8 @@ export interface AchievementDef {
   descriptionRu: string
   icon: string
   tier: AchievementTier
+  /** Явная сложность; иначе выводится из tier через getAchievementDifficulty */
+  difficulty?: AchievementDifficulty
   secret?: boolean
   rewardPreviewRu: string
   reward: AchievementReward
@@ -648,8 +675,9 @@ export const ACHIEVEMENTS_BASE: AchievementDef[] = [
 ]
 
 import { ACHIEVEMENTS_HARD } from '@/data/achievementsHard'
+import { ACHIEVEMENTS_EXTENDED } from '@/data/achievementsExtended'
 
-export const ACHIEVEMENTS: AchievementDef[] = [...ACHIEVEMENTS_BASE, ...ACHIEVEMENTS_HARD]
+export const ACHIEVEMENTS: AchievementDef[] = [...ACHIEVEMENTS_BASE, ...ACHIEVEMENTS_HARD, ...ACHIEVEMENTS_EXTENDED]
 
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a])) as Record<string, AchievementDef>
 
@@ -669,6 +697,24 @@ export const TIER_COLORS: Record<AchievementTier, string> = {
   platinum: 'text-cyan-300',
   legendary: 'text-purple-400',
   secret: 'text-fuchsia-400',
+}
+
+export function getAchievementDifficulty(def: AchievementDef): AchievementDifficulty {
+  if (def.difficulty) return def.difficulty
+  switch (def.tier) {
+    case 'bronze':
+    case 'silver':
+      return 'easy'
+    case 'gold':
+      return 'medium'
+    case 'platinum':
+      return 'hard'
+    case 'legendary':
+    case 'secret':
+      return 'hell'
+    default:
+      return 'medium'
+  }
 }
 
 export function isAchievementMet(player: Player, def: AchievementDef): boolean {
