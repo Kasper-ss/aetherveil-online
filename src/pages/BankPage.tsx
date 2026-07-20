@@ -9,7 +9,7 @@ import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { useT } from '@/hooks/useT'
 import { formatNumber } from '@/lib/utils'
-import { formatBankRate, formatInterestEta, formatPendingInterestPercent } from '@/lib/bank'
+import { formatBankRate, formatBankRateTiers, formatInterestEta, formatPendingInterestPercent } from '@/lib/bank'
 import { hapticError, hapticSuccess } from '@/lib/telegram'
 
 export function BankPage() {
@@ -102,8 +102,13 @@ export function BankPage() {
               <p className="text-xs text-slate-400 mb-1">{t('bank.balance')}</p>
               <p className="text-3xl font-bold text-aether-gold">🪙 {formatNumber(bankBalance)}</p>
               <p className="text-[10px] text-slate-500 mt-2">
-                {t('bank.rate')}: {formatBankRate()}
+                {t('bank.rate')}: {formatBankRate(bankBalance)}
               </p>
+              <div className="text-[10px] text-slate-600 mt-1 space-y-0.5">
+                {formatBankRateTiers().map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
               <p className="text-[10px] text-aether-cyan mt-1">
                 {formatInterestEta(bankBalance, player.bankLastInterestAt)}
               </p>
