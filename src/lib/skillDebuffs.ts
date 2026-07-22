@@ -1,5 +1,5 @@
 import type { CombatLogEntry } from '@/types/game'
-import type { SkillId, PlayerRace } from '@/types/game'
+import type { SkillId, PlayerRace, UniversalSkillId } from '@/types/game'
 import { SKILL_MAX_LEVEL } from '@/data/playerSkills'
 import type { EnemyCombatState } from '@/lib/enemyCombat'
 import { createEnemyCombatState } from '@/lib/enemyCombat'
@@ -86,6 +86,26 @@ export const SKILL_DEBUFF_MAP: Record<SkillId, SkillDebuffType> = {
   aether_aegis: 'holy',
 }
 
+export const UNIVERSAL_SKILL_DEBUFF_MAP: Partial<Record<UniversalSkillId, SkillDebuffType>> = {
+  u_fury: 'burn',
+  u_crit_strike: 'bleed',
+  u_whirlwind: 'bleed',
+  u_concentration: 'weaken',
+  u_berserk: 'burn',
+  u_sharp_eye: 'bleed',
+  u_flash: 'shock',
+  u_chain_lightning: 'shock',
+  u_dragon_fury: 'burn',
+  u_rupture: 'bleed',
+  u_apocalypse: 'burn',
+  u_blood_dance: 'bleed',
+  u_star_burst: 'arcane',
+  u_reality_rift: 'arcane',
+  u_time_slow: 'slow',
+  u_final_strike: 'curse',
+  u_spirit_strength: 'arcane',
+}
+
 const RACE_DEBUFF_MAP: Record<PlayerRace, SkillDebuffType> = {
   human: 'weaken',
   dwarf: 'slow',
@@ -155,6 +175,32 @@ export function applyPlayerSkillDebuff(
     remainingSec: SKILL_DEBUFF_DURATION_SEC,
     tickDamage,
     skillId,
+  }
+  return {
+    state: { ...base, playerDebuffs: upsertDebuff(base.playerDebuffs ?? [], entry) },
+    log: `${def.icon} «${def.nameRu}» на ${SKILL_DEBUFF_DURATION_SEC} сек (−${tickDamage}/с)`,
+  }
+}
+
+export function applyUniversalSkillDebuff(
+  state: EnemyCombatState | undefined,
+  skillId: UniversalSkillId,
+  skillLevel: number,
+  playerAtk: number,
+  powerMult: number,
+  tickMult = 1,
+): { state: EnemyCombatState; log: string } {
+  const type = UNIVERSAL_SKILL_DEBUFF_MAP[skillId] ?? 'arcane'
+  const def = DEBUFF_DEFS[type]
+  const base = state ?? createEnemyCombatState()
+  const tickDamage = Math.max(1, Math.floor(getSkillDebuffTickDamage(skillLevel, playerAtk, powerMult) * tickMult))
+  const entry: PlayerAppliedDebuff = {
+    type: def.type,
+    nameRu: def.nameRu,
+    icon: def.icon,
+    remainingSec: SKILL_DEBUFF_DURATION_SEC,
+    tickDamage,
+    skillId: skillId as unknown as SkillId,
   }
   return {
     state: { ...base, playerDebuffs: upsertDebuff(base.playerDebuffs ?? [], entry) },

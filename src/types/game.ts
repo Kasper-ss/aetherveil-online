@@ -11,6 +11,20 @@ export type SkillId =
   | 'spirit_bolt' | 'summon_guardian' | 'draining_touch' | 'group_heal' | 'aether_avatar'
   | 'backstab' | 'poison_dagger' | 'smoke_bomb' | 'lethal_strike' | 'aether_blade'
   | 'shield_bash' | 'holy_smite' | 'iron_fortress' | 'judgment' | 'aether_aegis'
+export type UniversalSkillId =
+  | 'u_fury' | 'u_tough_skin' | 'u_quick_step'
+  | 'u_crit_strike' | 'u_regeneration' | 'u_shield'
+  | 'u_whirlwind' | 'u_concentration' | 'u_reflect'
+  | 'u_berserk' | 'u_barrier' | 'u_sharp_eye'
+  | 'u_flash' | 'u_vampirism' | 'u_steadfastness'
+  | 'u_chain_lightning' | 'u_healing' | 'u_invulnerability'
+  | 'u_dragon_fury' | 'u_mirror' | 'u_speed_boost'
+  | 'u_rupture' | 'u_recovery' | 'u_aura'
+  | 'u_apocalypse' | 'u_immortality' | 'u_spirit_strength'
+  | 'u_blood_dance' | 'u_absolute_defense' | 'u_life_energy'
+  | 'u_star_burst' | 'u_eternal_regen' | 'u_absolute_shield'
+  | 'u_godlike_strength' | 'u_reality_rift' | 'u_divine_healing'
+  | 'u_skill_copy' | 'u_time_slow' | 'u_final_strike'
 export type EnemyPattern = 'aggressive' | 'defensive' | 'berserker' | 'boss'
 export type PlayerClass =
   | 'warrior' | 'paladin' | 'hunter' | 'rogue' | 'priest'
@@ -343,6 +357,7 @@ export interface Player {
   inventory: Item[]
   skills: SkillId[]
   skillLevels: Partial<Record<SkillId, number>>
+  universalSkillLevels?: Partial<Record<UniversalSkillId, number>>
   tutorialCompleted: boolean
   dailyRewardClaimedAt?: string
   dailyRewardStreak: number
@@ -581,7 +596,7 @@ export interface CombatState {
   enemyHp: number
   enemyMaxHp: number
   combo: number
-  skillCooldowns: Partial<Record<SkillId, number>>
+  skillCooldowns: Partial<Record<SkillId | UniversalSkillId, number>>
   isBoss: boolean
   floor: number
   combatLog: CombatLogEntry[]

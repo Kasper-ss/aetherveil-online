@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CombatState, CombatResult, FloorEnemy, SkillId, CombatLogEntry } from '@/types/game'
+import type { CombatState, CombatResult, FloorEnemy, SkillId, UniversalSkillId, CombatLogEntry } from '@/types/game'
 import type { OnlinePlayerSnapshot } from '@/lib/multiplayer'
 import { getLootMultiplier } from '@/lib/playerBuffs'
 import { SKILLS, generateVictoryLoot, generateCombatResources } from '@/data/gameData'
@@ -50,7 +50,8 @@ import {
   getPotionHealMult,
 } from '@/lib/professionBonuses'
 import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from '@/lib/combatDamage'
-import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs, SKILL_DEBUFF_MAP } from '@/lib/skillDebuffs'
+import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs, SKILL_DEBUFF_MAP, applyUniversalSkillDebuff } from '@/lib/skillDebuffs'
+import { UNIVERSAL_SKILLS, getScaledUniversalSkill, getUniversalPassiveBonuses } from '@/data/universalSkillTree'
 import { getRaceData } from '@/data/races'
 
 /** Global boost to player outgoing damage in combat. */
@@ -58,11 +59,12 @@ const PLAYER_DAMAGE_MULT = 1.12
 
 function combatDamageMult(player: import('@/types/game').Player, combat: CombatState): number {
   const isBeast = !combat.isBoss && !combat.isPvp && !combat.isRaid && !combat.isWorldBoss
+  const uni = getUniversalPassiveBonuses(player.universalSkillLevels ?? {})
   return getProfessionCombatDamageMult(player, {
     isBoss: !!combat.isBoss || !!combat.isWorldBoss,
     isBeast,
     combo: combat.combo,
-  })
+  }) * uni.damageMult
 }
 
 function critDamageMult(isCrit: boolean, player: import('@/types/game').Player): number {
@@ -89,6 +91,7 @@ interface CombatStore {
   playerAttack: () => void
   playerWeakSpot: () => void
   playerSkill: (skillId: SkillId) => void
+  playerUniversalSkill: (skillId: UniversalSkillId) => void
   useConsumableInCombat: (itemId: ConsumableId) => boolean
   eatFoodInCombat: (itemId: string) => boolean
   useRacialAbilityInCombat: () => boolean
@@ -728,6 +731,106 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       return
     }
 
+    set({
+      combat: {
+        ...afterHit,
+        enemyHp: enemyTurn.enemyHp,
+        playerHp: enemyTurn.playerHp,
+        combo: combat.combo + 3,
+        enemyCombat: enemyTurn.enemyCombat,
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+        combatLog: logs.slice(-30),
+        turn: combat.turn + 1,
+      },
+    })
+  },
+
+  playerUniversalSkill: (skillId) => {
+    const { combat, isActive } = get()
+    if (!combat || !isActive) return
+
+    const def = UNIVERSAL_SKILLS[skillId]
+    if (!def || def.effect === 'passive') return
+    const player = usePlayerStore.getState().player
+    if (!player) return
+
+    const skillLevel = player.universalSkillLevels?.[skillId] ?? 0
+    if (skillLevel <= 0) return
+    const scaled = getScaledUniversalSkill(def, skillLevel)
+    if ((combat.skillCooldowns[skillId] ?? 0) > 0) return
+
+    const manaCost = scaled.energyCost
+    if (usesMana(player)) {
+      if (getPlayerCurrentMana(player) < manaCost) return
+    } else if (player.energy < manaCost) return
+
+    const playerStore = usePlayerStore.getState()
+    if (usesMana(player)) {
+      if (!playerStore.spendMana(manaCost)) return
+    } else {
+      playerStore.spendEnergy(manaCost)
+    }
+
+    const logs = [...combat.combatLog]
+    const stats = getEffectiveStats(player)
+
+    if (scaled.healPercent > 0 && scaled.damageMultiplier === 0) {
+      const heal = Math.floor(combat.playerMaxHp * scaled.healPercent)
+      const debuff = applyUniversalSkillDebuff(combat.enemyCombat, skillId, skillLevel, stats.atk, Math.max(scaled.healPercent, 0.5))
+      logs.push(logEntry(`💚 ${def.nameRu}: +${heal} HP`, 'heal'))
+      logs.push(logEntry(`✨ ${debuff.log}`, 'skill'))
+      const afterHeal = {
+        ...combat,
+        playerHp: Math.min(combat.playerMaxHp, combat.playerHp + heal),
+        enemyCombat: debuff.state,
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+      }
+      const enemyTurn = resolveEnemyTurn(afterHeal, stats)
+      logs.push(...enemyTurn.logs)
+      if (enemyTurn.playerHp <= 0) { get().endCombat(false); return }
+      set({ combat: { ...afterHeal, playerHp: enemyTurn.playerHp, enemyHp: enemyTurn.enemyHp, enemyCombat: enemyTurn.enemyCombat, combatLog: logs.slice(-30), turn: combat.turn + 1 } })
+      return
+    }
+
+    const setEffects = getSetCombatEffects(player)
+    const isCrit = rollCrit(Math.floor((stats.crit + 15) * setEffects.critChanceMult), player.classId)
+    const levelEase = getPlayerCombatEase(player, combat.floor)
+    const profDmg = combatDamageMult(player, combat)
+    const defMult = skillId === 'u_rupture' || skillId === 'u_reality_rift' ? 0.6 : 1
+    const rawDmg = calcMitigatedDamage(
+      stats.atk * scaled.damageMultiplier * levelEase.playerDamageMult * PLAYER_DAMAGE_MULT * profDmg * (isCrit ? 2 * critDamageMult(true, player) : 1),
+      combat.enemy.stats.def * defMult,
+      ENEMY_DEF_MITIGATION,
+    )
+    const finalDmg = applySetDamageMultipliers(rawDmg, stats, setEffects)
+    const hit = applyDamageToEnemy(combat, finalDmg, setEffects.fearOnHitChance)
+    logs.push(...hit.logs)
+    let playerHpAfter = combat.playerHp
+
+    if (scaled.healPercent > 0 && scaled.damageMultiplier > 0) {
+      const heal = skillId === 'u_vampirism' || skillId === 'u_mirror'
+        ? Math.floor(finalDmg * (skillId === 'u_vampirism' ? 0.25 : 0.5) * (1 + (skillLevel - 1) * 0.1))
+        : Math.floor(combat.playerMaxHp * scaled.healPercent)
+      playerHpAfter = Math.min(combat.playerMaxHp, combat.playerHp + heal)
+      if (heal > 0) logs.push(logEntry(`💚 +${heal} HP`, 'heal'))
+    }
+
+    logs.push(logEntry(`✨ ${def.nameRu}! ${isCrit ? 'КРИТ! ' : ''}Урон: ${finalDmg}`, isCrit ? 'crit' : 'skill'))
+    const debuff = applyUniversalSkillDebuff(hit.enemyCombat, skillId, skillLevel, stats.atk, scaled.damageMultiplier)
+    logs.push(logEntry(debuff.log, 'skill'))
+
+    if (hit.enemyHp <= 0) {
+      if (handleBossDefeated(get, set, combat, logs, {
+        enemyHp: 0, playerHp: playerHpAfter, combo: combat.combo + 3,
+        enemyCombat: debuff.state,
+        skillCooldowns: { ...combat.skillCooldowns, [skillId]: scaled.cooldown },
+      })) return
+    }
+
+    const afterHit = { ...combat, enemyHp: hit.enemyHp, enemyCombat: debuff.state, playerHp: playerHpAfter }
+    const enemyTurn = resolveEnemyTurn(afterHit, stats)
+    logs.push(...enemyTurn.logs)
+    if (enemyTurn.playerHp <= 0) { get().endCombat(false); return }
     set({
       combat: {
         ...afterHit,

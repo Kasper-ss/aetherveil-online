@@ -23,6 +23,7 @@ import { BankPage } from '@/pages/BankPage'
 import { FairPage } from '@/pages/FairPage'
 import { RealEstatePage } from '@/pages/RealEstatePage'
 import { SkillsPage } from '@/pages/SkillsPage'
+import { UniversalSkillTreePage } from '@/pages/UniversalSkillTreePage'
 import { PlayerViewPage } from '@/pages/PlayerViewPage'
 import { MinePage } from '@/pages/MinePage'
 import { FishingPage } from '@/pages/FishingPage'
@@ -83,6 +84,7 @@ function AppRoutes() {
           <Route path="/forge" element={<ForgePage />} />
           <Route path="/bank" element={<BankPage />} />
           <Route path="/skills" element={<SkillsPage />} />
+          <Route path="/skill-tree" element={<UniversalSkillTreePage />} />
           <Route path="/fair" element={<FairPage />} />
           <Route path="/real-estate" element={<RealEstatePage />} />
           <Route path="/mine" element={<MinePage />} />

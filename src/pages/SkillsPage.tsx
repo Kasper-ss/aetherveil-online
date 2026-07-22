@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Lock } from 'lucide-react'
+import { ArrowLeft, Lock, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -131,8 +131,12 @@ export function SkillsPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-lg font-bold">{t('skills.title')}</h1>
-          <p className="text-xs text-slate-400">{t('skills.subtitle')}</p>
+          <p className="text-xs text-slate-400">Основные навыки класса</p>
         </div>
+        <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/skill-tree')}>
+          <GitBranch className="h-4 w-4 mr-1" />
+          Дерево
+        </Button>
       </div>
 
       <div className="p-4 space-y-6">

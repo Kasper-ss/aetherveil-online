@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { SKILLS } from '@/data/gameData'
 import { getScaledSkill } from '@/data/playerSkills'
+import { UNIVERSAL_SKILLS, getScaledUniversalSkill, getActiveUniversalSkills } from '@/data/universalSkillTree'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
 import { hapticImpact } from '@/lib/telegram'
@@ -51,6 +52,7 @@ export function CombatPage() {
   const playerAttack = useCombatStore((s) => s.playerAttack)
   const playerWeakSpot = useCombatStore((s) => s.playerWeakSpot)
   const playerSkill = useCombatStore((s) => s.playerSkill)
+  const playerUniversalSkill = useCombatStore((s) => s.playerUniversalSkill)
   const useConsumableInCombat = useCombatStore((s) => s.useConsumableInCombat)
   const eatFoodInCombat = useCombatStore((s) => s.eatFoodInCombat)
   const useRacialAbilityInCombat = useCombatStore((s) => s.useRacialAbilityInCombat)
@@ -95,6 +97,7 @@ export function CombatPage() {
   const enemyHpPct = (combat.enemyHp / combat.enemyMaxHp) * 100
 
   const skills = player?.skills ?? []
+  const universalSkills = player ? getActiveUniversalSkills(player.universalSkillLevels ?? {}) : []
   const potionStacks = player ? groupConsumableStacks(player.inventory).filter((s) => isHpPotion(s.itemId)) : []
   const hpPotionOrder: ConsumableId[] = ['hp_potion_legendary', 'hp_potion_epic', 'hp_potion_rare', 'hp_potion']
   const sortedHpPotions = [...potionStacks].sort(
@@ -354,36 +357,74 @@ export function CombatPage() {
               </TabsContent>
 
               <TabsContent value="skills" className="mt-2 mb-1 max-h-[32vh] overflow-y-auto">
-                {skills.length === 0 ? (
+                {skills.length === 0 && universalSkills.length === 0 ? (
                   <p className="text-xs text-slate-500 text-center py-3">Нет изученных навыков</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {skills.map((sid) => {
-                      const skill = SKILLS[sid]
-                      const skillLevel = player?.skillLevels[sid] ?? 1
-                      const scaled = getScaledSkill(skill, skillLevel)
-                      const cd = combat.skillCooldowns[sid as SkillId] ?? 0
-                      const manaCost = scaled.energyCost
-                      const lacksResource = player && usesMana(player)
-                        ? manaCurrent < manaCost
-                        : (player?.energy ?? 0) < manaCost
-                      return (
-                        <Button
-                          key={sid}
-                          variant="secondary"
-                          size="sm"
-                          className="h-auto min-h-[44px] py-2 whitespace-normal"
-                          disabled={cd > 0 || lacksResource}
-                          onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
-                        >
-                          <span className="text-[11px] leading-tight">
-                            {skill.icon} {skill.nameRu}
-                            {player?.classId === 'mage' ? ` (${manaCost}🔮)` : ''}
-                            {cd > 0 ? ` (${cd})` : ''}
-                          </span>
-                        </Button>
-                      )
-                    })}
+                  <div className="space-y-2">
+                    {skills.length > 0 && (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {skills.map((sid) => {
+                          const skill = SKILLS[sid]
+                          const skillLevel = player?.skillLevels[sid] ?? 1
+                          const scaled = getScaledSkill(skill, skillLevel)
+                          const cd = combat.skillCooldowns[sid as SkillId] ?? 0
+                          const manaCost = scaled.energyCost
+                          const lacksResource = player && usesMana(player)
+                            ? manaCurrent < manaCost
+                            : (player?.energy ?? 0) < manaCost
+                          return (
+                            <Button
+                              key={sid}
+                              variant="secondary"
+                              size="sm"
+                              className="h-auto min-h-[44px] py-2 whitespace-normal"
+                              disabled={cd > 0 || lacksResource}
+                              onClick={() => { hapticImpact('medium'); playerSkill(sid as SkillId) }}
+                            >
+                              <span className="text-[11px] leading-tight">
+                                {skill.icon} {skill.nameRu}
+                                {player?.classId === 'mage' ? ` (${manaCost}🔮)` : ''}
+                                {cd > 0 ? ` (${cd})` : ''}
+                              </span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {universalSkills.length > 0 && (
+                      <>
+                        {skills.length > 0 && (
+                          <p className="text-[10px] text-aether-purple text-center">Дерево навыков</p>
+                        )}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {universalSkills.map((sid) => {
+                            const skill = UNIVERSAL_SKILLS[sid]
+                            const skillLevel = player?.universalSkillLevels?.[sid] ?? 1
+                            const scaled = getScaledUniversalSkill(skill, skillLevel)
+                            const cd = combat.skillCooldowns[sid] ?? 0
+                            const manaCost = scaled.energyCost
+                            const lacksResource = player && usesMana(player)
+                              ? manaCurrent < manaCost
+                              : (player?.energy ?? 0) < manaCost
+                            return (
+                              <Button
+                                key={sid}
+                                variant="outline"
+                                size="sm"
+                                className="h-auto min-h-[44px] py-2 whitespace-normal border-aether-purple/40"
+                                disabled={cd > 0 || lacksResource}
+                                onClick={() => { hapticImpact('medium'); playerUniversalSkill(sid) }}
+                              >
+                                <span className="text-[11px] leading-tight text-aether-purple">
+                                  {skill.icon} {skill.nameRu}
+                                  {cd > 0 ? ` (${cd})` : ''}
+                                </span>
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </TabsContent>

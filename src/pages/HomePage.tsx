@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory, Calendar } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory, Calendar, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -163,6 +163,7 @@ export function HomePage() {
     { icon: ChefHat, label: 'Кухня', path: '/kitchen', variant: 'gold' as const },
     { icon: ScrollText, label: 'Квесты', path: '/quests', variant: 'purple' as const },
     { icon: Sparkles, label: t('hub.skills'), path: '/skills', variant: 'purple' as const },
+    { icon: GitBranch, label: 'Дерево навыков', path: '/skill-tree', variant: 'purple' as const },
     { icon: Anvil, label: t('hub.forge'), path: '/forge', variant: 'gold' as const },
     { icon: Landmark, label: t('hub.bank'), path: '/bank', variant: 'gold' as const },
     ...(realEstateUnlocked ? [{ icon: Home, label: t('hub.realEstate'), path: '/real-estate', variant: 'gold' as const }] : []),

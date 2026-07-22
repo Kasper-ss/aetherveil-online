@@ -4,6 +4,7 @@ import { applySetBonuses } from '@/lib/setBonuses'
 import { getEffectMultForStat } from '@/lib/activeEffects'
 import { getAchievementMultipliers } from '@/lib/achievementBonuses'
 import { getRankMultipliers } from '@/lib/playerRank'
+import { getUniversalPassiveBonuses } from '@/data/universalSkillTree'
 import { getPropertyMultipliers } from '@/lib/propertyBonuses'
 import { getCityMultipliers } from '@/lib/cityBonuses'
 import { getSetCombatEffects } from '@/lib/setCombatEffects'
@@ -97,7 +98,8 @@ export function getMaxEnergy(player: Player): number {
   const end = getAllocatedStats(player).endurance
   const prop = getPropertyMultipliers(player).maxEnergy
   const city = getCityMultipliers(player).maxEnergy
-  return Math.floor((BASE_MAX_ENERGY + end * 3) * prop * city)
+  const uni = getUniversalPassiveBonuses(player.universalSkillLevels ?? {})
+  return Math.floor((BASE_MAX_ENERGY + end * 3) * prop * city * uni.maxEnergyMult)
 }
 
 export function getEnergyRegenIntervalMs(player: Player): number {
@@ -106,7 +108,8 @@ export function getEnergyRegenIntervalMs(player: Player): number {
   const setEffects = getSetCombatEffects(player)
   const propEnergy = getPropertyMultipliers(player).energyRegen
   const cityEnergy = getCityMultipliers(player).energyRegen
-  return Math.max(5_000, Math.floor(base / (propEnergy * cityEnergy * setEffects.energyRegenMult)))
+  const uni = getUniversalPassiveBonuses(player.universalSkillLevels ?? {})
+  return Math.max(5_000, Math.floor(base / (propEnergy * cityEnergy * setEffects.energyRegenMult * uni.energyRegenMult)))
 }
 
 export function getHpRegenIntervalMs(player: Player): number {
@@ -217,16 +220,17 @@ export function getEffectiveStats(player: Player, opts?: EffectiveStatsOptions):
 
   const achMult = getAchievementMultipliers(player).allStats
   const rankMult = opts?.skipRankBonus ? 1 : getRankMultipliers(player).allStats
+  const uniMult = getUniversalPassiveBonuses(player.universalSkillLevels ?? {}).allStatsMult
   const propMult = getPropertyMultipliers(player).allStats
   const cityAtk = getCityMultipliers(player).atk
   const cityDef = getCityMultipliers(player).def
 
   const withSets = applySetBonuses(player, {
-    atk: Math.floor((base.atk + totals.atk + alloc.atk * ALLOC_STAT_PER_POINT.atk) * getDeathDebuffMult(player) * effectMult('atk') * achMult * rankMult * propMult * cityAtk),
-    def: Math.floor((base.def + totals.def + alloc.def * ALLOC_STAT_PER_POINT.def) * getDeathDebuffMult(player) * effectMult('def') * achMult * rankMult * propMult * getPropertyMultipliers(player).def * cityDef),
-    hp: Math.floor((base.hp + totals.hp + alloc.hp * ALLOC_STAT_PER_POINT.hp) * getDeathDebuffMult(player) * effectMult('hp') * achMult * rankMult * propMult),
-    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * rankMult * propMult),
-    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * rankMult * propMult),
+    atk: Math.floor((base.atk + totals.atk + alloc.atk * ALLOC_STAT_PER_POINT.atk) * getDeathDebuffMult(player) * effectMult('atk') * achMult * rankMult * uniMult * propMult * cityAtk),
+    def: Math.floor((base.def + totals.def + alloc.def * ALLOC_STAT_PER_POINT.def) * getDeathDebuffMult(player) * effectMult('def') * achMult * rankMult * uniMult * propMult * getPropertyMultipliers(player).def * cityDef),
+    hp: Math.floor((base.hp + totals.hp + alloc.hp * ALLOC_STAT_PER_POINT.hp) * getDeathDebuffMult(player) * effectMult('hp') * achMult * rankMult * uniMult * propMult),
+    crit: Math.floor((base.crit + totals.crit + Math.floor(alloc.stealth * 0.5)) * getDeathDebuffMult(player) * effectMult('crit') * achMult * rankMult * uniMult * propMult),
+    speed: Math.floor((base.speed + totals.speed + alloc.stealth) * getDeathDebuffMult(player) * effectMult('speed') * achMult * rankMult * uniMult * propMult),
     stealth: alloc.stealth + totals.stealth,
     endurance: alloc.endurance,
   })

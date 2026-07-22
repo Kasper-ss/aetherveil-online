@@ -1,8 +1,8 @@
 import type { Player } from '@/types/game'
 import { createDefaultPlayer } from '@/data/gameData'
 
-/** Bump when migration logic changes. v17 = bake upgrade/star mult into item.stats. */
-export const SAVE_VERSION = 17
+/** Bump when migration logic changes. v18 = universal skill tree. */
+export const SAVE_VERSION = 18
 
 export function wipePlayerToFresh(player: Player): Player {
   const fresh = createDefaultPlayer(player.telegramId, player.displayName, player.username)

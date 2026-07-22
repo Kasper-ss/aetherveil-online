@@ -18,6 +18,11 @@ import {
   CREATE_GUILD_MIN_FLOOR,
 } from '@/lib/guildApi'
 import { getSkillUpgradeCost, syncPlayerSkills, syncPlayerSkillsForPlayer, SKILL_MAX_LEVEL } from '@/data/playerSkills'
+import {
+  UNIVERSAL_SKILL_MAX_LEVEL,
+  getAvailableUniversalSkillPoints,
+  getUniversalSkillUnlockLevel,
+} from '@/data/universalSkillTree'
 import { getInitData, getTelegramUser, resolveLoginUser } from '@/lib/telegram'
 import { requestStarsPayment } from '@/lib/starsPayment'
 import { loadPlayerFromSupabase, savePlayerToSupabase } from '@/lib/supabase'
@@ -330,6 +335,7 @@ interface PlayerState {
   applyStarProductReward: (productId: StarProductId) => boolean
   upgradePlayerSkill: (skillId: import('@/types/game').SkillId) => boolean
   getPlayerSkillMissing: (skillId: import('@/types/game').SkillId) => MissingCost[]
+  spendUniversalSkillPoint: (skillId: import('@/types/game').UniversalSkillId) => boolean
   addFriendById: (friendId: number) => boolean
   removeFriend: (friendId: number) => boolean
   playFairBet: (bet: number, pick: FairColor) => { won: boolean; result: FairColor; payout: number } | null
@@ -2593,6 +2599,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     const skillLevels = { ...player.skillLevels, [skillId]: current + 1 }
     get().updatePlayer({ skillLevels })
+    return true
+  },
+
+  spendUniversalSkillPoint: (skillId) => {
+    const { player } = get()
+    if (!player) return false
+    if (getAvailableUniversalSkillPoints(player) <= 0) return false
+    if (player.level < getUniversalSkillUnlockLevel(skillId)) return false
+    const levels = { ...(player.universalSkillLevels ?? {}) }
+    const current = levels[skillId] ?? 0
+    if (current >= UNIVERSAL_SKILL_MAX_LEVEL) return false
+    levels[skillId] = current + 1
+    get().updatePlayer({ universalSkillLevels: levels })
     return true
   },
 
