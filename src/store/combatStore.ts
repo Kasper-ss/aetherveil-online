@@ -53,6 +53,8 @@ import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from
 import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs, SKILL_DEBUFF_MAP, applyUniversalSkillDebuff } from '@/lib/skillDebuffs'
 import { UNIVERSAL_SKILLS, getScaledUniversalSkill, getUniversalPassiveBonuses } from '@/data/universalSkillTree'
 import { getRaceData } from '@/data/races'
+import { calcArenaGoldSteal, getArenaDailyStatus } from '@/data/arena'
+import { settleArenaOnServer } from '@/lib/multiplayerSync'
 
 /** Global boost to player outgoing damage in combat. */
 const PLAYER_DAMAGE_MULT = 1.12
@@ -87,7 +89,7 @@ interface CombatStore {
   startRaidCombat: (def: RaidDefinition) => boolean
   continueRaidCombat: () => boolean
   startWorldBossCombat: () => boolean
-  startPvpCombat: (opponent: OnlinePlayerSnapshot) => void
+  startPvpCombat: (opponent: OnlinePlayerSnapshot) => boolean
   playerAttack: () => void
   playerWeakSpot: () => void
   playerSkill: (skillId: SkillId) => void
@@ -421,14 +423,20 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   },
 
   startPvpCombat: (opponent) => {
-    if (!FEATURES.pvpArena) return
+    if (!FEATURES.pvpArena) return false
     clearCombatTimer(get().tickInterval)
 
     const player = usePlayerStore.getState().player
-    if (!player) return
+    if (!player) return false
+
+    const arenaStatus = getArenaDailyStatus(player)
+    if (!arenaStatus.canFight) return false
+    if (opponent.telegramId === player.telegramId) return false
+    if (!usePlayerStore.getState().recordArenaFight()) return false
 
     const maxHp = getCombatMaxHp(player)
     const startHp = Math.max(1, getPlayerCurrentHp(player))
+    const opponentGold = opponent.gold ?? 0
     const enemy: FloorEnemy = {
       id: `pvp_${opponent.telegramId}`,
       name: opponent.displayName,
@@ -441,7 +449,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         speed: opponent.stats.speed,
       },
       expReward: 20 + opponent.level * 5,
-      goldReward: [25, 55],
+      goldReward: [0, 0],
       lootTable: [],
     }
 
@@ -457,12 +465,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       floor: player.farmFloor,
       isPvp: true,
       pvpOpponentId: opponent.telegramId,
+      pvpOpponentGold: opponentGold,
       combatLog: [logEntry(`⚔️ PvP: бой против ${opponent.displayName} (Ур.${opponent.level})!`, 'system')],
       turn: 1,
     }
 
     const tickInterval = setInterval(() => get().tickCooldowns(), 1000)
     set({ combat, isActive: true, result: null, showLootScreen: false, showRaidComplete: false, raidStepComplete: false, showPortalComplete: false, portalStepComplete: false, tickInterval })
+    return true
   },
 
   playerAttack: () => {
@@ -981,13 +991,19 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (victory) {
       if (combat.isPvp) {
         exp = combat.enemy.expReward
-        gold = randomInt(combat.enemy.goldReward[0], combat.enemy.goldReward[1])
+        gold = calcArenaGoldSteal(combat.pvpOpponentGold ?? 0)
         const p = usePlayerStore.getState().player
         if (p) {
           usePlayerStore.getState().addExp(exp)
-          usePlayerStore.getState().addGold(gold)
-          usePlayerStore.getState().updatePlayer({ pvpWins: p.pvpWins + 1 })
+          if (gold > 0) usePlayerStore.getState().addGold(gold)
+          usePlayerStore.getState().updatePlayer({
+            pvpWins: p.pvpWins + 1,
+            pvpGoldEarned: (p.pvpGoldEarned ?? 0) + gold,
+          })
           usePlayerStore.getState().trackQuestEvent('pvp_win', 1)
+        }
+        if (combat.pvpOpponentId) {
+          void settleArenaOnServer({ opponentId: combat.pvpOpponentId, victory: true })
         }
       } else if (combat.isWorldBoss) {
         exp = combat.enemy.expReward
@@ -1050,6 +1066,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     } else if (combat.isPvp) {
       const p = usePlayerStore.getState().player
       if (p) usePlayerStore.getState().updatePlayer({ pvpLosses: p.pvpLosses + 1 })
+      if (combat.pvpOpponentId) {
+        void settleArenaOnServer({ opponentId: combat.pvpOpponentId, victory: false })
+      }
     }
 
     let raidComplete = false

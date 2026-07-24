@@ -42,6 +42,7 @@ export interface OnlinePlayerSnapshot {
   lastSeen: string
   inArena: boolean
   guildId: string
+  gold?: number
 }
 
 type OnlineRegistry = Record<string, OnlinePlayerSnapshot>
@@ -79,6 +80,7 @@ export function registerOnlinePlayer(player: Player) {
     lastSeen: new Date().toISOString(),
     inArena: false,
     guildId: player.guildId ?? '',
+    gold: player.gold,
   }
   const registry = pruneOnline(readOnline())
   registry[String(player.telegramId)] = snapshot
@@ -103,7 +105,27 @@ export function getOnlinePlayers(excludeId?: number): OnlinePlayerSnapshot[] {
   })
 }
 
-/** PvP arena matchmaking — dormant while FEATURES.pvpArena is false */
+/** PvP arena matchmaking */
+export function profileToArenaSnapshot(
+  profile: import('@/types/game').PublicPlayerProfile,
+  opts?: { guildId?: string },
+): OnlinePlayerSnapshot {
+  return {
+    telegramId: profile.telegramId,
+    displayName: profile.displayName,
+    username: profile.username,
+    level: profile.level,
+    highestFloor: profile.highestFloor,
+    classId: profile.classId,
+    stats: profile.stats,
+    maxHp: profile.stats.hp + profile.level * 20,
+    lastSeen: new Date().toISOString(),
+    inArena: false,
+    guildId: opts?.guildId ?? profile.guildId ?? '',
+    gold: profile.gold,
+  }
+}
+
 export function findArenaOpponent(selfId: number): OnlinePlayerSnapshot | null {
   const online = getOnlinePlayers(selfId)
   const candidates = online.filter((p) => p.inArena)

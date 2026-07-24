@@ -141,6 +141,9 @@ export function PlayerViewPage() {
               </div>
               <p className="text-xs text-slate-500 mt-3 text-center">
                 PvP: {profile.pvpWins}П / {profile.pvpLosses}П
+                {(profile.pvpGoldEarned ?? 0) > 0 && (
+                  <> · 🪙 {formatNumber(profile.pvpGoldEarned ?? 0)} с арены</>
+                )}
               </p>
             </CardContent>
           </Card>

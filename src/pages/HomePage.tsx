@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory, Calendar, GitBranch } from 'lucide-react'
+import { Castle, Users, Package, ShoppingBag, User, Gift, Share2, Trophy, Briefcase, Anvil, Landmark, Sparkles, Copy, Dices, Fish, ChefHat, ScrollText, Skull, Home, Pickaxe, Leaf, Shield, Building2, Heart, Factory, Calendar, GitBranch, Swords } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -32,6 +32,7 @@ import { PRODUCTION_UNLOCK_FLOOR } from '@/data/production'
 import { RankBadge } from '@/components/ui/RankBadge'
 import { PlayerRankPanel } from '@/components/ui/PlayerRankPanel'
 import { getPlayerRankFromPlayer, getRankInputFromPlayer } from '@/lib/playerRank'
+import { getArenaDailyStatus, ARENA_DAILY_LIMIT } from '@/data/arena'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -134,9 +135,16 @@ export function HomePage() {
   const eventsMenuLabel = activeEvents.length > 0 ? `События ⚡ ${activeEvents.length}` : 'События'
   const playerRank = getPlayerRankFromPlayer(player)
   const rankInput = getRankInputFromPlayer(player)
+  const arenaStatus = getArenaDailyStatus(player)
+  const arenaMenuLabel = arenaStatus.canFight
+    ? `Арена ⚔️ ${arenaStatus.fightsLeft}/${ARENA_DAILY_LIMIT}`
+    : arenaStatus.dailyLimitReached
+      ? 'Арена · лимит'
+      : 'Арена · пауза'
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
+    { icon: Swords, label: arenaMenuLabel, path: '/arena', variant: 'purple' as const, primary: arenaStatus.canFight },
     { icon: Calendar, label: eventsMenuLabel, path: '/events', variant: 'purple' as const, primary: activeEvents.length > 0 },
     {
       icon: Skull,

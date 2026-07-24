@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LoadingScreen } from '@/pages/LoadingScreen'
 import { TutorialModal } from '@/pages/TutorialModal'
 import { DailyRewardModal } from '@/pages/DailyRewardModal'
@@ -37,6 +37,7 @@ import { RaidsPage } from '@/pages/RaidsPage'
 import { CityPage } from '@/pages/CityPage'
 import { JewelerPage } from '@/pages/JewelerPage'
 import { WorldBossPage } from '@/pages/WorldBossPage'
+import { ArenaPage } from '@/pages/ArenaPage'
 import { NurseryPage } from '@/pages/NurseryPage'
 import { ProductionPage } from '@/pages/ProductionPage'
 import { ElementalForgePage } from '@/pages/ElementalForgePage'
@@ -78,7 +79,7 @@ function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/player/:id" element={<PlayerViewPage />} />
-          <Route path="/arena" element={<Navigate to="/" replace />} />
+          <Route path="/arena" element={<ArenaPage />} />
           <Route path="/professions" element={<ProfessionsPage />} />
           <Route path="/professions/:professionId" element={<ProfessionsPage />} />
           <Route path="/forge" element={<ForgePage />} />

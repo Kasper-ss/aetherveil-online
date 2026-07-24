@@ -261,6 +261,33 @@ export async function fetchServerMarket(selfId: number): Promise<MarketListing[]
   }
 }
 
+export async function settleArenaOnServer(opts: {
+  opponentId: number
+  victory: boolean
+}): Promise<{ ok: boolean; goldStolen?: number; error?: string } | null> {
+  const initData = getInitData()
+  if (!initData) return null
+
+  try {
+    const res = await fetch('/api/multiplayer/arena', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        opponentId: opts.opponentId,
+        victory: opts.victory,
+      }),
+    })
+    const data = await res.json() as { ok?: boolean; goldStolen?: number; error?: string }
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? 'Ошибка арены' }
+    }
+    return { ok: true, goldStolen: data.goldStolen ?? 0 }
+  } catch {
+    return null
+  }
+}
+
 export async function fetchPlayerProfile(telegramId: number): Promise<PublicPlayerProfile | null> {
   try {
     const res = await fetch(`/api/multiplayer/profile?telegramId=${telegramId}`)

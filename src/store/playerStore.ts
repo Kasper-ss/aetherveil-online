@@ -174,6 +174,7 @@ import { getNpcSellGold } from '@/data/resourceShop'
 import { bumpMonthlyStat, MONTHLY_RANK_REWARDS, isMonthlyRewardClaimWindowOpen } from '@/lib/monthlyStats'
 import { ACHIEVEMENT_BY_ID, canClaimAchievement } from '@/data/achievements'
 import { WORLD_BOSS_REWARDS } from '@/data/worldBoss'
+import { getArenaDailyStatus, normalizeArenaFields } from '@/data/arena'
 import { EMPTY_ACHIEVEMENT_BONUSES } from '@/lib/achievementBonuses'
 import {
   getPropertyById, getPropertySellPrice, isPropertyUnlockedForPlayer, isRealEstateUnlocked,
@@ -227,6 +228,7 @@ interface PlayerState {
   advanceFloor: (clearedFloor: number) => void
   awardBossTrophy: (floor: number) => void
   applyWorldBossVictory: () => void
+  recordArenaFight: () => boolean
   beginRaid: (def: RaidDefinition) => boolean
   failRaid: (raidId: string) => void
   abandonRaid: (raidId: string) => void
@@ -761,6 +763,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       unlockedTitles: newTitles,
       gems: player.gems + WORLD_BOSS_REWARDS.gems,
     })
+  },
+
+  recordArenaFight: () => {
+    const { player } = get()
+    if (!player) return false
+    const status = getArenaDailyStatus(player)
+    if (!status.canFight) return false
+
+    const normalized = normalizeArenaFields(player)
+    get().updatePlayer({
+      ...normalized,
+      arenaFightsToday: (normalized.arenaFightsToday ?? 0) + 1,
+      arenaLastFightAt: new Date().toISOString(),
+    })
+    return true
   },
 
   beginRaid: (def) => {

@@ -375,6 +375,12 @@ export interface Player {
   totalPlayTime: number
   pvpWins: number
   pvpLosses: number
+  /** Золото, заработанное победами на арене */
+  pvpGoldEarned?: number
+  /** Бои на арене за текущий день (UTC) */
+  arenaFightsToday?: number
+  arenaDayKey?: string
+  arenaLastFightAt?: string
   classId?: PlayerClass
   classSelected: boolean
   secondaryClassId?: PlayerClass
@@ -604,6 +610,7 @@ export interface CombatState {
   enemyCombat?: import('@/lib/enemyCombat').EnemyCombatState
   isPvp?: boolean
   pvpOpponentId?: number
+  pvpOpponentGold?: number
   isEpic?: boolean
   isMiniBoss?: boolean
   bossPhase?: 1 | 2
@@ -697,6 +704,7 @@ export interface PublicPlayerProfile {
   profileTitleId?: string
   pvpWins: number
   pvpLosses: number
+  pvpGoldEarned?: number
   guildId?: string
   monthlyStats?: MonthlyStats
 }

@@ -9,7 +9,7 @@ import { TOOL_SHOP_ITEMS } from '@/data/tools'
 import { SCROLL_SHOP_ITEMS, migrateUnlockedSetScrolls } from '@/data/setScrolls'
 import { RESOURCE_SHOP_ITEMS } from '@/data/resourceShop'
 import { BASE_PROFESSION_SLOTS } from '@/lib/professionProgress'
-import { defaultQuestState } from '@/lib/quests'
+import { todayKey, defaultQuestState } from '@/lib/quests'
 import { defaultMonthlyStats, monthKey } from '@/lib/monthlyStats'
 import { DEFAULT_NOTIFICATION_SETTINGS } from '@/lib/vitalNotifications'
 import { SAVE_VERSION, wipePlayerToFresh } from '@/lib/playerMigration'
@@ -359,6 +359,10 @@ export function migratePlayer(player: import('@/types/game').Player): import('@/
     },
     nurseryState: base.nurseryState ?? { stage: 1, feedProgress: 0 },
     fairStats: base.fairStats ?? { gamesPlayed: 0, gamesWon: 0, gamesLost: 0, goldWon: 0, goldLost: 0 },
+    pvpGoldEarned: base.pvpGoldEarned ?? 0,
+    arenaFightsToday: base.arenaDayKey === todayKey() ? (base.arenaFightsToday ?? 0) : 0,
+    arenaDayKey: todayKey(),
+    arenaLastFightAt: base.arenaLastFightAt,
     saveVersion: SAVE_VERSION,
   }
   if (usesMana(migrated)) {

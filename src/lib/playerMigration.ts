@@ -1,8 +1,8 @@
 import type { Player } from '@/types/game'
 import { createDefaultPlayer } from '@/data/gameData'
 
-/** Bump when migration logic changes. v18 = universal skill tree. */
-export const SAVE_VERSION = 18
+/** Bump when migration logic changes. v19 = PvP arena stats. */
+export const SAVE_VERSION = 19
 
 export function wipePlayerToFresh(player: Player): Player {
   const fresh = createDefaultPlayer(player.telegramId, player.displayName, player.username)

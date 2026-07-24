@@ -42,6 +42,7 @@ export function buildPublicProfile(player: Player): PublicPlayerProfile {
     profileTitleId: player.profileTitleId,
     pvpWins: player.pvpWins,
     pvpLosses: player.pvpLosses,
+    pvpGoldEarned: player.pvpGoldEarned ?? 0,
     guildId: player.guildId,
     monthlyStats: normalizeMonthlyStats(player),
   }

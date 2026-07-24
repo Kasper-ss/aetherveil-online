@@ -276,6 +276,10 @@ export function ProfilePage() {
             <span className="text-white">{player.pvpWins}П / {player.pvpLosses}П</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-slate-400">PvP заработано</span>
+            <span className="text-aether-gold">🪙 {formatNumber(player.pvpGoldEarned ?? 0)}</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-slate-400">Реферальный код</span>
             <button type="button" className="text-aether-cyan" onClick={() => void shareInviteLink(player.referralCode)}>
               {player.referralCode}
