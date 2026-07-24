@@ -306,6 +306,7 @@ interface PlayerState {
   changeDisplayName: (name: string) => boolean
   claimExpEasterEgg: () => boolean
   claimUnderwearEasterEgg: () => boolean
+  claimGothicDamEasterEgg: () => boolean
   claimAchievement: (achievementId: string) => boolean
   setProfileTitle: (titleId: string | null) => boolean
   dismantleAllCommonItems: () => DismantleSummary
@@ -1114,6 +1115,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!item) return false
     get().updatePlayer({ underwearEasterEggClaimed: true })
     get().addItem(item)
+    return true
+  },
+
+  claimGothicDamEasterEgg: () => {
+    const { player } = get()
+    if (!player || player.gothicDamEasterEggClaimed) return false
+    get().updatePlayer({
+      gothicDamEasterEggClaimed: true,
+      statPoints: player.statPoints + 5,
+      gems: player.gems + 20,
+    })
     return true
   },
 

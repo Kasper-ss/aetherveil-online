@@ -421,6 +421,7 @@ export interface Player {
   manaLastRegenAt?: string
   expEasterEggClaimed?: boolean
   underwearEasterEggClaimed?: boolean
+  gothicDamEasterEggClaimed?: boolean
   bankBalance?: number
   bankLastInterestAt?: string
   bankPendingInterest?: number

@@ -23,6 +23,9 @@ interface ResourceCatalogProps {
   extraSections?: ResourceCatalogExtraSection[]
   showZero?: boolean
   compact?: boolean
+  /** Скрытые клики по ресурсу (без визуальной подсказки) */
+  secretClickResourceIds?: ResourceId[]
+  onSecretResourceClick?: (resourceId: ResourceId) => void
 }
 
 export function ResourceCatalog({
@@ -31,7 +34,14 @@ export function ResourceCatalog({
   extraSections = [],
   showZero = true,
   compact = false,
+  secretClickResourceIds = [],
+  onSecretResourceClick,
 }: ResourceCatalogProps) {
+  const secretSet = new Set(secretClickResourceIds)
+
+  function handleSecretClick(resourceId: ResourceId) {
+    if (secretSet.has(resourceId)) onSecretResourceClick?.(resourceId)
+  }
   return (
     <div className="space-y-3">
       {extraSections.map((section) => (
@@ -68,8 +78,13 @@ export function ResourceCatalog({
               const count = resources[rid] ?? 0
               if (!showZero && count <= 0) return null
               const res = RESOURCES[rid]
+              const hasSecretClick = secretSet.has(rid)
               return (
-                <Card key={rid} className={count <= 0 ? 'opacity-50' : ''}>
+                <Card
+                  key={rid}
+                  className={count <= 0 ? 'opacity-50' : ''}
+                  onClick={hasSecretClick ? () => handleSecretClick(rid) : undefined}
+                >
                   <CardContent className={`${compact ? 'p-2' : 'p-2.5'} flex items-center justify-between gap-2`}>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg shrink-0">{res.icon}</span>

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EquipmentSlotIcon } from '@/components/ui/EquipmentSlotIcon'
 import { usePlayerStore } from '@/store/playerStore'
 import { useTelegramBackButton } from '@/hooks/useTelegram'
@@ -24,6 +25,7 @@ import { RaidExclusiveBadge } from '@/components/ui/RaidExclusiveBadge'
 import { isRaidExclusiveItem } from '@/data/raidExclusiveGear'
 import { getRaidItemCardClassName, getRaidItemNameClassName } from '@/lib/raidItemStyle'
 import { hapticSuccess, hapticError } from '@/lib/telegram'
+import { playSfx } from '@/lib/audio'
 import { formatGemSocketSummary, getItemMaxGemSockets } from '@/lib/gemSockets'
 import { SOCKET_GEMS } from '@/data/socketGems'
 import { getItemSockets } from '@/lib/gemSockets'
@@ -40,12 +42,33 @@ export function InventoryPage() {
   const unequipItem = usePlayerStore((s) => s.unequipItem)
   const consumeConsumable = usePlayerStore((s) => s.consumeConsumable)
   const eatFood = usePlayerStore((s) => s.eatFood)
+  const claimGothicDamEasterEgg = usePlayerStore((s) => s.claimGothicDamEasterEgg)
   const [gearSort, setGearSort] = useState<GearSortMode>('type')
   const [swapSlot, setSwapSlot] = useState<EquipSlot | null>(null)
+  const [showGothicDamEgg, setShowGothicDamEgg] = useState(false)
+  const stoneClickTimes = useRef<number[]>([])
 
   useTelegramBackButton(() => navigate('/'), true)
 
   if (!player) return null
+
+  function handleStoneSecretClick() {
+    if (player!.gothicDamEasterEggClaimed) return
+    const now = Date.now()
+    const prev = stoneClickTimes.current
+    if (prev.length > 0 && now - prev[prev.length - 1] > 2500) {
+      stoneClickTimes.current = []
+    }
+    stoneClickTimes.current.push(now)
+    if (stoneClickTimes.current.length >= 5) {
+      stoneClickTimes.current = []
+      if (claimGothicDamEasterEgg()) {
+        hapticSuccess()
+        playSfx('victory')
+        setShowGothicDamEgg(true)
+      }
+    }
+  }
 
   const getAlternativesForSlot = (slot: EquipSlot): Item[] =>
     player.inventory.filter(
@@ -294,6 +317,10 @@ export function InventoryPage() {
         <TabsContent value="resources" className="mt-3">
           <ResourceCatalog
             resources={player.resources}
+            secretClickResourceIds={player.gothicDamEasterEggClaimed ? [] : ['stone_chunk']}
+            onSecretResourceClick={(rid) => {
+              if (rid === 'stone_chunk') handleStoneSecretClick()
+            }}
             extraSections={
               player.highestFloor >= PRODUCTION_UNLOCK_FLOOR
                 ? [{
@@ -339,6 +366,32 @@ export function InventoryPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showGothicDamEgg} onOpenChange={setShowGothicDamEgg}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Шнырь знает толк</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-slate-300">
+            <img
+              src="/easter-eggs/gothic-dam.png"
+              alt="Шнырь"
+              className="w-full rounded-lg border border-slate-700"
+            />
+            <p className="italic leading-relaxed text-center text-white">
+              — Плотину надо поднять. Рычагом. Я его дам.
+              <br />
+              — Канал нужно завалить. Камнем. Камень я не дам.
+            </p>
+            <p className="text-center text-aether-purple font-medium">
+              Награда: +5 очков статов · +20 💎
+            </p>
+            <Button className="w-full" onClick={() => setShowGothicDamEgg(false)}>
+              Понятно
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

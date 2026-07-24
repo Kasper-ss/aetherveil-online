@@ -144,7 +144,7 @@ export function HomePage() {
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
-    { icon: Swords, label: arenaMenuLabel, path: '/arena', variant: 'purple' as const, primary: arenaStatus.canFight },
+    { icon: Swords, label: arenaMenuLabel, path: '/arena', variant: 'purple' as const, primary: true },
     { icon: Calendar, label: eventsMenuLabel, path: '/events', variant: 'purple' as const, primary: activeEvents.length > 0 },
     {
       icon: Skull,
