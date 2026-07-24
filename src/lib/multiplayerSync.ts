@@ -269,13 +269,15 @@ export async function settleArenaOnServer(opts: {
   if (!initData) return null
 
   try {
-    const res = await fetch('/api/multiplayer/arena', {
+    const res = await fetch('/api/multiplayer/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         initData,
-        opponentId: opts.opponentId,
-        victory: opts.victory,
+        arenaSettle: {
+          opponentId: opts.opponentId,
+          victory: opts.victory,
+        },
       }),
     })
     const data = await res.json() as { ok?: boolean; goldStolen?: number; error?: string }

@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         username: user.username ?? `user_${user.id}`,
         name: body.name ?? '',
       })
-      if (!result.ok) return res.status(400).json({ error: result.error })
+      if (result.ok === false) return res.status(400).json({ error: result.error })
       return res.status(200).json({
         ok: true,
         guild: result.guild,
@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         username: user.username ?? `user_${user.id}`,
         guildId,
       })
-      if (!result.ok) return res.status(400).json({ error: result.error })
+      if (result.ok === false) return res.status(400).json({ error: result.error })
       return res.status(200).json({ ok: true, guild: result.guild })
     }
 

@@ -8,6 +8,7 @@ import { claimGuildGifts } from '../../server/guildGifts.js'
 import { processPropertyAction } from '../../server/realEstate.js'
 import { processWorldBossNotifications } from '../../server/worldBossNotifications.js'
 import { processEventNotifications } from '../../server/eventsNotifications.js'
+import { settleArenaFight } from '../../server/arena.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -36,11 +37,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         propertyId?: string
         expectedPrice?: number
       }
+      arenaSettle?: {
+        opponentId: number
+        victory: boolean
+      }
     }
 
     const user = validateInitData(body.initData ?? '', getBotToken())
     if (!user) {
       return res.status(401).json({ error: 'Недействительные данные Telegram' })
+    }
+
+    if (body.arenaSettle) {
+      const opponentId = Number(body.arenaSettle.opponentId)
+      if (!opponentId || Number.isNaN(opponentId)) {
+        return res.status(400).json({ error: 'opponentId required' })
+      }
+      const arenaResult = await settleArenaFight({
+        attackerId: user.id,
+        opponentId,
+        victory: !!body.arenaSettle.victory,
+      })
+      if (arenaResult.ok === false) {
+        return res.status(400).json({ ok: false, error: arenaResult.error })
+      }
+      return res.status(200).json({ ok: true, goldStolen: arenaResult.goldStolen ?? 0 })
     }
 
     const marketListings = (body.marketListings ?? []).map((raw) => {
