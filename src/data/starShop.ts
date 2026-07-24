@@ -6,10 +6,7 @@ export type StarProductId =
   | 'infinite_energy_24h'
   | 'double_exp_7d'
   | 'stat_reset'
-  | 'telegram_hero_set'
-  | 'mythic_craft_pack'
   | 'triple_gold_3d'
-  | 'daily_bonus_50_30d'
   | 'mythic_starter_pack'
   | 'extra_profession_slot'
   | 'cosmetic_avatar_telegram_hero'
@@ -19,6 +16,10 @@ export type StarProductId =
   | 'cosmetic_frame_mythic'
   | 'vip_upgrade'
   | 'city_build_rush'
+  /** @deprecated Removed from shop; kept for legacy payment fulfillment */
+  | 'telegram_hero_set'
+  | 'mythic_craft_pack'
+  | 'daily_bonus_50_30d'
 
 export interface StarShopProduct {
   id: StarProductId
@@ -33,7 +34,7 @@ export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
   {
     id: 'starter_boost',
     nameRu: 'Набор Стартового Буста',
-    descriptionRu: '5000 Gold, 50 Gems, 3 случайных редких предмета.',
+    descriptionRu: '100 000 Gold, 100 Gems, 3 случайных редких предмета.',
     stars: 150,
     icon: '🎁',
   },
@@ -59,32 +60,11 @@ export const STAR_SHOP_PRODUCTS: StarShopProduct[] = [
     icon: '🔄',
   },
   {
-    id: 'telegram_hero_set',
-    nameRu: 'Сет «Герой Телеграм»',
-    descriptionRu: 'Полный легендарный сет с уникальной аурой ✈️ и бонусами.',
-    stars: 1000,
-    icon: '✈️',
-  },
-  {
-    id: 'mythic_craft_pack',
-    nameRu: 'Набор Ресурсов для Мифического Крафта',
-    descriptionRu: 'Материалы для одного мифического улучшения предмета.',
-    stars: 500,
-    icon: '🌟',
-  },
-  {
     id: 'triple_gold_3d',
     nameRu: 'Тройной Gold на 3 дня',
     descriptionRu: 'x3 золото с боёв, простоя и наград.',
     stars: 200,
     icon: '🪙',
-  },
-  {
-    id: 'daily_bonus_50_30d',
-    nameRu: '+50 Ежедневных Бонусов',
-    descriptionRu: '+50 Gold и +5 Gems к ежедневной награде на 30 дней.',
-    stars: 300,
-    icon: '📅',
   },
   {
     id: 'mythic_starter_pack',

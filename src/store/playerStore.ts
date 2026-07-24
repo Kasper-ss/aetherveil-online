@@ -2715,7 +2715,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     switch (productId) {
       case 'starter_boost':
-        get().updatePlayer({ gold: player.gold + 5000, gems: player.gems + 50 })
+        get().updatePlayer({ gold: player.gold + 100_000, gems: player.gems + 100 })
         grantRandomRareItems(3)
         break
       case 'infinite_energy_24h':
