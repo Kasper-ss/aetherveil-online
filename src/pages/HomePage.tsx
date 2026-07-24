@@ -144,7 +144,6 @@ export function HomePage() {
 
   const menuItems = [
     { icon: Castle, label: t('hub.enterTower'), path: '/tower', variant: 'default' as const, primary: true },
-    { icon: Swords, label: arenaMenuLabel, path: '/arena', variant: 'purple' as const, primary: true },
     { icon: Calendar, label: eventsMenuLabel, path: '/events', variant: 'purple' as const, primary: activeEvents.length > 0 },
     {
       icon: Skull,
@@ -304,6 +303,17 @@ export function HomePage() {
         </Button>
         <Button variant="outline" size="sm" className="flex-1" onClick={handleShare}>
           <Share2 className="h-4 w-4" /> {t('hub.invite')}
+        </Button>
+      </div>
+
+      <div className="px-4 mt-2">
+        <Button
+          variant="purple"
+          className="w-full h-12 flex items-center justify-center gap-2 text-sm font-semibold border border-red-500/40 shadow-lg shadow-red-900/30"
+          onClick={() => nav('/arena')}
+        >
+          <Swords className="h-5 w-5" />
+          {arenaMenuLabel}
         </Button>
       </div>
 
