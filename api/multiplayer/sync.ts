@@ -40,6 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       arenaSettle?: {
         opponentId: number
         victory: boolean
+        attackerName?: string
       }
     }
 
@@ -57,6 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         attackerId: user.id,
         opponentId,
         victory: !!body.arenaSettle.victory,
+        attackerName: body.arenaSettle.attackerName ?? body.displayName ?? user.first_name,
       })
       if (arenaResult.ok === false) {
         return res.status(400).json({ ok: false, error: arenaResult.error })

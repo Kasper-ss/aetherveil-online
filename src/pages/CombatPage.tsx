@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LootScreen } from '@/pages/LootScreen'
 import { RaidCompleteScreen } from '@/pages/RaidCompleteScreen'
@@ -14,7 +14,7 @@ import { getScaledSkill } from '@/data/playerSkills'
 import { UNIVERSAL_SKILLS, getScaledUniversalSkill, getActiveUniversalSkills } from '@/data/universalSkillTree'
 import { useT } from '@/hooks/useT'
 import type { SkillId, CombatLogEntry } from '@/types/game'
-import { hapticImpact } from '@/lib/telegram'
+import { hapticImpact, hapticSuccess } from '@/lib/telegram'
 import { groupConsumableStacks, isHpPotion, isEnergyDrink, CONSUMABLE_EFFECTS, type ConsumableId } from '@/lib/consumables'
 import { FOOD_BUFF_MAP } from '@/data/kitchenRecipes'
 import { formatFoodBuffDescription } from '@/lib/foodBuffs'
@@ -25,6 +25,10 @@ import { getMaxMana, getPlayerCurrentMana, usesMana } from '@/lib/mana'
 import { canUseRacialAbility } from '@/lib/racialAbilities'
 import { canUseWeakSpot } from '@/lib/professionBonuses'
 import { getRaceData } from '@/data/races'
+import { settleArenaOnServer } from '@/lib/multiplayerSync'
+import { calcArenaGoldSteal } from '@/data/arena'
+import { formatNumber } from '@/lib/utils'
+import { playSfx } from '@/lib/audio'
 
 const LOG_COLORS: Record<CombatLogEntry['type'], string> = {
   player: 'text-aether-cyan',
@@ -40,6 +44,7 @@ export function CombatPage() {
   const t = useT()
   const combat = useCombatStore((s) => s.combat)
   const result = useCombatStore((s) => s.result)
+  const isActive = useCombatStore((s) => s.isActive)
   const showLootScreen = useCombatStore((s) => s.showLootScreen)
   const showRaidComplete = useCombatStore((s) => s.showRaidComplete)
   const showPortalComplete = useCombatStore((s) => s.showPortalComplete)
@@ -60,28 +65,74 @@ export function CombatPage() {
   const clearCombat = useCombatStore((s) => s.clearCombat)
   const player = usePlayerStore((s) => s.player)
   const logRef = useRef<HTMLDivElement>(null)
+  const [pvpGoldReward, setPvpGoldReward] = useState<number | null>(null)
+  const [pvpSettling, setPvpSettling] = useState(false)
+  const pvpSettleStarted = useRef(false)
+
+  const showPvpVictory = !!(result?.victory && combat?.isPvp && !isActive)
 
   useTelegramBackButton(() => {
-    if (!useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete) {
+    if (!isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete && !showPvpVictory) {
       clearCombat()
-      navigate(combat?.isRaid ? '/raids' : combat?.isPortal ? '/tower' : '/tower')
+      navigate(combat?.isRaid ? '/raids' : combat?.isPortal ? '/tower' : combat?.isPvp ? '/arena' : '/tower')
     }
-  }, !useCombatStore.getState().isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete)
+  }, !isActive && !showLootScreen && !showRaidComplete && !showPortalComplete && !raidStepComplete && !portalStepComplete && !showPvpVictory)
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [combat?.combatLog.length])
 
   useEffect(() => {
+    if (!showPvpVictory || !combat?.pvpOpponentId || pvpSettleStarted.current) return
+    pvpSettleStarted.current = true
+    setPvpSettling(true)
+    void settleArenaOnServer({
+      opponentId: combat.pvpOpponentId,
+      victory: true,
+      attackerName: player?.displayName,
+    }).then((server) => {
+      const fallback = calcArenaGoldSteal(combat.pvpOpponentGold ?? 0)
+      const gold = server?.goldStolen ?? fallback
+      if (gold > 0) {
+        usePlayerStore.getState().addGold(gold)
+        const p = usePlayerStore.getState().player
+        if (p) {
+          usePlayerStore.getState().updatePlayer({
+            pvpGoldEarned: (p.pvpGoldEarned ?? 0) + gold,
+          })
+        }
+      }
+      setPvpGoldReward(gold)
+      setPvpSettling(false)
+      hapticSuccess()
+      playSfx('victory')
+      const current = useCombatStore.getState().result
+      if (current) {
+        useCombatStore.setState({ result: { ...current, gold, lootClaimed: true } })
+      }
+    })
+  }, [showPvpVictory, combat?.pvpOpponentId, combat?.pvpOpponentGold, player?.displayName])
+
+  useEffect(() => {
     if (combat) return
+    pvpSettleStarted.current = false
+    setPvpGoldReward(null)
+    setPvpSettling(false)
     const state = useCombatStore.getState()
-    navigate(state.result?.isRaid || state.raidStepComplete ? '/raids' : '/')
+    navigate(
+      state.result?.isRaid || state.raidStepComplete
+        ? '/raids'
+        : state.result?.isPvp || state.combat?.isPvp
+          ? '/arena'
+          : '/',
+    )
   }, [combat, navigate])
 
   if (!combat) return null
 
   const isRaidCombat = combat.isRaid
   const isPortalCombat = combat.isPortal
+  const isPvpCombat = combat.isPvp
 
   if (showPortalComplete && result?.victory) return <PortalCompleteScreen />
 
@@ -140,7 +191,12 @@ export function CombatPage() {
 
   function handleDefeatContinue() {
     clearCombat()
-    navigate(isRaidCombat ? '/raids' : isPortalCombat ? '/tower' : '/tower')
+    navigate(isRaidCombat ? '/raids' : isPortalCombat ? '/tower' : isPvpCombat ? '/arena' : '/tower')
+  }
+
+  function handlePvpVictoryContinue() {
+    clearCombat()
+    navigate('/arena')
   }
 
   function handleRaidStepContinue() {
@@ -173,6 +229,8 @@ export function CombatPage() {
               ? `${combat.portalType === 'blue' ? '🌀' : '🔥'} Портал · ${combat.isBoss ? 'Босс' : 'Моб'}`
               : combat.isWorldBoss
               ? `🌌 Мировой Босс · фаза ${combat.bossPhase ?? 1}`
+              : combat.isPvp
+              ? '⚔️ Арена PvP'
               : combat.isBoss
                 ? `👑 ${t('combat.boss')}${combat.bossPhase === 2 ? ' · фаза 2' : combat.bossPhase === 1 && combat.floor >= 5 ? ' · фаза 1' : ''}`
                 : combat.isEpic ? '⚡ Эпический моб' : `Ход ${combat.turn}`}
@@ -250,7 +308,7 @@ export function CombatPage() {
       </div>
 
       {/* Панель действий */}
-      {useCombatStore.getState().isActive && (
+      {isActive && (
         <div className="shrink-0 border-t border-aether-border bg-aether-surface/95 pb-safe">
           <div className="px-3 pt-2 pb-1 space-y-1.5">
             <div className="flex gap-2">
@@ -433,6 +491,37 @@ export function CombatPage() {
         </div>
       )}
 
+      {showPvpVictory && (
+        <Dialog open onOpenChange={handlePvpVictoryContinue}>
+          <DialogContent className="text-center">
+            <DialogHeader>
+              <div className="text-5xl mb-2">🏆</div>
+              <DialogTitle className="text-aether-gold">Победа на арене!</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-300">
+              Вы победили {combat.enemy.name}
+            </p>
+            <p className="text-sm text-aether-cyan">
+              +{result?.exp ?? 0} EXP
+            </p>
+            <p className="text-sm text-aether-gold font-medium">
+              {pvpSettling
+                ? 'Подсчёт награды...'
+                : pvpGoldReward != null && pvpGoldReward > 0
+                  ? `+${formatNumber(pvpGoldReward)} 🪙 с противника`
+                  : 'Противник не имел золота для похищения'}
+            </p>
+            <Button
+              onClick={handlePvpVictoryContinue}
+              className="w-full"
+              disabled={pvpSettling}
+            >
+              {t('combat.continue')}
+            </Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {result && !result.victory && result.fled && (
         <Dialog open onOpenChange={handleFledContinue}>
           <DialogContent className="text-center">
@@ -463,12 +552,16 @@ export function CombatPage() {
               <p className="text-sm text-red-400">
                 Портал провален. Накопленный лут потерян.
               </p>
+            ) : combat.isPvp ? (
+              <p className="text-sm text-slate-400">
+                Поражение на арене. Отдых перед следующим боем.
+              </p>
             ) : (
               <p className="text-sm text-slate-400">
                 Вы воскресли с полным HP. Все характеристики снижены на 30% на 30 минут.
               </p>
             )}
-            {player && hasDeathDebuff(player) && (
+            {player && hasDeathDebuff(player) && !combat.isPvp && (
               <p className="text-xs text-amber-500">Дебафф смерти активен (−30% к статам)</p>
             )}
             <Button onClick={handleDefeatContinue} className="w-full">{t('combat.continue')}</Button>

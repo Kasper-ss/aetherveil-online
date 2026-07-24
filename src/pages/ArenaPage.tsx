@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Swords, Clock, Trophy, Users, Shuffle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,7 +32,6 @@ interface ArenaOpponent {
   entry: LeaderboardEntry
   profile: PublicPlayerProfile | null
   online: boolean
-  loading: boolean
 }
 
 export function ArenaPage() {
@@ -40,8 +39,9 @@ export function ArenaPage() {
   const player = usePlayerStore((s) => s.player)
   const startPvpCombat = useCombatStore((s) => s.startPvpCombat)
   const [opponents, setOpponents] = useState<ArenaOpponent[]>([])
-  const [loadingList, setLoadingList] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [, tick] = useState(0)
+  const loadedRef = useRef(false)
 
   useTelegramBackButton(() => navigate('/'), true)
 
@@ -58,18 +58,13 @@ export function ArenaPage() {
 
   const loadOpponents = useCallback(async () => {
     if (!player) return
-    setLoadingList(true)
+    const isFirstLoad = !loadedRef.current
+    if (isFirstLoad) setInitialLoading(true)
+
     try {
       const entries = await fetchServerLeaderboard(player)
       const filtered = entries.filter((e) => e.telegramId !== player.telegramId).slice(0, 15)
       const onlineIds = new Set(getOnlinePlayers(player.telegramId).map((p) => p.telegramId))
-
-      setOpponents(filtered.map((entry) => ({
-        entry,
-        profile: null,
-        online: onlineIds.has(entry.telegramId),
-        loading: true,
-      })))
 
       const profiles = await Promise.all(
         filtered.map((entry) => fetchPlayerProfile(entry.telegramId)),
@@ -79,16 +74,30 @@ export function ArenaPage() {
         entry,
         profile: profiles[i],
         online: onlineIds.has(entry.telegramId),
-        loading: false,
       })))
+      loadedRef.current = true
     } finally {
-      setLoadingList(false)
+      if (isFirstLoad) setInitialLoading(false)
     }
-  }, [player])
+  }, [player?.telegramId])
 
   useEffect(() => {
+    loadedRef.current = false
+    setOpponents([])
     void loadOpponents()
   }, [loadOpponents])
+
+  useEffect(() => {
+    if (!player) return
+    const id = setInterval(() => {
+      const onlineIds = new Set(getOnlinePlayers(player.telegramId).map((p) => p.telegramId))
+      setOpponents((prev) => prev.map((opp) => ({
+        ...opp,
+        online: onlineIds.has(opp.entry.telegramId),
+      })))
+    }, 30_000)
+    return () => clearInterval(id)
+  }, [player?.telegramId])
 
   if (!player) return null
 
@@ -224,11 +233,11 @@ export function ArenaPage() {
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Users className="h-4 w-4" />
           <span>Противники</span>
-          {loadingList && <span className="text-[10px]">загрузка...</span>}
+          {initialLoading && <span className="text-[10px]">загрузка...</span>}
         </div>
 
         <div className="space-y-2">
-          {opponents.length === 0 && !loadingList && (
+          {opponents.length === 0 && !initialLoading && (
             <p className="text-center text-sm text-slate-500 py-4">Нет доступных противников</p>
           )}
           {opponents.map((opp) => {
@@ -259,7 +268,7 @@ export function ArenaPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!status.canFight || opp.loading || !opp.profile || getPlayerCurrentHp(player) < 1}
+                    disabled={!status.canFight || !opp.profile || getPlayerCurrentHp(player) < 1}
                     onClick={() => handleFight(toSnapshot(opp))}
                   >
                     <Swords className="h-3 w-3 mr-1" />

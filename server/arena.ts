@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { getMiniAppUrl, sendMessage } from './telegram.js'
 
 const ARENA_GOLD_STEAL_PCT = 0.01
 
@@ -60,17 +61,82 @@ async function getOpponentGold(telegramId: number): Promise<number> {
   return Math.max(0, profile?.gold ?? 0)
 }
 
+async function patchOpponentPublicProfile(
+  telegramId: number,
+  patch: { goldDelta?: number; pvpLossesInc?: number; pvpWinsInc?: number },
+): Promise<void> {
+  const supabase = getSupabase()
+  if (!supabase) return
+
+  const { data } = await supabase
+    .from('player_profiles')
+    .select('profile')
+    .eq('telegram_id', telegramId)
+    .maybeSingle()
+
+  if (!data?.profile) return
+
+  const profile = data.profile as Record<string, unknown>
+  const next: Record<string, unknown> = { ...profile }
+  if (patch.goldDelta) {
+    next.gold = Math.max(0, ((profile.gold as number) ?? 0) + patch.goldDelta)
+  }
+  if (patch.pvpLossesInc) {
+    next.pvpLosses = ((profile.pvpLosses as number) ?? 0) + patch.pvpLossesInc
+  }
+  if (patch.pvpWinsInc) {
+    next.pvpWins = ((profile.pvpWins as number) ?? 0) + patch.pvpWinsInc
+  }
+
+  await supabase.from('player_profiles').upsert({
+    telegram_id: telegramId,
+    profile: next,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'telegram_id' })
+}
+
+async function notifyArenaDefeat(input: {
+  opponentId: number
+  attackerName: string
+  goldStolen: number
+}): Promise<void> {
+  const appUrl = getMiniAppUrl()
+  const replyMarkup = appUrl
+    ? { inline_keyboard: [[{ text: '⚔️ На арену', web_app: { url: appUrl } }]] }
+    : undefined
+
+  const goldLine = input.goldStolen > 0
+    ? `💸 Потеряно: 🪙 ${input.goldStolen.toLocaleString('ru-RU')}`
+    : '💸 У вас не было золота для похищения.'
+
+  try {
+    await sendMessage({
+      chat_id: input.opponentId,
+      text: [
+        '⚔️ Вас победили на арене PvP!',
+        '',
+        `Победитель: ${input.attackerName}`,
+        goldLine,
+      ].join('\n'),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    })
+  } catch (err) {
+    console.warn('[arena] defeat notify failed', err)
+  }
+}
+
 export interface ArenaSettleResult {
   ok: boolean
   goldStolen?: number
   error?: string
 }
 
-/** Списывает золото и обновляет PvP-статистику противника (офлайн). */
+/** Списывает золото и обновляет PvP-статистику противника. */
 export async function settleArenaFight(input: {
   attackerId: number
   opponentId: number
   victory: boolean
+  attackerName?: string
 }): Promise<ArenaSettleResult> {
   if (input.attackerId === input.opponentId) {
     return { ok: false, error: 'Нельзя сражаться с самим собой' }
@@ -95,6 +161,17 @@ export async function settleArenaFight(input: {
       await savePlayerSave(input.opponentId, opponentFull)
     }
 
+    await patchOpponentPublicProfile(input.opponentId, {
+      goldDelta: goldStolen > 0 ? -goldStolen : undefined,
+      pvpLossesInc: 1,
+    })
+
+    void notifyArenaDefeat({
+      opponentId: input.opponentId,
+      attackerName: input.attackerName?.trim() || 'Игрок',
+      goldStolen,
+    })
+
     return { ok: true, goldStolen }
   }
 
@@ -104,6 +181,8 @@ export async function settleArenaFight(input: {
     opponentFull.pvpWins = ((opponentFull.pvpWins as number) ?? 0) + 1
     await savePlayerSave(input.opponentId, opponentFull)
   }
+
+  await patchOpponentPublicProfile(input.opponentId, { pvpWinsInc: 1 })
 
   return { ok: true, goldStolen: 0 }
 }

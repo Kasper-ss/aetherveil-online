@@ -53,7 +53,7 @@ import { calcMitigatedDamage, ENEMY_DEF_MITIGATION, PLAYER_DEF_MITIGATION } from
 import { applyPlayerSkillDebuff, applyRacialSkillDebuff, tickPlayerSkillDebuffs, SKILL_DEBUFF_MAP, applyUniversalSkillDebuff } from '@/lib/skillDebuffs'
 import { UNIVERSAL_SKILLS, getScaledUniversalSkill, getUniversalPassiveBonuses } from '@/data/universalSkillTree'
 import { getRaceData } from '@/data/races'
-import { calcArenaGoldSteal, getArenaDailyStatus } from '@/data/arena'
+import { getArenaDailyStatus } from '@/data/arena'
 import { settleArenaOnServer } from '@/lib/multiplayerSync'
 
 /** Global boost to player outgoing damage in combat. */
@@ -991,19 +991,12 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     if (victory) {
       if (combat.isPvp) {
         exp = combat.enemy.expReward
-        gold = calcArenaGoldSteal(combat.pvpOpponentGold ?? 0)
+        gold = 0
         const p = usePlayerStore.getState().player
         if (p) {
           usePlayerStore.getState().addExp(exp)
-          if (gold > 0) usePlayerStore.getState().addGold(gold)
-          usePlayerStore.getState().updatePlayer({
-            pvpWins: p.pvpWins + 1,
-            pvpGoldEarned: (p.pvpGoldEarned ?? 0) + gold,
-          })
+          usePlayerStore.getState().updatePlayer({ pvpWins: p.pvpWins + 1 })
           usePlayerStore.getState().trackQuestEvent('pvp_win', 1)
-        }
-        if (combat.pvpOpponentId) {
-          void settleArenaOnServer({ opponentId: combat.pvpOpponentId, victory: true })
         }
       } else if (combat.isWorldBoss) {
         exp = combat.enemy.expReward
@@ -1067,7 +1060,11 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       const p = usePlayerStore.getState().player
       if (p) usePlayerStore.getState().updatePlayer({ pvpLosses: p.pvpLosses + 1 })
       if (combat.pvpOpponentId) {
-        void settleArenaOnServer({ opponentId: combat.pvpOpponentId, victory: false })
+        void settleArenaOnServer({
+          opponentId: combat.pvpOpponentId,
+          victory: false,
+          attackerName: p?.displayName,
+        })
       }
     }
 
@@ -1094,7 +1091,9 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       raidComplete,
       isPortal: combat.isPortal,
       portalComplete,
-      lootClaimed: combat.isPvp ? true : false,
+      isPvp: combat.isPvp,
+      pvpOpponentId: combat.pvpOpponentId,
+      lootClaimed: combat.isPvp ? false : undefined,
       mobKilled: victory && !combat.isBoss && !combat.isPvp && !combat.isRaid && !combat.isPortal,
       killedBy: !victory ? combat.enemy.name : undefined,
       isEpic: combat.isEpic,

@@ -264,6 +264,7 @@ export async function fetchServerMarket(selfId: number): Promise<MarketListing[]
 export async function settleArenaOnServer(opts: {
   opponentId: number
   victory: boolean
+  attackerName?: string
 }): Promise<{ ok: boolean; goldStolen?: number; error?: string } | null> {
   const initData = getInitData()
   if (!initData) return null
@@ -277,6 +278,7 @@ export async function settleArenaOnServer(opts: {
         arenaSettle: {
           opponentId: opts.opponentId,
           victory: opts.victory,
+          attackerName: opts.attackerName,
         },
       }),
     })

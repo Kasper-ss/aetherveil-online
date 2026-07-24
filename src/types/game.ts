@@ -643,6 +643,8 @@ export interface CombatResult {
   raidComplete?: boolean
   isPortal?: boolean
   portalComplete?: boolean
+  isPvp?: boolean
+  pvpOpponentId?: number
 }
 
 export interface GuildMember {
