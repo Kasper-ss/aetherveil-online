@@ -12,13 +12,11 @@ import { useTelegramBackButton } from '@/hooks/useTelegram'
 import { xpForLevel, formatNumber } from '@/lib/utils'
 import { toggleMusic, toggleSound } from '@/lib/audio'
 import { useRef, useState } from 'react'
-import { shareInviteLink, hapticSuccess, hapticError, showTelegramAlert, openTelegramChannel } from '@/lib/telegram'
+import { shareInviteLink, hapticSuccess, showTelegramAlert, openTelegramChannel } from '@/lib/telegram'
 import { FEEDBACK_CHANNEL_URL, formatGameVersion } from '@/lib/gameVersion'
-import { StarsPaymentError } from '@/lib/starsPayment'
-import { formatStarsPriceLabel } from '@/data/starShop'
 import { getCombatMaxHp, hasDeathDebuff, formatDodgePercent } from '@/lib/playerStats'
 import { getActiveEffects, formatEffectRemaining } from '@/lib/activeEffects'
-import { AVATAR_OPTIONS, FRAME_OPTIONS, getAvatarPreview, getFrameClass } from '@/data/cosmetics'
+import { getAvatarPreview, getFrameClass } from '@/data/cosmetics'
 import { getClassData } from '@/data/classes'
 import { getNotificationSettings, requestBrowserNotificationPermission } from '@/lib/vitalNotifications'
 import { normalizeMonthlyStats } from '@/lib/monthlyStats'
@@ -39,10 +37,7 @@ export function ProfilePage() {
   const claimEasterEgg = usePlayerStore((s) => s.claimExpEasterEgg)
   const claimUnderwearEasterEgg = usePlayerStore((s) => s.claimUnderwearEasterEgg)
   const changeDisplayName = usePlayerStore((s) => s.changeDisplayName)
-  const applyCosmetic = usePlayerStore((s) => s.applyCosmetic)
-  const purchaseCosmetic = usePlayerStore((s) => s.purchaseCosmetic)
   const updateNotificationSettings = usePlayerStore((s) => s.updateNotificationSettings)
-  const [buyingCosmeticId, setBuyingCosmeticId] = useState<string | null>(null)
   const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | 'unsupported'>(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
     return Notification.permission
@@ -112,34 +107,6 @@ export function ProfilePage() {
       setShowRename(false)
       setNewName('')
     }
-  }
-
-  async function handleCosmetic(type: 'avatar' | 'frame', id: string) {
-    const opt = [...AVATAR_OPTIONS, ...FRAME_OPTIONS].find((o) => o.id === id && o.type === type)
-    if (!opt) return
-    const locked = opt.stars > 0 && !player!.unlockedCosmetics?.includes(id)
-    if (locked) {
-      setBuyingCosmeticId(id)
-      try {
-        const ok = await purchaseCosmetic(id)
-        if (!ok) {
-          hapticError()
-          return
-        }
-        if (applyCosmetic(type, id)) hapticSuccess()
-        else hapticError()
-      } catch (error) {
-        hapticError()
-        const message = error instanceof StarsPaymentError
-          ? error.message
-          : 'Не удалось выполнить оплату'
-        showTelegramAlert(message)
-      } finally {
-        setBuyingCosmeticId(null)
-      }
-      return
-    }
-    if (applyCosmetic(type, id)) hapticSuccess()
   }
 
   async function handleRequestPushPermission() {
@@ -318,56 +285,6 @@ export function ProfilePage() {
             <span className="text-slate-400">Серия наград</span>
             <span className="text-white">{player.dailyRewardStreak} дн.</span>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mx-4 mt-3">
-        <CardContent className="p-4 space-y-3">
-          <p className="text-sm font-medium text-white">Аватар</p>
-          <div className="grid grid-cols-3 gap-2">
-            {AVATAR_OPTIONS.map((opt) => {
-              const active = (player.cosmeticAvatarId ?? 'default') === opt.id
-              const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
-              const buying = buyingCosmeticId === opt.id
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={buying}
-                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'} ${locked ? 'opacity-80' : ''}`}
-                  onClick={() => void handleCosmetic('avatar', opt.id)}
-                >
-                  <div className="text-2xl">{opt.preview}</div>
-                  <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
-                  {locked && <div className="text-[8px] text-aether-gold">{formatStarsPriceLabel(opt.stars)}</div>}
-                  {buying && <div className="text-[8px] text-slate-500">Оплата...</div>}
-                </button>
-              )
-            })}
-          </div>
-          <p className="text-sm font-medium text-white pt-1">Рамка профиля</p>
-          <div className="grid grid-cols-3 gap-2">
-            {FRAME_OPTIONS.map((opt) => {
-              const active = (player.profileFrameId ?? 'none') === opt.id
-              const locked = opt.stars > 0 && !player.unlockedCosmetics?.includes(opt.id)
-              const buying = buyingCosmeticId === opt.id
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={buying}
-                  className={`p-2 rounded-lg border text-center ${active ? 'border-aether-cyan bg-aether-cyan/10' : 'border-aether-border'} ${locked ? 'opacity-80' : ''}`}
-                  onClick={() => void handleCosmetic('frame', opt.id)}
-                >
-                  <div className="text-lg">{opt.preview}</div>
-                  <div className="text-[9px] text-slate-400 truncate">{opt.label}</div>
-                  {locked && <div className="text-[8px] text-aether-gold">{formatStarsPriceLabel(opt.stars)}</div>}
-                  {buying && <div className="text-[8px] text-slate-500">Оплата...</div>}
-                </button>
-              )
-            })}
-          </div>
-          <p className="text-[10px] text-slate-500">Платные варианты покупаются за Telegram Stars</p>
         </CardContent>
       </Card>
 
